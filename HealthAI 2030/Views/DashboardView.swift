@@ -14,7 +14,7 @@ struct DashboardView: View {
     @State private var showingSyncStatus = false
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 20) {
                     WhatsNewCard()

@@ -481,7 +481,7 @@ struct SleepView: View {
     @EnvironmentObject var rlAgent: RLAgent
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     Text("Sleep Optimization Dashboard")
