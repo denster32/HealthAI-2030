@@ -1,0 +1,483 @@
+import XCTest
+import AVFoundation
+@testable import HealthAI_2030
+
+class AudioQualityTests: XCTestCase {
+    
+    var audioEngine: AudioGenerationEngine!
+    var enhancedEngine: EnhancedAudioEngine!
+    var transitionEngine: AudioTransitionEngine!
+    var binauralGenerator: BinauralBeatGenerator!
+    var noiseGenerator: WhiteNoiseGenerator!
+    var natureGenerator: NatureSoundGenerator!
+    
+    override func setUpWithError() throws {
+        super.setUp()
+        audioEngine = AudioGenerationEngine.shared
+        enhancedEngine = EnhancedAudioEngine.shared
+        transitionEngine = AudioTransitionEngine.shared
+        binauralGenerator = BinauralBeatGenerator(sampleRate: 48000)
+        noiseGenerator = WhiteNoiseGenerator(sampleRate: 48000)
+        natureGenerator = NatureSoundGenerator(sampleRate: 48000)
+    }
+    
+    override func tearDownWithError() throws {
+        audioEngine.stopAudio()
+        enhancedEngine.stopAudio()
+        transitionEngine.stopCurrentTransition()
+        super.tearDown()
+    }
+    
+    // MARK: - Audio Quality Tests
+    
+    func testAudioEngineSetup() throws {
+        XCTAssertNotNil(audioEngine, "Audio engine should be initialized")
+        XCTAssertFalse(audioEngine.isGenerating, "Audio should not be generating initially")
+        XCTAssertEqual(audioEngine.currentAudioType, .none, "Initial audio type should be none")
+    }
+    
+    func testBinauralBeatQuality() throws {
+        let buffer = binauralGenerator.generateBeat(frequency: 10.0, duration: 1.0)
+        
+        // Verify buffer properties
+        XCTAssertEqual(buffer.format.channelCount, 2, "Binaural beats should be stereo")
+        XCTAssertEqual(buffer.format.sampleRate, 48000, "Sample rate should be 48kHz")
+        XCTAssertEqual(buffer.frameLength, 48000, "Buffer should contain 1 second of audio")
+        
+        // Verify audio content exists
+        guard let leftChannel = buffer.floatChannelData?[0],
+              let rightChannel = buffer.floatChannelData?[1] else {
+            XCTFail("Audio channels should exist")
+            return
+        }
+        
+        // Check for non-zero audio content
+        var hasAudioContent = false
+        for i in 0..<Int(buffer.frameLength) {
+            if abs(leftChannel[i]) > 0.001 || abs(rightChannel[i]) > 0.001 {
+                hasAudioContent = true
+                break
+            }
+        }
+        XCTAssertTrue(hasAudioContent, "Generated audio should contain non-zero samples")
+        
+        // Verify stereo separation (left and right channels should be different)
+        var channelsDiffer = false
+        for i in 0..<Int(buffer.frameLength) {
+            if abs(leftChannel[i] - rightChannel[i]) > 0.001 {
+                channelsDiffer = true
+                break
+            }
+        }
+        XCTAssertTrue(channelsDiffer, "Left and right channels should differ for binaural beats")
+    }
+    
+    func testWhiteNoiseQuality() throws {
+        let whiteBuffer = noiseGenerator.generateNoise(color: .white, duration: 1.0)
+        let pinkBuffer = noiseGenerator.generateNoise(color: .pink, duration: 1.0)
+        let brownBuffer = noiseGenerator.generateNoise(color: .brown, duration: 1.0)
+        
+        // Test white noise
+        validateNoiseBuffer(whiteBuffer, expectedType: "white")
+        
+        // Test pink noise
+        validateNoiseBuffer(pinkBuffer, expectedType: "pink")
+        
+        // Test brown noise
+        validateNoiseBuffer(brownBuffer, expectedType: "brown")
+        
+        // Verify different noise colors produce different content
+        guard let whiteLeft = whiteBuffer.floatChannelData?[0],
+              let pinkLeft = pinkBuffer.floatChannelData?[0] else {
+            XCTFail("Noise buffers should have audio data")
+            return
+        }
+        
+        var noiseTypesDiffer = false
+        for i in 0..<min(Int(whiteBuffer.frameLength), Int(pinkBuffer.frameLength)) {
+            if abs(whiteLeft[i] - pinkLeft[i]) > 0.1 {
+                noiseTypesDiffer = true
+                break
+            }
+        }
+        XCTAssertTrue(noiseTypesDiffer, "Different noise colors should produce different audio")
+    }
+    
+    func testNatureSoundQuality() throws {
+        let oceanBuffer = natureGenerator.generateNatureSound(environment: .ocean, duration: 1.0)
+        let rainBuffer = natureGenerator.generateNatureSound(environment: .rain, duration: 1.0)
+        let forestBuffer = natureGenerator.generateNatureSound(environment: .forest, duration: 1.0)
+        let fireBuffer = natureGenerator.generateNatureSound(environment: .fire, duration: 1.0)
+        
+        // Test each nature sound type
+        validateNatureBuffer(oceanBuffer, expectedType: "ocean")
+        validateNatureBuffer(rainBuffer, expectedType: "rain")
+        validateNatureBuffer(forestBuffer, expectedType: "forest")
+        validateNatureBuffer(fireBuffer, expectedType: "fire")
+        
+        // Verify different environments produce different audio
+        guard let oceanLeft = oceanBuffer.floatChannelData?[0],
+              let rainLeft = rainBuffer.floatChannelData?[0] else {
+            XCTFail("Nature sound buffers should have audio data")
+            return
+        }
+        
+        var environmentsDiffer = false
+        for i in 0..<min(Int(oceanBuffer.frameLength), Int(rainBuffer.frameLength)) {
+            if abs(oceanLeft[i] - rainLeft[i]) > 0.05 {
+                environmentsDiffer = true
+                break
+            }
+        }
+        XCTAssertTrue(environmentsDiffer, "Different nature environments should produce different audio")
+    }
+    
+    // MARK: - Audio Transition Tests
+    
+    func testCrossfadeTransition() async throws {
+        let sourceBuffer = binauralGenerator.generateBeat(frequency: 5.0, duration: 2.0)
+        let targetBuffer = noiseGenerator.generateNoise(color: .pink, duration: 2.0)
+        
+        // Start crossfade transition
+        let transitionStartTime = Date()
+        await transitionEngine.crossfadeTransition(
+            from: sourceBuffer,
+            to: targetBuffer,
+            duration: 1.0,
+            curve: .smooth
+        )
+        let transitionEndTime = Date()
+        
+        // Verify transition completed in reasonable time
+        let actualDuration = transitionEndTime.timeIntervalSince(transitionStartTime)
+        XCTAssertLessThan(actualDuration, 2.0, "Transition should complete within reasonable time")
+        XCTAssertGreaterThan(actualDuration, 0.8, "Transition should take minimum expected time")
+        
+        // Verify transition state
+        XCTAssertFalse(transitionEngine.isTransitioning, "Transition should be complete")
+        XCTAssertEqual(transitionEngine.currentTransitionType, .none, "Transition type should be reset")
+    }
+    
+    func testFrequencySweepTransition() async throws {
+        let startFrequency: Double = 5.0
+        let endFrequency: Double = 15.0
+        let duration: TimeInterval = 2.0
+        
+        let transitionStartTime = Date()
+        await transitionEngine.frequencySweepTransition(
+            from: startFrequency,
+            to: endFrequency,
+            duration: duration,
+            curve: .smooth
+        )
+        let transitionEndTime = Date()
+        
+        // Verify transition timing
+        let actualDuration = transitionEndTime.timeIntervalSince(transitionStartTime)
+        XCTAssertLessThan(actualDuration, duration + 0.5, "Transition should complete close to expected time")
+        
+        // Verify transition completed
+        XCTAssertFalse(transitionEngine.isTransitioning, "Frequency sweep should be complete")
+        XCTAssertEqual(transitionEngine.currentTransitionType, .none, "Transition type should be reset")
+    }
+    
+    func testNatureSoundMorphTransition() async throws {
+        let transitionStartTime = Date()
+        await transitionEngine.natureSoundMorphTransition(
+            from: .ocean,
+            to: .rain,
+            duration: 3.0
+        )
+        let transitionEndTime = Date()
+        
+        // Verify transition timing
+        let actualDuration = transitionEndTime.timeIntervalSince(transitionStartTime)
+        XCTAssertLessThan(actualDuration, 4.0, "Nature morph should complete in reasonable time")
+        
+        // Verify transition completed
+        XCTAssertFalse(transitionEngine.isTransitioning, "Nature morph should be complete")
+        XCTAssertEqual(transitionEngine.currentTransitionType, .none, "Transition type should be reset")
+    }
+    
+    // MARK: - Audio Processing Quality Tests
+    
+    func testAudioEnvelopeSmoothing() throws {
+        let buffer = binauralGenerator.generateBeat(frequency: 10.0, duration: 2.0)
+        
+        guard let leftChannel = buffer.floatChannelData?[0] else {
+            XCTFail("Buffer should have audio data")
+            return
+        }
+        
+        let frameCount = Int(buffer.frameLength)
+        let fadeInSamples = Int(10.0 * 48000) // 10 seconds at 48kHz
+        let fadeOutSamples = Int(10.0 * 48000) // 10 seconds at 48kHz
+        
+        // Check fade-in envelope (should start at 0 and gradually increase)
+        if frameCount > fadeInSamples {
+            let startSample = abs(leftChannel[0])
+            let midFadeSample = abs(leftChannel[fadeInSamples / 2])
+            let endFadeSample = abs(leftChannel[fadeInSamples])
+            
+            XCTAssertLessThan(startSample, 0.01, "Audio should start near zero")
+            XCTAssertGreaterThan(midFadeSample, startSample, "Mid-fade should be louder than start")
+            XCTAssertGreaterThan(endFadeSample, midFadeSample, "End-fade should be louder than mid-fade")
+        }
+        
+        // Check for smooth transitions (no sudden jumps)
+        var maxDifference: Float = 0.0
+        for i in 1..<frameCount {
+            let difference = abs(leftChannel[i] - leftChannel[i-1])
+            maxDifference = max(maxDifference, difference)
+        }
+        
+        XCTAssertLessThan(maxDifference, 0.1, "Audio should not have sudden jumps between samples")
+    }
+    
+    func testAudioSpectralContent() throws {
+        // Test that binaural beats have correct frequency content
+        let testFrequency: Double = 10.0
+        let buffer = binauralGenerator.generateBeat(frequency: testFrequency, duration: 1.0)
+        
+        guard let leftChannel = buffer.floatChannelData?[0],
+              let rightChannel = buffer.floatChannelData?[1] else {
+            XCTFail("Buffer should have stereo audio data")
+            return
+        }
+        
+        let frameCount = Int(buffer.frameLength)
+        
+        // Simple frequency analysis - count zero crossings to estimate frequency
+        var leftZeroCrossings = 0
+        var rightZeroCrossings = 0
+        
+        for i in 1..<frameCount {
+            if (leftChannel[i-1] < 0 && leftChannel[i] >= 0) || (leftChannel[i-1] >= 0 && leftChannel[i] < 0) {
+                leftZeroCrossings += 1
+            }
+            if (rightChannel[i-1] < 0 && rightChannel[i] >= 0) || (rightChannel[i-1] >= 0 && rightChannel[i] < 0) {
+                rightZeroCrossings += 1
+            }
+        }
+        
+        // Estimate frequency from zero crossings (rough approximation)
+        let leftFreqEstimate = Double(leftZeroCrossings) / 2.0 // Two crossings per cycle
+        let rightFreqEstimate = Double(rightZeroCrossings) / 2.0
+        
+        // The carrier frequency should be around 200Hz, so we expect ~200 cycles
+        XCTAssertGreaterThan(leftFreqEstimate, 150, "Left channel should have carrier frequency content")
+        XCTAssertGreaterThan(rightFreqEstimate, 150, "Right channel should have carrier frequency content")
+        
+        // Right channel should have slightly different frequency due to binaural beat
+        let frequencyDifference = abs(rightFreqEstimate - leftFreqEstimate)
+        XCTAssertGreaterThan(frequencyDifference, 5, "Channels should have different frequencies for binaural effect")
+    }
+    
+    // MARK: - Performance Tests
+    
+    func testAudioGenerationPerformance() throws {
+        measure {
+            let _ = binauralGenerator.generateBeat(frequency: 10.0, duration: 10.0)
+        }
+    }
+    
+    func testMultipleAudioGeneration() throws {
+        measure {
+            let _ = binauralGenerator.generateBeat(frequency: 5.0, duration: 1.0)
+            let _ = noiseGenerator.generateNoise(color: .pink, duration: 1.0)
+            let _ = natureGenerator.generateNatureSound(environment: .ocean, duration: 1.0)
+        }
+    }
+    
+    func testTransitionPerformance() throws {
+        let sourceBuffer = binauralGenerator.generateBeat(frequency: 5.0, duration: 1.0)
+        let targetBuffer = noiseGenerator.generateNoise(color: .white, duration: 1.0)
+        
+        measure {
+            let expectation = XCTestExpectation(description: "Transition completed")
+            
+            Task {
+                await transitionEngine.crossfadeTransition(
+                    from: sourceBuffer,
+                    to: targetBuffer,
+                    duration: 0.5,
+                    curve: .linear
+                )
+                expectation.fulfill()
+            }
+            
+            wait(for: [expectation], timeout: 2.0)
+        }
+    }
+    
+    // MARK: - Memory Tests
+    
+    func testMemoryUsageForLongAudio() throws {
+        // Test memory usage for longer audio generation
+        let longBuffer = binauralGenerator.generateBeat(frequency: 10.0, duration: 300.0) // 5 minutes
+        
+        XCTAssertNotNil(longBuffer, "Should be able to generate long audio")
+        XCTAssertEqual(longBuffer.frameLength, 300 * 48000, "Buffer should have correct length")
+        
+        // Verify buffer can be deallocated properly
+        // This is important for preventing memory leaks
+        let bufferData = longBuffer.floatChannelData
+        XCTAssertNotNil(bufferData, "Buffer should have valid data")
+    }
+    
+    func testConcurrentAudioGeneration() throws {
+        let expectation = XCTestExpectation(description: "Concurrent generation completed")
+        expectation.expectedFulfillmentCount = 3
+        
+        // Generate multiple audio types concurrently
+        DispatchQueue.global().async {
+            let _ = self.binauralGenerator.generateBeat(frequency: 8.0, duration: 2.0)
+            expectation.fulfill()
+        }
+        
+        DispatchQueue.global().async {
+            let _ = self.noiseGenerator.generateNoise(color: .brown, duration: 2.0)
+            expectation.fulfill()
+        }
+        
+        DispatchQueue.global().async {
+            let _ = self.natureGenerator.generateNatureSound(environment: .forest, duration: 2.0)
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 5.0)
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func validateNoiseBuffer(_ buffer: AVAudioPCMBuffer, expectedType: String) {
+        XCTAssertEqual(buffer.format.channelCount, 2, "\(expectedType) noise should be stereo")
+        XCTAssertEqual(buffer.format.sampleRate, 48000, "\(expectedType) noise should be 48kHz")
+        XCTAssertGreaterThan(buffer.frameLength, 0, "\(expectedType) noise should have audio content")
+        
+        guard let leftChannel = buffer.floatChannelData?[0] else {
+            XCTFail("\(expectedType) noise should have audio data")
+            return
+        }
+        
+        // Check for audio content and reasonable amplitude
+        var hasContent = false
+        var maxAmplitude: Float = 0.0
+        
+        for i in 0..<Int(buffer.frameLength) {
+            let sample = abs(leftChannel[i])
+            maxAmplitude = max(maxAmplitude, sample)
+            if sample > 0.001 {
+                hasContent = true
+            }
+        }
+        
+        XCTAssertTrue(hasContent, "\(expectedType) noise should contain audio")
+        XCTAssertLessThan(maxAmplitude, 1.0, "\(expectedType) noise should not clip")
+        XCTAssertGreaterThan(maxAmplitude, 0.01, "\(expectedType) noise should have reasonable amplitude")
+    }
+    
+    private func validateNatureBuffer(_ buffer: AVAudioPCMBuffer, expectedType: String) {
+        XCTAssertEqual(buffer.format.channelCount, 2, "\(expectedType) sound should be stereo")
+        XCTAssertEqual(buffer.format.sampleRate, 48000, "\(expectedType) sound should be 48kHz")
+        XCTAssertGreaterThan(buffer.frameLength, 0, "\(expectedType) sound should have audio content")
+        
+        guard let leftChannel = buffer.floatChannelData?[0],
+              let rightChannel = buffer.floatChannelData?[1] else {
+            XCTFail("\(expectedType) sound should have stereo audio data")
+            return
+        }
+        
+        // Check for stereo content
+        var hasLeftContent = false
+        var hasRightContent = false
+        
+        for i in 0..<Int(buffer.frameLength) {
+            if abs(leftChannel[i]) > 0.001 { hasLeftContent = true }
+            if abs(rightChannel[i]) > 0.001 { hasRightContent = true }
+        }
+        
+        XCTAssertTrue(hasLeftContent, "\(expectedType) sound should have left channel content")
+        XCTAssertTrue(hasRightContent, "\(expectedType) sound should have right channel content")
+        
+        // Check for dynamic range (nature sounds should vary in amplitude)
+        var minAmplitude: Float = 1.0
+        var maxAmplitude: Float = 0.0
+        
+        for i in 0..<Int(buffer.frameLength) {
+            let sample = abs(leftChannel[i])
+            minAmplitude = min(minAmplitude, sample)
+            maxAmplitude = max(maxAmplitude, sample)
+        }
+        
+        let dynamicRange = maxAmplitude - minAmplitude
+        XCTAssertGreaterThan(dynamicRange, 0.05, "\(expectedType) sound should have dynamic range")
+    }
+}
+
+// MARK: - Audio Integration Tests
+
+class AudioIntegrationTests: XCTestCase {
+    
+    func testCompleteAudioWorkflow() async throws {
+        let audioEngine = AudioGenerationEngine.shared
+        let transitionEngine = AudioTransitionEngine.shared
+        
+        // Test complete workflow: start audio, transition, stop
+        audioEngine.generateBinauralBeats(baseFrequency: 200, beatFrequency: 10.0)
+        XCTAssertTrue(audioEngine.isGenerating, "Audio should start generating")
+        
+        // Wait a moment for audio to start
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        // Test adaptive features
+        audioEngine.adaptToHeartRate(75.0)
+        audioEngine.adaptToHRV(45.0)
+        
+        // Test volume control
+        audioEngine.setVolume(0.8)
+        XCTAssertEqual(audioEngine.volume, 0.8, "Volume should be set correctly")
+        
+        // Stop audio
+        audioEngine.stopAudio()
+        XCTAssertFalse(audioEngine.isGenerating, "Audio should stop generating")
+        XCTAssertEqual(audioEngine.currentAudioType, .none, "Audio type should reset")
+    }
+    
+    func testAudioEffectivenessAnalysis() throws {
+        let audioEngine = AudioGenerationEngine.shared
+        
+        // Generate audio and analyze effectiveness
+        audioEngine.generateBinauralBeats(baseFrequency: 200, beatFrequency: 8.0)
+        
+        let effectiveness = audioEngine.analyzeAudioEffectiveness()
+        XCTAssertNotNil(effectiveness, "Should return effectiveness analysis")
+        XCTAssertNotNil(effectiveness.recommendation, "Should provide recommendation")
+        
+        audioEngine.stopAudio()
+    }
+    
+    func testMultiLayerAudioMixing() async throws {
+        let enhancedEngine = EnhancedAudioEngine.shared
+        
+        // Create multiple audio layers
+        let layers = [
+            AudioLayer(type: .binauralBeats, volume: 0.5, pan: 0.0, enabled: true, parameters: ["frequency": 10.0]),
+            AudioLayer(type: .whiteNoise, volume: 0.3, pan: -0.2, enabled: true, parameters: ["color": 1.0]),
+            AudioLayer(type: .natureSounds, volume: 0.4, pan: 0.3, enabled: true, parameters: ["environment": 0.0])
+        ]
+        
+        // Create custom soundscape
+        let soundscape = await enhancedEngine.createCustomSoundscape(layers: layers)
+        XCTAssertNotNil(soundscape, "Should create custom soundscape")
+        XCTAssertEqual(soundscape.layers.count, 3, "Should have correct number of layers")
+        
+        // Play custom soundscape
+        await enhancedEngine.playCustomSoundscape(soundscape)
+        
+        // Verify playing state
+        XCTAssertTrue(enhancedEngine.isPlaying, "Should be playing custom soundscape")
+        
+        enhancedEngine.stopAudio()
+    }
+}
