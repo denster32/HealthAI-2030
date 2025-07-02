@@ -602,20 +602,19 @@ class BackgroundHealthAnalyzer: ObservableObject {
     }
     
     private func handleBackgroundHealthAnalysis(task: BGProcessingTask) {
-        // Set up background task
-        backgroundTaskID = UIApplication.shared.beginBackgroundTask {
+        // Configure expiration handler instead of legacy beginBackgroundTask API
+        task.expirationHandler = { [weak self] in
+            // Handle premature termination if needed
+            self?.activeAlerts.append(
+                HealthAlert(type: .anomaly, severity: .warning, message: "Background analysis expired", timestamp: Date())
+            )
             task.setTaskCompleted(success: false)
         }
-        
-        // Perform analysis
-        performBackgroundAnalysis()
-        
-        // Complete task
-        task.setTaskCompleted(success: true)
-        
-        if backgroundTaskID != .invalid {
-            UIApplication.shared.endBackgroundTask(backgroundTaskID)
-            backgroundTaskID = .invalid
+
+        // Perform analysis asynchronously
+        Task.detached(priority: .background) { [weak self] in
+            self?.performBackgroundAnalysis()
+            task.setTaskCompleted(success: true)
         }
     }
     
