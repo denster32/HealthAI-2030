@@ -17,7 +17,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             .environmentObject(SleepOptimizationManager.shared)
             .environmentObject(PredictiveAnalyticsManager.shared)
         
-        window?.rootViewController = UIHostingController(rootView: contentView)
+        window?.rootViewController = AppHostingController(rootView: contentView)
         window?.makeKeyAndVisible()
     }
     
