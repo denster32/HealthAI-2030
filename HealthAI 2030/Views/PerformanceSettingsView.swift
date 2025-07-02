@@ -15,7 +15,7 @@ struct PerformanceSettingsView: View {
     @State private var backgroundTaskLimit = 5
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 // Performance Mode Section
                 Section("Performance Mode") {

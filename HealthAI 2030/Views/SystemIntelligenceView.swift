@@ -8,7 +8,7 @@ struct SystemIntelligenceView: View {
     @State private var selectedShortcut: AppShortcut?
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 // Tab Picker
                 Picker("Intelligence Type", selection: $selectedTab) {

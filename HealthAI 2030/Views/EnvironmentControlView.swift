@@ -10,7 +10,7 @@ struct EnvironmentControlView: View {
     @State private var selectedDevice: SmartHomeDevice?
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 16) {
                     // Connection Status Card

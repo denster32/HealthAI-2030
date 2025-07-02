@@ -6,7 +6,7 @@ struct PerformanceAlertsView: View {
     @StateObject private var neuralEngineOptimizer = NeuralEngineOptimizer.shared
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 if neuralEngineOptimizer.performanceAlerts.isEmpty {
                     ContentUnavailableView(
