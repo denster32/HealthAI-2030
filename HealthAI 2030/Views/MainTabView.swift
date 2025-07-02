@@ -73,7 +73,7 @@ struct DashboardView: View {
     @EnvironmentObject var environmentManager: EnvironmentManager
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     // Current Health Status
