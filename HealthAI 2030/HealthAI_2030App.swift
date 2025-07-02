@@ -8,9 +8,18 @@
 import SwiftUI
 import HealthKit
 import WidgetKit
+import BackgroundTasks
+import UserNotifications
+import Intents
+import IntentsUI
+import AppIntents
+import TipKit
+import OSLog
+import ActivityKit
 
 @main
 struct HealthAI_2030App: App {
+    // MARK: - Core Managers
     @StateObject private var healthDataManager = HealthDataManager.shared
     @StateObject private var sleepOptimizationManager = SleepOptimizationManager.shared
     @StateObject private var environmentManager = EnvironmentManager.shared
@@ -22,45 +31,127 @@ struct HealthAI_2030App: App {
     @StateObject private var federatedLearningManager = FederatedLearningManager.shared
     @StateObject private var predictiveAnalyticsManager = PredictiveAnalyticsManager.shared
     
+    // MARK: - Advanced AI/ML Managers
+    @StateObject private var advancedMLEngine = AdvancedMLEngine.shared
+    @StateObject private var personalizationEngine = PersonalizationEngine()
+    @StateObject private var aiHealthCoach = AIHealthCoach.shared
+    @StateObject private var audioGenerationEngine = AudioGenerationEngine.shared
+    @StateObject private var audioTransitionEngine = AudioTransitionEngine.shared
+    
+    // MARK: - iOS 18 Feature Managers
+    @StateObject private var liveActivityManager = LiveActivityManager()
+    @StateObject private var shortcutsManager = ShortcutsManager()
+    @StateObject private var interactiveWidgetManager = InteractiveWidgetManager()
+    @StateObject private var controlCenterManager = ControlCenterManager()
+    @StateObject private var spotlightManager = SpotlightManager()
+    
+    // MARK: - App State
+    @AppStorage("onboarding_completed") private var onboardingCompleted = false
+    @AppStorage("app_theme") private var appTheme: AppTheme = .system
+    @AppStorage("haptic_feedback_enabled") private var hapticFeedbackEnabled = true
+    
+    // MARK: - Logger
+    private let logger = Logger(subsystem: "com.healthai2030.app", category: "main")
+    
     init() {
         setupApp()
     }
     
     var body: some Scene {
         WindowGroup {
-            MainTabView()
-                .environmentObject(healthDataManager)
-                .environmentObject(sleepOptimizationManager)
-                .environmentObject(environmentManager)
-                .environmentObject(mentalHealthManager)
-                .environmentObject(advancedCardiacManager)
-                .environmentObject(respiratoryHealthManager)
-                .environmentObject(systemIntelligenceManager)
-                .environmentObject(emergencyAlertManager)
-                .environmentObject(federatedLearningManager)
-                .environmentObject(predictiveAnalyticsManager)
-                .onAppear {
-                    setupWidgets()
-                    requestHealthKitPermissions()
+            Group {
+                if onboardingCompleted {
+                    MainTabView()
+                } else {
+                    OnboardingView(onboardingCompleted: $onboardingCompleted)
                 }
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                    refreshWidgets()
-                }
+            }
+            .environmentObject(healthDataManager)
+            .environmentObject(sleepOptimizationManager)
+            .environmentObject(environmentManager)
+            .environmentObject(mentalHealthManager)
+            .environmentObject(advancedCardiacManager)
+            .environmentObject(respiratoryHealthManager)
+            .environmentObject(systemIntelligenceManager)
+            .environmentObject(emergencyAlertManager)
+            .environmentObject(federatedLearningManager)
+            .environmentObject(predictiveAnalyticsManager)
+            // Advanced AI/ML Environment Objects
+            .environmentObject(advancedMLEngine)
+            .environmentObject(personalizationEngine)
+            .environmentObject(aiHealthCoach)
+            .environmentObject(audioGenerationEngine)
+            .environmentObject(audioTransitionEngine)
+            // iOS 18 Feature Environment Objects
+            .environmentObject(liveActivityManager)
+            .environmentObject(shortcutsManager)
+            .environmentObject(interactiveWidgetManager)
+            .environmentObject(controlCenterManager)
+            .environmentObject(spotlightManager)
+            .preferredColorScheme(colorSchemeForTheme(appTheme))
+            .task {
+                // iOS 18: Initialize TipKit
+                try? Tips.configure([
+                    .displayFrequency(.immediate),
+                    .datastoreLocation(.applicationDefault)
+                ])
+            }
+            .onAppear {
+                setupApp()
+                setupWidgets()
+                requestPermissions()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                refreshApp()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                handleForegroundTransition()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+                handleBackgroundTransition()
+            }
         }
+        .commands {
+            MenuBarCommands()
+        }
+        .handlesExternalEvents(matching: Set(arrayLiteral: "*"))
     }
     
     private func setupApp() {
-        // Configure app appearance
+        logger.info("Setting up HealthAI 2030 app")
+        
+        // Configure app appearance with iOS 18 enhancements
         configureAppAppearance()
         
         // Setup app groups for widget data sharing
         setupAppGroups()
         
+        // Configure iOS 18 App Intents
+        configureAppIntents()
+        
         // Initialize core managers
         initializeManagers()
         
+        // Initialize advanced AI/ML systems
+        initializeAIComponents()
+        
         // Configure background tasks
         configureBackgroundTasks()
+        
+        // Setup iOS 18 Live Activities
+        setupLiveActivities()
+        
+        // Configure Control Center widgets
+        setupControlCenter()
+        
+        // Setup interactive notifications
+        setupInteractiveNotifications()
+        
+        // Configure Shortcuts and Siri integration
+        setupShortcutsIntegration()
+        
+        // Setup Spotlight search integration
+        setupSpotlightIntegration()
     }
     
     private func configureAppAppearance() {
@@ -209,6 +300,13 @@ struct HealthAI_2030App: App {
         Task {
             await shareHealthDataWithWidgets()
         }
+    }
+    
+    private func requestPermissions() {
+        requestHealthKitPermissions()
+        requestNotificationPermissions()
+        requestLocationPermissions()
+        requestMotionPermissions()
     }
     
     private func requestHealthKitPermissions() {
@@ -429,4 +527,278 @@ extension PredictiveAnalyticsManager {
         // Initialize predictive analytics manager
         setupPredictiveAnalytics()
     }
+}
+
+// MARK: - iOS 18 Feature Setup Methods
+
+extension HealthAI_2030App {
+    
+    private func configureAppIntents() {
+        // Configure App Intents for iOS 18 Shortcuts integration
+        logger.info("Configuring App Intents")
+        
+        // Register app intents for Siri and Shortcuts
+        AppDependencyManager.shared.add(dependency: healthDataManager)
+        AppDependencyManager.shared.add(dependency: sleepOptimizationManager)
+        AppDependencyManager.shared.add(dependency: aiHealthCoach)
+    }
+    
+    private func initializeAIComponents() {
+        Task {
+            logger.info("Initializing advanced AI/ML components")
+            
+            // Initialize AI engines in proper order
+            await advancedMLEngine.loadModels()
+            await personalizationEngine.initialize()
+            await aiHealthCoach.initialize()
+            await audioGenerationEngine.initialize()
+            await audioTransitionEngine.initialize()
+        }
+    }
+    
+    private func setupLiveActivities() {
+        Task {
+            logger.info("Setting up Live Activities")
+            await liveActivityManager.initialize()
+            
+            // Start sleep tracking activity if user is in sleep mode
+            if sleepOptimizationManager.isOptimizationActive {
+                await liveActivityManager.startSleepTrackingActivity()
+            }
+        }
+    }
+    
+    private func setupControlCenter() {
+        Task {
+            logger.info("Setting up Control Center widgets")
+            await controlCenterManager.initialize()
+        }
+    }
+    
+    private func setupInteractiveNotifications() {
+        logger.info("Setting up interactive notifications")
+        
+        // Register notification categories with iOS 18 enhancements
+        let center = UNUserNotificationCenter.current()
+        
+        // Sleep coaching notification category
+        let coachingAction = UNNotificationAction(
+            identifier: "COACHING_ACTION",
+            title: "Get Coaching",
+            options: [.foreground, .authenticationRequired]
+        )
+        
+        let dismissAction = UNNotificationAction(
+            identifier: "DISMISS_ACTION",
+            title: "Not Now",
+            options: []
+        )
+        
+        let coachingCategory = UNNotificationCategory(
+            identifier: "SLEEP_COACHING",
+            actions: [coachingAction, dismissAction],
+            intentIdentifiers: [],
+            options: [.customDismissAction]
+        )
+        
+        // Health alert notification category
+        let viewDetailsAction = UNNotificationAction(
+            identifier: "VIEW_DETAILS",
+            title: "View Details",
+            options: [.foreground]
+        )
+        
+        let takeActionAction = UNNotificationAction(
+            identifier: "TAKE_ACTION",
+            title: "Take Action",
+            options: [.foreground, .authenticationRequired]
+        )
+        
+        let healthAlertCategory = UNNotificationCategory(
+            identifier: "HEALTH_ALERT",
+            actions: [viewDetailsAction, takeActionAction, dismissAction],
+            intentIdentifiers: [],
+            options: [.customDismissAction]
+        )
+        
+        center.setNotificationCategories([coachingCategory, healthAlertCategory])
+    }
+    
+    private func setupShortcutsIntegration() {
+        Task {
+            logger.info("Setting up Shortcuts integration")
+            await shortcutsManager.initialize()
+            
+            // Donate common user intents
+            await shortcutsManager.donateCommonIntents()
+        }
+    }
+    
+    private func setupSpotlightIntegration() {
+        Task {
+            logger.info("Setting up Spotlight integration")
+            await spotlightManager.initialize()
+            
+            // Index current health data for Spotlight search
+            await spotlightManager.indexHealthData()
+        }
+    }
+    
+    private func requestNotificationPermissions() {
+        logger.info("Requesting notification permissions")
+        
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .badge, .sound, .criticalAlert, .provisional]) { granted, error in
+            if granted {
+                self.logger.info("Notification permissions granted")
+                DispatchQueue.main.async {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+            } else {
+                self.logger.error("Notification permissions denied: \(error?.localizedDescription ?? "Unknown")")
+            }
+        }
+    }
+    
+    private func requestLocationPermissions() {
+        logger.info("Requesting location permissions for environment optimization")
+        // Location permissions would be handled by CLLocationManager in EnvironmentManager
+    }
+    
+    private func requestMotionPermissions() {
+        logger.info("Requesting motion permissions for advanced health tracking")
+        // Motion permissions would be handled by CMMotionManager in HealthDataManager
+    }
+    
+    private func refreshApp() {
+        Task {
+            logger.info("Refreshing app data")
+            
+            // Refresh all managers
+            await healthDataManager.refreshHealthData()
+            await shareHealthDataWithWidgets()
+            
+            // Update Live Activities
+            await liveActivityManager.updateActivities()
+            
+            // Update Spotlight index
+            await spotlightManager.updateIndex()
+        }
+    }
+    
+    private func handleForegroundTransition() {
+        logger.info("App entering foreground")
+        
+        Task {
+            // Resume health monitoring
+            await healthDataManager.resumeMonitoring()
+            
+            // Update AI models with latest data
+            await advancedMLEngine.updateWithLatestData()
+            
+            // Check for coaching opportunities
+            await aiHealthCoach.checkForCoachingOpportunities()
+        }
+    }
+    
+    private func handleBackgroundTransition() {
+        logger.info("App entering background")
+        
+        Task {
+            // Optimize for background execution
+            await healthDataManager.optimizeForBackground()
+            
+            // Schedule background processing
+            scheduleBackgroundProcessing()
+            
+            // Update widgets one final time
+            await shareHealthDataWithWidgets()
+        }
+    }
+    
+    private func scheduleBackgroundProcessing() {
+        let request = BGProcessingTaskRequest(identifier: "com.healthai2030.background-health-update")
+        request.requiresNetworkConnectivity = false
+        request.requiresExternalPower = false
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60) // 15 minutes
+        
+        try? BGTaskScheduler.shared.submit(request)
+    }
+    
+    private func colorSchemeForTheme(_ theme: AppTheme) -> ColorScheme? {
+        switch theme {
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        case .system:
+            return nil
+        }
+    }
+}
+
+// MARK: - Supporting Types
+
+enum AppTheme: String, CaseIterable {
+    case system = "system"
+    case light = "light"
+    case dark = "dark"
+    
+    var displayName: String {
+        switch self {
+        case .system: return "System"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+}
+
+// MARK: - Menu Bar Commands
+
+struct MenuBarCommands: Commands {
+    var body: some Commands {
+        CommandGroup(replacing: .newItem) {
+            Button("Start Sleep Tracking") {
+                NotificationCenter.default.post(name: .startSleepTracking, object: nil)
+            }
+            .keyboardShortcut("s", modifiers: [.command, .shift])
+            
+            Button("Open AI Coach") {
+                NotificationCenter.default.post(name: .openAICoach, object: nil)
+            }
+            .keyboardShortcut("c", modifiers: [.command, .shift])
+            
+            Divider()
+            
+            Button("View Health Summary") {
+                NotificationCenter.default.post(name: .viewHealthSummary, object: nil)
+            }
+            .keyboardShortcut("h", modifiers: [.command])
+        }
+        
+        CommandGroup(after: .help) {
+            Button("Health Insights") {
+                NotificationCenter.default.post(name: .showHealthInsights, object: nil)
+            }
+            
+            Button("Sleep Analytics") {
+                NotificationCenter.default.post(name: .showSleepAnalytics, object: nil)
+            }
+            
+            Button("AI Recommendations") {
+                NotificationCenter.default.post(name: .showAIRecommendations, object: nil)
+            }
+        }
+    }
+}
+
+// MARK: - Notification Names
+
+extension Notification.Name {
+    static let startSleepTracking = Notification.Name("startSleepTracking")
+    static let openAICoach = Notification.Name("openAICoach")
+    static let viewHealthSummary = Notification.Name("viewHealthSummary")
+    static let showHealthInsights = Notification.Name("showHealthInsights")
+    static let showSleepAnalytics = Notification.Name("showSleepAnalytics")
+    static let showAIRecommendations = Notification.Name("showAIRecommendations")
 }
