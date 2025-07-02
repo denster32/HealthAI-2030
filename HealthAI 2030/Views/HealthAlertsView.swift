@@ -4,7 +4,7 @@ struct HealthAlertsView: View {
     @ObservedObject var analyticsManager = PredictiveAnalyticsManager.shared
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List(analyticsManager.activeAlerts) { alert in
                 EnhancedAlertCard(alert: alert)
                     .padding(.vertical, 4)
