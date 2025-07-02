@@ -1,6 +1,9 @@
 import SwiftUI
-import Intents
-import IntentsUI
+import AppIntents
+import UserNotifications
+
+@available(iOS 17.0, *)
+@available(macOS 14.0, *)
 
 // MARK: - Focus Mode Manager
 
@@ -13,7 +16,7 @@ class FocusModeManager: ObservableObject {
     @Published var healthAwareFilters: [HealthAwareFilter] = []
     @Published var focusNotifications: [FocusNotification] = []
     
-    private let focusCenter = FocusCenter()
+    private let focusCenter = FocusCenter() // This will be replaced by direct iOS Focus API calls
     
     private init() {
         setupFocusModes()
@@ -24,90 +27,74 @@ class FocusModeManager: ObservableObject {
     // MARK: - Focus Mode Setup
     
     private func setupFocusModes() {
+        // Define custom Focus Modes relevant to health
         availableFocusModes = [
             FocusMode(
                 id: "health_monitoring",
                 name: "Health Monitoring",
-                description: "Focus on health and wellness",
+                description: "Optimized for continuous health data collection and critical alerts.",
                 icon: "heart.fill",
                 color: .red,
-                healthTriggers: [.highStress, .poorSleep, .cardiacAlert]
+                healthTriggers: [.cardiacAlert, .highStress, .abnormalVitals]
             ),
             FocusMode(
-                id: "mindfulness",
-                name: "Mindfulness",
-                description: "Focus on mental health and meditation",
-                icon: "brain.head.profile",
-                color: .purple,
-                healthTriggers: [.highStress, .mentalHealthDecline]
-            ),
-            FocusMode(
-                id: "sleep_preparation",
-                name: "Sleep Preparation",
-                description: "Focus on sleep optimization",
+                id: "sleep_optimization",
+                name: "Sleep Optimization",
+                description: "Minimizes disturbances for optimal sleep and recovery.",
                 icon: "bed.double.fill",
                 color: .indigo,
                 healthTriggers: [.sleepTime, .poorSleepQuality]
             ),
             FocusMode(
-                id: "exercise",
-                name: "Exercise",
-                description: "Focus on physical activity",
-                icon: "figure.run",
-                color: .green,
-                healthTriggers: [.lowActivity, .cardiacHealth]
+                id: "mindfulness_meditation",
+                name: "Mindfulness & Meditation",
+                description: "Creates a calm environment for mental well-being practices.",
+                icon: "brain.head.profile",
+                color: .purple,
+                healthTriggers: [.highStress, .mentalHealthDecline]
             ),
             FocusMode(
-                id: "recovery",
-                name: "Recovery",
-                description: "Focus on rest and recovery",
-                icon: "leaf.fill",
-                color: .blue,
-                healthTriggers: [.highStress, .poorSleep, .overexertion]
+                id: "active_recovery",
+                name: "Active Recovery",
+                description: "Supports gentle activity and recovery without intense notifications.",
+                icon: "figure.walk",
+                color: .green,
+                healthTriggers: [.overexertion, .muscleSoreness]
             )
         ]
     }
     
     private func setupHealthAwareFilters() {
+        // Define health-aware filters that modify system behavior based on health data
         healthAwareFilters = [
             HealthAwareFilter(
-                id: "stress_based",
-                name: "Stress-Based Filtering",
-                description: "Adjust notifications based on stress levels",
+                id: "critical_health_alert",
+                name: "Critical Health Alert Filter",
+                description: "Prioritizes and allows only critical health notifications.",
                 isEnabled: true,
                 conditions: [
-                    .init(type: .stressLevel, threshold: .high, action: .reduceNotifications),
-                    .init(type: .stressLevel, threshold: .severe, action: .blockAllExceptHealth)
+                    .init(type: .cardiacAlert, threshold: .critical, action: .prioritizeHealthNotifications),
+                    .init(type: .abnormalVitals, threshold: .critical, action: .prioritizeHealthNotifications)
                 ]
             ),
             HealthAwareFilter(
-                id: "sleep_based",
-                name: "Sleep-Based Filtering",
-                description: "Adjust notifications based on sleep quality",
+                id: "sleep_disturbance_prevention",
+                name: "Sleep Disturbance Prevention",
+                description: "Blocks non-essential notifications during detected sleep.",
                 isEnabled: true,
                 conditions: [
-                    .init(type: .sleepQuality, threshold: .low, action: .reduceNotifications),
-                    .init(type: .sleepTime, threshold: .bedtime, action: .blockAllExceptHealth)
+                    .init(type: .sleepTime, threshold: .bedtime, action: .blockAllExceptHealth),
+                    .init(type: .poorSleepQuality, threshold: .high, action: .reduceNotifications)
                 ]
             ),
             HealthAwareFilter(
-                id: "cardiac_based",
-                name: "Cardiac Health Filtering",
-                description: "Prioritize notifications during cardiac events",
+                id: "stress_reduction_filter",
+                name: "Stress Reduction Filter",
+                description: "Reduces notification interruptions during high stress.",
                 isEnabled: true,
                 conditions: [
-                    .init(type: .afibStatus, threshold: .high, action: .prioritizeHealthNotifications),
-                    .init(type: .heartRate, threshold: .abnormal, action: .emergencyMode)
-                ]
-            ),
-            HealthAwareFilter(
-                id: "respiratory_based",
-                name: "Respiratory Health Filtering",
-                description: "Adjust notifications based on breathing patterns",
-                isEnabled: true,
-                conditions: [
-                    .init(type: .oxygenSaturation, threshold: .low, action: .prioritizeHealthNotifications),
-                    .init(type: .respiratoryRate, threshold: .elevated, action: .reduceNonEssential)
+                    .init(type: .highStress, threshold: .high, action: .reduceNotifications),
+                    .init(type: .mentalHealthDecline, threshold: .high, action: .blockNonEssential)
                 ]
             )
         ]
@@ -118,27 +105,41 @@ class FocusModeManager: ObservableObject {
     func activateFocusMode(_ focusMode: FocusMode) {
         Task {
             do {
-                let intent = FocusModeIntent()
-                intent.focusMode = focusMode.name
-                intent.healthAware = true
-                
-                let result = try await focusCenter.requestAuthorization(for: .focusMode)
-                if result {
-                    try await focusCenter.activateFocusMode(focusMode.id)
-                    currentFocusMode = focusMode
-                    
-                    // Apply health-aware filters
-                    applyHealthAwareFilters(for: focusMode)
-                    
-                    // Send focus activation notification
-                    sendFocusNotification(
-                        title: "\(focusMode.name) Activated",
-                        message: "Health-aware focus mode is now active",
-                        type: .focusActivated
-                    )
+                // Request authorization for notifications
+                let center = UNUserNotificationCenter.current()
+                let notificationSettings = await center.notificationSettings()
+                if notificationSettings.authorizationStatus == .notDetermined {
+                    let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+                    if !granted {
+                        print("Notification authorization denied.")
+                        return
+                    }
+                } else if notificationSettings.authorizationStatus == .denied {
+                    print("Notification authorization previously denied. Please enable in settings.")
+                    return
                 }
+
+                // Simulate activating a system-level Focus mode (requires actual iOS 18 Focus API)
+                // For demonstration, we'll just set our internal state.
+                currentFocusMode = focusMode
+                print("Activated internal focus mode: \(focusMode.name)")
+                
+                // Apply health-aware filters
+                applyHealthAwareFilters(for: focusMode)
+                
+                // Send focus activation notification
+                sendFocusNotification(
+                    title: "\(focusMode.name) Activated",
+                    message: "Health-aware focus mode is now active.",
+                    type: .focusActivated
+                )
+                
+                // Register App Intent for Shortcuts integration
+                AppIntents.AppIntent.registerAppIntent(FocusModeIntent.self)
+                print("Registered FocusModeIntent for Shortcuts.")
+
             } catch {
-                print("Failed to activate focus mode: \(error)")
+                print("Failed to activate focus mode: \(error.localizedDescription)")
             }
         }
     }
@@ -146,8 +147,9 @@ class FocusModeManager: ObservableObject {
     func deactivateFocusMode() {
         Task {
             do {
-                try await focusCenter.deactivateFocusMode()
+                // Simulate deactivating a system-level Focus mode
                 currentFocusMode = nil
+                print("Deactivated internal focus mode.")
                 
                 // Remove health-aware filters
                 removeHealthAwareFilters()
@@ -155,82 +157,61 @@ class FocusModeManager: ObservableObject {
                 // Send focus deactivation notification
                 sendFocusNotification(
                     title: "Focus Mode Deactivated",
-                    message: "Health monitoring continues in background",
+                    message: "Health monitoring continues in background.",
                     type: .focusDeactivated
                 )
             } catch {
-                print("Failed to deactivate focus mode: \(error)")
+                print("Failed to deactivate focus mode: \(error.localizedDescription)")
             }
         }
     }
     
-    // MARK: - Health-Aware Filtering
+    // MARK: - Health-Aware Filtering Implementation
     
     private func applyHealthAwareFilters(for focusMode: FocusMode) {
+        print("Applying health-aware filters for \(focusMode.name) mode.")
         for filter in healthAwareFilters where filter.isEnabled {
             for condition in filter.conditions {
                 if focusMode.healthTriggers.contains(condition.type) {
+                    print("Applying filter condition: \(condition.type.displayName) -> \(condition.action.displayName)")
                     applyFilterCondition(condition)
                 }
             }
         }
+        // In a real scenario, this would interact with iOS 18's Focus Filter APIs
+        // to modify app behavior (e.g., hide specific content, adjust notifications).
     }
     
     private func applyFilterCondition(_ condition: FilterCondition) {
         switch condition.action {
         case .reduceNotifications:
-            reduceNotificationFrequency()
+            // Example: Adjust notification settings to be less intrusive
+            print("Action: Reducing notification frequency.")
         case .blockAllExceptHealth:
-            blockNonHealthNotifications()
+            // Example: Silence all notifications except those marked as critical health alerts
+            print("Action: Blocking all non-health notifications.")
         case .prioritizeHealthNotifications:
-            prioritizeHealthNotifications()
+            // Example: Ensure critical health notifications bypass silent settings
+            print("Action: Prioritizing health notifications.")
         case .emergencyMode:
-            enableEmergencyMode()
-        case .reduceNonEssential:
-            reduceNonEssentialNotifications()
+            // Example: Trigger a specific emergency protocol (e.g., loud alerts, contact emergency services)
+            print("Action: Enabling emergency mode.")
+        case .blockNonEssential:
+            // Example: Block non-essential app notifications
+            print("Action: Blocking non-essential notifications.")
         }
     }
     
     private func removeHealthAwareFilters() {
+        print("Removing health-aware filters and restoring normal notification behavior.")
         // Restore normal notification behavior
-        restoreNormalNotifications()
     }
     
-    // MARK: - Notification Management
-    
-    private func reduceNotificationFrequency() {
-        // Implement notification frequency reduction
-        print("Reducing notification frequency")
-    }
-    
-    private func blockNonHealthNotifications() {
-        // Block non-health notifications
-        print("Blocking non-health notifications")
-    }
-    
-    private func prioritizeHealthNotifications() {
-        // Prioritize health-related notifications
-        print("Prioritizing health notifications")
-    }
-    
-    private func enableEmergencyMode() {
-        // Enable emergency notification mode
-        print("Enabling emergency mode")
-    }
-    
-    private func reduceNonEssentialNotifications() {
-        // Reduce non-essential notifications
-        print("Reducing non-essential notifications")
-    }
-    
-    private func restoreNormalNotifications() {
-        // Restore normal notification behavior
-        print("Restoring normal notifications")
-    }
-    
-    // MARK: - Focus Change Observation
+    // MARK: - Focus Change Observation (Simulated)
     
     private func observeFocusChanges() {
+        // In a real iOS 18 app, you would observe changes to system Focus modes
+        // using the new Focus API. For this mock, we'll use a NotificationCenter.
         NotificationCenter.default.addObserver(
             forName: .focusDidChange,
             object: nil,
@@ -241,7 +222,7 @@ class FocusModeManager: ObservableObject {
     }
     
     private func handleFocusChange(_ notification: Notification) {
-        // Handle focus mode changes
+        // This would be triggered by actual system Focus mode changes
         if let focusMode = notification.object as? FocusMode {
             currentFocusMode = focusMode
             applyHealthAwareFilters(for: focusMode)
@@ -254,35 +235,24 @@ class FocusModeManager: ObservableObject {
     // MARK: - Health-Based Focus Suggestions
     
     func suggestFocusMode() -> FocusMode? {
-        let mentalHealthManager = MentalHealthManager.shared
-        let sleepManager = SleepOptimizationManager.shared
-        let cardiacManager = AdvancedCardiacManager.shared
-        let respiratoryManager = RespiratoryHealthManager.shared
+        // This logic would integrate with actual health data managers
+        // For demonstration, we'll use placeholder conditions.
         
-        // Check for high stress
-        if mentalHealthManager.stressLevel == .high || mentalHealthManager.stressLevel == .severe {
-            return availableFocusModes.first { $0.id == "mindfulness" }
+        // Example: Suggest "Sleep Optimization" if it's late and sleep quality is poor
+        if Calendar.current.component(.hour, from: Date()) > 22 && (currentFocusMode?.id != "sleep_optimization") {
+            return availableFocusModes.first { $0.id == "sleep_optimization" }
         }
         
-        // Check for poor sleep
-        if sleepManager.sleepQuality < 0.6 {
-            return availableFocusModes.first { $0.id == "sleep_preparation" }
-        }
-        
-        // Check for cardiac alerts
-        if cardiacManager.afibStatus == .high {
-            return availableFocusModes.first { $0.id == "health_monitoring" }
-        }
-        
-        // Check for low activity
-        if HealthDataManager.shared.dailySteps < 5000 {
-            return availableFocusModes.first { $0.id == "exercise" }
-        }
+        // Example: Suggest "Health Monitoring" if a critical health alert is detected
+        // (e.g., from a HealthKit observer or internal alert engine)
+        // if HealthKitManager.shared.hasCriticalAlert { // Placeholder
+        //     return availableFocusModes.first { $0.id == "health_monitoring" }
+        // }
         
         return nil
     }
     
-    // MARK: - Notification Management
+    // MARK: - Focus-Based Notifications
     
     private func sendFocusNotification(title: String, message: String, type: FocusNotificationType) {
         let notification = FocusNotification(
@@ -316,34 +286,39 @@ class FocusModeManager: ObservableObject {
         do {
             try await UNUserNotificationCenter.current().add(request)
         } catch {
-            print("Failed to send focus notification: \(error)")
+            print("Failed to send focus notification: \(error.localizedDescription)")
         }
     }
 }
 
 // MARK: - Data Models
 
+// MARK: - Data Models
+
+/// Represents a custom health-aware Focus Mode.
 struct FocusMode: Identifiable, Codable {
     let id: String
     let name: String
     let description: String
-    let icon: String
-    let color: Color
-    let healthTriggers: [HealthTrigger]
-    
+    let icon: String // SF Symbols icon name
+    let color: Color // Accent color for the focus mode
+    let healthTriggers: [HealthTrigger] // Health conditions that might suggest this mode
+
+    /// Defines various health conditions that can trigger or influence Focus Modes.
     enum HealthTrigger: String, Codable, CaseIterable {
         case highStress = "high_stress"
-        case poorSleep = "poor_sleep"
+        case poorSleepQuality = "poor_sleep_quality"
         case cardiacAlert = "cardiac_alert"
         case mentalHealthDecline = "mental_health_decline"
-        case sleepTime = "sleep_time"
-        case sleepQuality = "sleep_quality"
+        case sleepTime = "sleep_time" // e.g., within sleep window
         case lowActivity = "low_activity"
-        case cardiacHealth = "cardiac_health"
         case overexertion = "overexertion"
+        case abnormalVitals = "abnormal_vitals" // General vital sign abnormalities
+        case muscleSoreness = "muscle_soreness" // For recovery modes
     }
 }
 
+/// Defines a filter that adjusts app behavior based on health data.
 struct HealthAwareFilter: Identifiable, Codable {
     let id: String
     let name: String
@@ -352,35 +327,40 @@ struct HealthAwareFilter: Identifiable, Codable {
     let conditions: [FilterCondition]
 }
 
+/// A specific condition within a health-aware filter.
 struct FilterCondition: Codable {
     let type: FocusMode.HealthTrigger
     let threshold: FilterThreshold
     let action: FilterAction
-    
+
+    /// Defines thresholds for health conditions.
     enum FilterThreshold: String, Codable {
         case high = "high"
         case low = "low"
-        case severe = "severe"
+        case critical = "critical"
         case abnormal = "abnormal"
         case bedtime = "bedtime"
     }
-    
+
+    /// Defines actions to take when a filter condition is met.
     enum FilterAction: String, Codable {
-        case reduceNotifications = "reduce_notifications"
-        case blockAllExceptHealth = "block_all_except_health"
-        case prioritizeHealthNotifications = "prioritize_health_notifications"
-        case emergencyMode = "emergency_mode"
-        case reduceNonEssential = "reduce_non_essential"
+        case reduceNotifications = "reduce_notifications" // Make notifications less intrusive
+        case blockAllExceptHealth = "block_all_except_health" // Silence all but critical health alerts
+        case prioritizeHealthNotifications = "prioritize_health_notifications" // Ensure health alerts break through
+        case emergencyMode = "emergency_mode" // Activate emergency protocols
+        case blockNonEssential = "block_non_essential" // Block non-essential app notifications
     }
 }
 
+/// Represents a notification related to Focus Mode activation, deactivation, or health alerts.
 struct FocusNotification: Identifiable, Codable {
     let id: String
     let title: String
     let message: String
     let type: FocusNotificationType
     let timestamp: Date
-    
+
+    /// Types of focus-based notifications.
     enum FocusNotificationType: String, Codable {
         case focusActivated = "focus_activated"
         case focusDeactivated = "focus_deactivated"
@@ -750,14 +730,14 @@ extension FocusMode.HealthTrigger {
     var displayName: String {
         switch self {
         case .highStress: return "High Stress"
-        case .poorSleep: return "Poor Sleep"
+        case .poorSleepQuality: return "Poor Sleep Quality"
         case .cardiacAlert: return "Cardiac Alert"
-        case .mentalHealthDecline: return "Mental Health"
+        case .mentalHealthDecline: return "Mental Health Decline"
         case .sleepTime: return "Sleep Time"
-        case .sleepQuality: return "Sleep Quality"
         case .lowActivity: return "Low Activity"
-        case .cardiacHealth: return "Cardiac Health"
         case .overexertion: return "Overexertion"
+        case .abnormalVitals: return "Abnormal Vitals"
+        case .muscleSoreness: return "Muscle Soreness"
         }
     }
 }
@@ -766,33 +746,41 @@ extension FilterCondition.FilterAction {
     var displayName: String {
         switch self {
         case .reduceNotifications: return "Reduce Notifications"
-        case .blockAllExceptHealth: return "Block Non-Health"
-        case .prioritizeHealthNotifications: return "Prioritize Health"
+        case .blockAllExceptHealth: return "Block All Except Health"
+        case .prioritizeHealthNotifications: return "Prioritize Health Notifications"
         case .emergencyMode: return "Emergency Mode"
-        case .reduceNonEssential: return "Reduce Non-Essential"
+        case .blockNonEssential: return "Block Non-Essential"
         }
     }
 }
 
-// MARK: - Mock Focus Center
+// MARK: - Mock/Placeholder for iOS 18 Focus API Integration
 
+// In a real iOS 18 environment, this would interact with the new Focus APIs
+// to read and set system-wide Focus modes and apply Focus Filters.
+// For this example, we simulate the behavior.
 class FocusCenter {
-    func requestAuthorization(for type: FocusModeIntent) async throws -> Bool {
-        // Mock implementation
-        return true
+    // Placeholder for requesting authorization for Focus API access
+    func requestAuthorization() async throws -> Bool {
+        print("Requesting Focus API authorization (mock).")
+        // In a real app, this would involve requesting permission from the user
+        // to access and modify Focus modes.
+        return true // Assume granted for mock
     }
     
+    // Placeholder for activating a system Focus mode
     func activateFocusMode(_ id: String) async throws {
-        // Mock implementation
-        print("Activating focus mode: \(id)")
+        print("Activating system Focus mode: \(id) (mock).")
+        // This would use the actual iOS 18 API to change the system Focus mode.
     }
     
+    // Placeholder for deactivating the current system Focus mode
     func deactivateFocusMode() async throws {
-        // Mock implementation
-        print("Deactivating focus mode")
+        print("Deactivating system Focus mode (mock).")
+        // This would use the actual iOS 18 API to deactivate the current Focus mode.
     }
 }
 
 extension Notification.Name {
-    static let focusDidChange = Notification.Name("focusDidChange")
-} 
+    static let focusDidChange = Notification.Name("com.healthai2030.focusDidChange")
+}

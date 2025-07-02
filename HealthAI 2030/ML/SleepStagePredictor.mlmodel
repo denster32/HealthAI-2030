@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model format="Core ML" version="1" shortDescription="Sleep Stage Prediction Model" author="SomnaSync Pro" license="MIT" inputDescription="Biometric features for sleep stage prediction" outputDescription="Sleep stage probabilities and confidence scores">
+  <target>
+    <platform>iOS</platform>
+    <platform>macOS</platform>
+  </target>
+  <pipelineModel>
+    <input>
+      <array>
+        <number key="heartRate" description="Heart rate in BPM"/>
+        <number key="hrv" description="Heart rate variability in ms"/>
+        <number key="movement" description="Movement intensity (0-1)"/>
+        <number key="bloodOxygen" description="Blood oxygen saturation %"/>
+        <number key="temperature" description="Body temperature in Celsius"/>
+        <number key="breathingRate" description="Breathing rate per minute"/>
+        <number key="timeOfNight" description="Time since sleep start in hours"/>
+        <number key="previousStage" description="Previous sleep stage (0-3)"/>
+      </array>
+    </input>
+    <output>
+      <array>
+        <number key="awakeProbability" description="Probability of being awake"/>
+        <number key="lightProbability" description="Probability of light sleep"/>
+        <number key="deepProbability" description="Probability of deep sleep"/>
+        <number key="remProbability" description="Probability of REM sleep"/>
+        <number key="confidence" description="Prediction confidence score"/>
+        <number key="sleepQuality" description="Overall sleep quality score"/>
+      </array>
+    </output>
+    <pipeline>
+      <!-- Feature preprocessing -->
+      <normalizer input="input" output="normalizedFeatures" norm="l2"/>
+      
+      <!-- Neural network for sleep stage classification -->
+      <neuralNetwork input="normalizedFeatures" output="stageProbabilities">
+        <layer type="innerProduct" input="normalizedFeatures" output="hidden1" numInputs="8" numOutputs="64">
+          <weightMatrix rows="64" cols="8"/>
+          <biasVector length="64"/>
+        </layer>
+        <layer type="activation" input="hidden1" output="hidden1Activated" nonLinearity="relu"/>
+        <layer type="innerProduct" input="hidden1Activated" output="hidden2" numInputs="64" numOutputs="32">
+          <weightMatrix rows="32" cols="64"/>
+          <biasVector length="32"/>
+        </layer>
+        <layer type="activation" input="hidden2" output="hidden2Activated" nonLinearity="relu"/>
+        <layer type="innerProduct" input="hidden2Activated" output="stageLogits" numInputs="32" numOutputs="4">
+          <weightMatrix rows="4" cols="32"/>
+          <biasVector length="4"/>
+        </layer>
+        <layer type="softmax" input="stageLogits" output="stageProbabilities"/>
+      </neuralNetwork>
+      
+      <!-- Sleep quality regression -->
+      <neuralNetwork input="normalizedFeatures" output="qualityScore">
+        <layer type="innerProduct" input="normalizedFeatures" output="qualityHidden" numInputs="8" numOutputs="16">
+          <weightMatrix rows="16" cols="8"/>
+          <biasVector length="16"/>
+        </layer>
+        <layer type="activation" input="qualityHidden" output="qualityHiddenActivated" nonLinearity="relu"/>
+        <layer type="innerProduct" input="qualityHiddenActivated" output="qualityScore" numInputs="16" numOutputs="1">
+          <weightMatrix rows="1" cols="16"/>
+          <biasVector length="1"/>
+        </layer>
+        <layer type="activation" input="qualityScore" output="qualityScoreNormalized" nonLinearity="sigmoid"/>
+      </neuralNetwork>
+      
+      <!-- Confidence calculation -->
+      <neuralNetwork input="stageProbabilities" output="confidenceScore">
+        <layer type="innerProduct" input="stageProbabilities" output="confidenceScore" numInputs="4" numOutputs="1">
+          <weightMatrix rows="1" cols="4"/>
+          <biasVector length="1"/>
+        </layer>
+        <layer type="activation" input="confidenceScore" output="confidenceScoreNormalized" nonLinearity="sigmoid"/>
+      </neuralNetwork>
+    </pipeline>
+  </pipelineModel>
+  <metadata>
+    <item key="com.apple.coreml.model.pipeline.class_labels" value="awake,light,deep,rem"/>
+    <item key="com.apple.coreml.model.pipeline.feature_names" value="heartRate,hrv,movement,bloodOxygen,temperature,breathingRate,timeOfNight,previousStage"/>
+    <item key="com.apple.coreml.model.pipeline.output_names" value="awakeProbability,lightProbability,deepProbability,remProbability,confidence,sleepQuality"/>
+    <item key="com.apple.coreml.model.pipeline.author" value="SomnaSync Pro"/>
+    <item key="com.apple.coreml.model.pipeline.license" value="MIT"/>
+    <item key="com.apple.coreml.model.pipeline.description" value="Neural network model for sleep stage prediction using biometric data"/>
+    <item key="com.apple.coreml.model.pipeline.version" value="1.0"/>
+    <item key="com.apple.coreml.model.pipeline.creation_date" value="2024-01-15"/>
+  </metadata>
+</model> 

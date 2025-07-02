@@ -14,7 +14,7 @@ class SleepOptimizationManager: ObservableObject {
     @Published var currentSleepStage: SleepStageType = .unknown
     @Published var sleepQuality: Double = 0.0
     @Published var deepSleepPercentage: Double = 0.0
-    @Published var isOptimizationActive: Bool = false
+    @AppStorage("isSleepOptimizationActive") @Published var isOptimizationActive: Bool = false
     @Published var sleepMetrics: SleepMetrics = SleepMetrics()
     
     // Sleep stage transformer model

@@ -2,6 +2,11 @@ import Foundation
 import CoreML
 import HealthKit
 import Combine
+import CreateML
+import os.log
+
+@available(iOS 17.0, *)
+@available(macOS 14.0, *)
 
 class HealthPredictionEngine: ObservableObject {
     static let shared = HealthPredictionEngine()
@@ -40,15 +45,36 @@ class HealthPredictionEngine: ObservableObject {
     // MARK: - Setup
     
     private func setupPredictionModels() {
-        // Initialize various prediction models
-        predictionModels["energy"] = EnergyPredictionModel()
-        predictionModels["mood"] = MoodPredictionModel()
-        predictionModels["cognitive"] = CognitivePredictionModel()
-        predictionModels["recovery"] = RecoveryPredictionModel()
-        predictionModels["immunity"] = ImmunityPredictionModel()
-        predictionModels["stress"] = StressPredictionModel()
-        predictionModels["cardiovascular"] = CardiovascularRiskModel()
-        predictionModels["metabolic"] = MetabolicRiskModel()
+        // Initialize various prediction models with iOS 26 optimizations
+        Task {
+            await setupModelsWithiOS26Enhancements()
+        }
+    }
+    
+    @available(iOS 17.0, *)
+    private func setupModelsWithiOS26Enhancements() async {
+        // Use iOS 26+ optimized model initialization
+        predictionModels["energy"] = await createOptimizedModel(type: EnergyPredictionModel.self, hint: .neuralEnginePreferred)
+        predictionModels["mood"] = await createOptimizedModel(type: MoodPredictionModel.self, hint: .balancedOptimization)
+        predictionModels["cognitive"] = await createOptimizedModel(type: CognitivePredictionModel.self, hint: .maximizePerformance)
+        predictionModels["recovery"] = await createOptimizedModel(type: RecoveryPredictionModel.self, hint: .neuralEnginePreferred)
+        predictionModels["immunity"] = await createOptimizedModel(type: ImmunityPredictionModel.self, hint: .balancedOptimization)
+        predictionModels["stress"] = await createOptimizedModel(type: StressPredictionModel.self, hint: .neuralEnginePreferred)
+        predictionModels["cardiovascular"] = await createOptimizedModel(type: CardiovascularRiskModel.self, hint: .maximizePerformance)
+        predictionModels["metabolic"] = await createOptimizedModel(type: MetabolicRiskModel.self, hint: .balancedOptimization)
+    }
+    
+    @available(iOS 17.0, *)
+    private func createOptimizedModel<T: PredictionModel>(type: T.Type, hint: MLModelOptimizationHints) async -> T {
+        // Create optimized model instance with iOS 26+ capabilities
+        let model = T.init()
+        
+        // Apply iOS 26 optimizations if available
+        if let optimizableModel = model as? iOS26OptimizableModel {
+            await optimizableModel.applyOptimizations(hint: hint)
+        }
+        
+        return model
     }
     
     private func setupRealtimeMonitoring() {
@@ -938,6 +964,13 @@ enum InsightPriority {
 protocol PredictionModel {
     var confidence: Double { get }
     func predict(features: [String: Double]) -> Double
+    init()
+}
+
+// iOS 26 optimization protocol
+@available(iOS 17.0, *)
+protocol iOS26OptimizableModel {
+    func applyOptimizations(hint: MLModelOptimizationHints) async
 }
 
 // Placeholder model implementations

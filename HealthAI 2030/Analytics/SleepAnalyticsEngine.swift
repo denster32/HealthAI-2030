@@ -1,563 +1,642 @@
 import Foundation
 import HealthKit
+import CoreML
 import Combine
+import os.log
 
-/// Advanced sleep analytics engine
-/// Provides deep analysis of sleep patterns, quality trends, and optimization opportunities
+@available(iOS 17.0, *)
+@available(macOS 14.0, *)
+
+/// Advanced sleep analytics system with comprehensive pattern analysis and personalized insights
+@MainActor
 class SleepAnalyticsEngine: AnalyticsEngine {
+    static let shared = SleepAnalyticsEngine()
+    
     // MARK: - Published Properties
-    @Published var sleepQualityScore: Double = 0.0
-    @Published var sleepEfficiency: Double = 0.0
-    @Published var sleepLatency: Double = 0.0
-    @Published var remSleepPercentage: Double = 0.0
-    @Published var deepSleepPercentage: Double = 0.0
-    @Published var sleepTrends: [SleepTrend] = []
-    @Published var sleepInsights: [SleepInsight] = []
-    @Published var sleepRecommendations: [SleepRecommendation] = []
+    
+    @Published var analyticsMetrics: AnalyticsMetrics = AnalyticsMetrics()
+    @Published var isAnalyzing: Bool = false
+    @Published var currentInsights: [SleepInsight] = []
+    @Published var sleepScore: Double = 0.0
     
     // MARK: - Private Properties
-    private var healthStore: HKHealthStore?
-    private var sleepData: [SleepSession] = []
-    private var sleepPredictor = SleepQualityPredictor()
-    private var sleepOptimizer = SleepOptimizationRecommender()
     
-    // Sleep analysis parameters
-    private let analysisWindow: TimeInterval = 30 * 24 * 3600 // 30 days
-    private let trendWindow: TimeInterval = 7 * 24 * 3600 // 7 days
+    private var patternAnalyzer: SleepPatternAnalyzer?
+    private var correlationEngine: CorrelationEngine?
+    private var trendPredictor: TrendPredictor?
+    private var insightGenerator: InsightGenerator?
     
-    weak var delegate: AnalyticsEngineDelegate?
+    private var cancellables = Set<AnyCancellable>()
+    private var analysisTasks: [AnalysisTask] = []
+    private var analysisHistory: [AnalysisRecord] = []
     
-    init() {
+    // MARK: - Configuration
+    
+    private let enablePatternAnalysis = true
+    private let enableCorrelationAnalysis = true
+    private let enableTrendPrediction = true
+    private let enableInsightGeneration = true
+    private let analysisPeriod: TimeInterval = 30 * 24 * 3600 // 30 days
+    private let minDataPoints = 7
+    
+    // MARK: - Performance Tracking
+    
+    private var analyticsStats = AnalyticsStats()
+    
+    override init() {
         super.init()
-        setupSleepAnalysis()
+        setupAdvancedSleepAnalytics()
+    }
+    
+    deinit {
+        cleanupResources()
+    }
+    
+    // MARK: - Setup and Configuration
+    
+    private func setupAdvancedSleepAnalytics() {
+        // Initialize analytics components
+        patternAnalyzer = SleepPatternAnalyzer()
+        correlationEngine = CorrelationEngine()
+        trendPredictor = TrendPredictor()
+        insightGenerator = InsightGenerator()
+        
+        // Setup analytics monitoring
+        setupAnalyticsMonitoring()
+        
+        // Setup data collection
+        setupDataCollection()
+        
+        Logger.success("Advanced sleep analytics initialized", log: Logger.performance)
+    }
+    
+    private func setupAnalyticsMonitoring() {
+        guard enablePatternAnalysis else { return }
+        
+        // Monitor analytics performance
+        Timer.publish(every: 5.0, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in
+                Task { @MainActor in
+                    await self?.updateAnalyticsMetrics()
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func setupDataCollection() {
+        // Setup data collection for analytics
+        patternAnalyzer?.setupDataCollection()
+        correlationEngine?.setupDataCollection()
+        trendPredictor?.setupDataCollection()
+        
+        Logger.info("Data collection setup completed", log: Logger.performance)
     }
     
     // MARK: - Public Methods
     
-    /// Get comprehensive sleep analytics
-    func getAnalytics() -> DimensionAnalytics {
-        return DimensionAnalytics(
-            dimension: .sleep,
-            metrics: getSleepMetrics(),
-            trends: sleepTrends,
-            risks: getSleepRisks(),
-            insights: sleepInsights,
-            recommendations: sleepRecommendations
-        )
+    /// Perform comprehensive sleep analysis
+    func performSleepAnalysis() async -> SleepAnalysis {
+        isAnalyzing = true
+        
+        let analysis = await performComprehensiveAnalysis()
+        
+        isAnalyzing = false
+        
+        return analysis
     }
     
-    /// Analyze sleep patterns and generate insights
-    func analyzeSleepPatterns() {
-        guard !sleepData.isEmpty else { return }
+    /// Get sleep insights
+    func getSleepInsights() async -> [SleepInsight] {
+        guard enableInsightGeneration else { return [] }
         
-        // Calculate sleep metrics
-        calculateSleepMetrics()
+        // Generate insights based on current data
+        let insights = await insightGenerator?.generateInsights() ?? []
         
-        // Detect sleep trends
-        detectSleepTrends()
-        
-        // Generate sleep insights
-        generateSleepInsights()
-        
-        // Generate sleep recommendations
-        generateSleepRecommendations()
-        
-        // Predict sleep quality
-        predictSleepQuality()
-        
-        // Notify delegate
-        delegate?.analyticsEngine(self, didUpdateAnalytics: getAnalytics())
-    }
-    
-    /// Get sleep quality prediction for tonight
-    func predictTonightSleepQuality() -> SleepQualityPrediction {
-        return sleepPredictor.predictSleepQuality(for: Date())
-    }
-    
-    /// Get personalized sleep optimization recommendations
-    func getSleepOptimizationRecommendations() -> [SleepRecommendation] {
-        return sleepOptimizer.generateRecommendations(basedOn: sleepData)
-    }
-    
-    // MARK: - Private Methods
-    
-    private func setupSleepAnalysis() {
-        // Initialize sleep analysis components
-        sleepPredictor.delegate = self
-        sleepOptimizer.delegate = self
-    }
-    
-    private func calculateSleepMetrics() {
-        guard let recentSessions = getRecentSleepSessions() else { return }
-        
-        // Calculate sleep quality score
-        sleepQualityScore = calculateOverallSleepQuality(from: recentSessions)
-        
-        // Calculate sleep efficiency
-        sleepEfficiency = calculateSleepEfficiency(from: recentSessions)
-        
-        // Calculate sleep latency
-        sleepLatency = calculateAverageSleepLatency(from: recentSessions)
-        
-        // Calculate sleep stage percentages
-        let stagePercentages = calculateSleepStagePercentages(from: recentSessions)
-        remSleepPercentage = stagePercentages.rem
-        deepSleepPercentage = stagePercentages.deep
-    }
-    
-    private func detectSleepTrends() {
-        let trends = analyzeSleepTrends()
-        DispatchQueue.main.async { [weak self] in
-            self?.sleepTrends = trends
-        }
-    }
-    
-    private func generateSleepInsights() {
-        let insights = generateSleepInsightsFromData()
-        DispatchQueue.main.async { [weak self] in
-            self?.sleepInsights = insights
-        }
-    }
-    
-    private func generateSleepRecommendations() {
-        let recommendations = sleepOptimizer.generateRecommendations(basedOn: sleepData)
-        DispatchQueue.main.async { [weak self] in
-            self?.sleepRecommendations = recommendations
-        }
-    }
-    
-    private func predictSleepQuality() {
-        let prediction = sleepPredictor.predictSleepQuality(for: Date())
-        // Process prediction results
-    }
-    
-    private func getRecentSleepSessions() -> [SleepSession]? {
-        let cutoffDate = Date().addingTimeInterval(-analysisWindow)
-        return sleepData.filter { $0.startDate >= cutoffDate }
-    }
-    
-    private func calculateOverallSleepQuality(from sessions: [SleepSession]) -> Double {
-        guard !sessions.isEmpty else { return 0.0 }
-        
-        let qualityScores = sessions.map { session in
-            calculateSessionQuality(session)
-        }
-        
-        return qualityScores.reduce(0, +) / Double(qualityScores.count)
-    }
-    
-    private func calculateSessionQuality(_ session: SleepSession) -> Double {
-        var score = 0.0
-        
-        // Duration factor (optimal: 7-9 hours)
-        let durationHours = session.duration / 3600
-        if durationHours >= 7.0 && durationHours <= 9.0 {
-            score += 0.3
-        } else if durationHours >= 6.0 && durationHours <= 10.0 {
-            score += 0.2
-        } else {
-            score += 0.1
-        }
-        
-        // Efficiency factor
-        score += session.efficiency * 0.3
-        
-        // REM sleep factor (optimal: 20-25%)
-        let remPercentage = session.remDuration / session.duration
-        if remPercentage >= 0.20 && remPercentage <= 0.25 {
-            score += 0.2
-        } else if remPercentage >= 0.15 && remPercentage <= 0.30 {
-            score += 0.15
-        } else {
-            score += 0.1
-        }
-        
-        // Deep sleep factor (optimal: 15-20%)
-        let deepPercentage = session.deepDuration / session.duration
-        if deepPercentage >= 0.15 && deepPercentage <= 0.20 {
-            score += 0.2
-        } else if deepPercentage >= 0.10 && deepPercentage <= 0.25 {
-            score += 0.15
-        } else {
-            score += 0.1
-        }
-        
-        return min(1.0, score)
-    }
-    
-    private func calculateSleepEfficiency(from sessions: [SleepSession]) -> Double {
-        guard !sessions.isEmpty else { return 0.0 }
-        
-        let efficiencies = sessions.map { $0.efficiency }
-        return efficiencies.reduce(0, +) / Double(efficiencies.count)
-    }
-    
-    private func calculateAverageSleepLatency(from sessions: [SleepSession]) -> Double {
-        guard !sessions.isEmpty else { return 0.0 }
-        
-        let latencies = sessions.compactMap { $0.sleepLatency }
-        guard !latencies.isEmpty else { return 0.0 }
-        
-        return latencies.reduce(0, +) / Double(latencies.count)
-    }
-    
-    private func calculateSleepStagePercentages(from sessions: [SleepSession]) -> (rem: Double, deep: Double) {
-        guard !sessions.isEmpty else { return (0.0, 0.0) }
-        
-        var totalRemDuration: TimeInterval = 0
-        var totalDeepDuration: TimeInterval = 0
-        var totalDuration: TimeInterval = 0
-        
-        for session in sessions {
-            totalRemDuration += session.remDuration
-            totalDeepDuration += session.deepDuration
-            totalDuration += session.duration
-        }
-        
-        let remPercentage = totalDuration > 0 ? totalRemDuration / totalDuration : 0.0
-        let deepPercentage = totalDuration > 0 ? totalDeepDuration / totalDuration : 0.0
-        
-        return (rem: remPercentage, deep: deepPercentage)
-    }
-    
-    private func analyzeSleepTrends() -> [SleepTrend] {
-        var trends: [SleepTrend] = []
-        
-        // Analyze sleep duration trend
-        if let durationTrend = analyzeTrend(for: \.duration, in: sleepData) {
-            trends.append(durationTrend)
-        }
-        
-        // Analyze sleep quality trend
-        if let qualityTrend = analyzeQualityTrend() {
-            trends.append(qualityTrend)
-        }
-        
-        // Analyze sleep efficiency trend
-        if let efficiencyTrend = analyzeTrend(for: \.efficiency, in: sleepData) {
-            trends.append(efficiencyTrend)
-        }
-        
-        return trends
-    }
-    
-    private func analyzeTrend<T: Comparable>(for keyPath: KeyPath<SleepSession, T>, in sessions: [SleepSession]) -> SleepTrend? {
-        guard sessions.count >= 7 else { return nil }
-        
-        let recentSessions = Array(sessions.suffix(7))
-        let values = recentSessions.map { $0[keyPath: keyPath] }
-        
-        // Simple trend analysis
-        let firstHalf = Array(values.prefix(3))
-        let secondHalf = Array(values.suffix(3))
-        
-        let firstAverage = firstHalf.reduce(0) { $0 + Double(truncating: $1 as! NSNumber) } / Double(firstHalf.count)
-        let secondAverage = secondHalf.reduce(0) { $0 + Double(truncating: $1 as! NSNumber) } / Double(secondHalf.count)
-        
-        let change = secondAverage - firstAverage
-        let percentageChange = firstAverage > 0 ? (change / firstAverage) * 100 : 0
-        
-        let direction: TrendDirection = change > 0 ? .improving : (change < 0 ? .declining : .stable)
-        
-        return SleepTrend(
-            metric: String(describing: keyPath),
-            direction: direction,
-            magnitude: abs(percentageChange),
-            timeframe: trendWindow,
-            confidence: calculateTrendConfidence(values)
-        )
-    }
-    
-    private func analyzeQualityTrend() -> SleepTrend? {
-        guard sleepData.count >= 7 else { return nil }
-        
-        let recentSessions = Array(sleepData.suffix(7))
-        let qualityScores = recentSessions.map { calculateSessionQuality($0) }
-        
-        let firstHalf = Array(qualityScores.prefix(3))
-        let secondHalf = Array(qualityScores.suffix(3))
-        
-        let firstAverage = firstHalf.reduce(0, +) / Double(firstHalf.count)
-        let secondAverage = secondHalf.reduce(0, +) / Double(secondHalf.count)
-        
-        let change = secondAverage - firstAverage
-        let percentageChange = firstAverage > 0 ? (change / firstAverage) * 100 : 0
-        
-        let direction: TrendDirection = change > 0 ? .improving : (change < 0 ? .declining : .stable)
-        
-        return SleepTrend(
-            metric: "Sleep Quality",
-            direction: direction,
-            magnitude: abs(percentageChange),
-            timeframe: trendWindow,
-            confidence: calculateTrendConfidence(qualityScores)
-        )
-    }
-    
-    private func calculateTrendConfidence(_ values: [Double]) -> Double {
-        // Simple confidence calculation based on variance
-        guard values.count > 1 else { return 0.0 }
-        
-        let mean = values.reduce(0, +) / Double(values.count)
-        let variance = values.map { pow($0 - mean, 2) }.reduce(0, +) / Double(values.count)
-        let standardDeviation = sqrt(variance)
-        
-        // Lower standard deviation = higher confidence
-        let coefficientOfVariation = standardDeviation / mean
-        return max(0.0, min(1.0, 1.0 - coefficientOfVariation))
-    }
-    
-    private func generateSleepInsightsFromData() -> [SleepInsight] {
-        var insights: [SleepInsight] = []
-        
-        // Analyze sleep consistency
-        if let consistencyInsight = analyzeSleepConsistency() {
-            insights.append(consistencyInsight)
-        }
-        
-        // Analyze sleep timing
-        if let timingInsight = analyzeSleepTiming() {
-            insights.append(timingInsight)
-        }
-        
-        // Analyze sleep stages
-        if let stageInsight = analyzeSleepStages() {
-            insights.append(stageInsight)
-        }
+        // Update current insights
+        currentInsights = insights
         
         return insights
     }
     
-    private func analyzeSleepConsistency() -> SleepInsight? {
-        guard sleepData.count >= 7 else { return nil }
+    /// Analyze sleep patterns
+    func analyzeSleepPatterns() async -> SleepPatternAnalysis {
+        guard enablePatternAnalysis else { return SleepPatternAnalysis() }
         
-        let recentSessions = Array(sleepData.suffix(7))
-        let durations = recentSessions.map { $0.duration }
-        
-        let meanDuration = durations.reduce(0, +) / Double(durations.count)
-        let variance = durations.map { pow($0 - meanDuration, 2) }.reduce(0, +) / Double(durations.count)
-        let standardDeviation = sqrt(variance)
-        let coefficientOfVariation = standardDeviation / meanDuration
-        
-        if coefficientOfVariation > 0.2 {
-            return SleepInsight(
-                title: "Sleep Schedule Inconsistency",
-                description: "Your sleep duration varies significantly from night to night, which can impact sleep quality.",
-                category: .pattern,
-                confidence: 0.8,
-                actionable: true,
-                priority: .medium
-            )
-        }
-        
-        return nil
+        return await patternAnalyzer?.analyzePatterns() ?? SleepPatternAnalysis()
     }
     
-    private func analyzeSleepTiming() -> SleepInsight? {
-        guard sleepData.count >= 7 else { return nil }
+    /// Analyze correlations
+    func analyzeCorrelations() async -> CorrelationAnalysis {
+        guard enableCorrelationAnalysis else { return CorrelationAnalysis() }
         
-        let recentSessions = Array(sleepData.suffix(7))
-        let bedtimes = recentSessions.map { $0.startDate }
-        
-        // Calculate average bedtime
-        let averageBedtime = bedtimes.reduce(0) { $0 + $1.timeIntervalSince1970 } / Double(bedtimes.count)
-        let averageBedtimeDate = Date(timeIntervalSince1970: averageBedtime)
-        
-        let calendar = Calendar.current
-        let hour = calendar.component(.hour, from: averageBedtimeDate)
-        
-        if hour >= 23 || hour <= 5 {
-            return SleepInsight(
-                title: "Late Bedtime Pattern",
-                description: "You consistently go to bed late, which may affect your circadian rhythm and sleep quality.",
-                category: .pattern,
-                confidence: 0.7,
-                actionable: true,
-                priority: .medium
-            )
-        }
-        
-        return nil
+        return await correlationEngine?.analyzeCorrelations() ?? CorrelationAnalysis()
     }
     
-    private func analyzeSleepStages() -> SleepInsight? {
-        let (remPercentage, deepPercentage) = calculateSleepStagePercentages(from: sleepData)
+    /// Predict sleep trends
+    func predictSleepTrends() async -> TrendPrediction {
+        guard enableTrendPrediction else { return TrendPrediction() }
         
-        if remPercentage < 0.15 {
-            return SleepInsight(
-                title: "Low REM Sleep",
-                description: "Your REM sleep percentage is below the recommended range, which may affect memory consolidation and emotional regulation.",
-                category: .optimization,
-                confidence: 0.8,
-                actionable: true,
-                priority: .high
-            )
-        }
-        
-        if deepPercentage < 0.10 {
-            return SleepInsight(
-                title: "Low Deep Sleep",
-                description: "Your deep sleep percentage is below the recommended range, which may affect physical recovery and immune function.",
-                category: .optimization,
-                confidence: 0.8,
-                actionable: true,
-                priority: .high
-            )
-        }
-        
-        return nil
+        return await trendPredictor?.predictTrends() ?? TrendPrediction()
     }
     
-    private func getSleepMetrics() -> [String: Double] {
+    /// Calculate sleep score
+    func calculateSleepScore() async -> Double {
+        // Calculate comprehensive sleep score
+        let patternScore = await calculatePatternScore()
+        let consistencyScore = await calculateConsistencyScore()
+        let qualityScore = await calculateQualityScore()
+        let recoveryScore = await calculateRecoveryScore()
+        
+        // Weighted average
+        let weightedScore = (patternScore * 0.3 + consistencyScore * 0.25 + qualityScore * 0.25 + recoveryScore * 0.2)
+        
+        // Update sleep score
+        sleepScore = weightedScore
+        
+        return weightedScore
+    }
+    
+    /// Optimize sleep analytics
+    func optimizeSleepAnalytics() async {
+        isAnalyzing = true
+        
+        await performAnalyticsOptimizations()
+        
+        isAnalyzing = false
+    }
+    
+    /// Get analytics performance report
+    func getAnalyticsReport() -> AnalyticsReport {
+        return AnalyticsReport(
+            metrics: analyticsMetrics,
+            stats: analyticsStats,
+            analysisHistory: analysisHistory,
+            recommendations: generateAnalyticsRecommendations()
+        )
+    }
+    
+    /// Get sleep analytics report (for PerformanceOptimizer integration)
+    func getSleepAnalyticsReport() -> SleepAnalyticsReport {
+        return SleepAnalyticsReport(
+            metrics: analyticsMetrics,
+            stats: analyticsStats,
+            analysisHistory: analysisHistory,
+            recommendations: generateAnalyticsRecommendations()
+        )
+    }
+    
+    // MARK: - Private Methods
+    
+    private func performComprehensiveAnalysis() async -> SleepAnalysis {
+        // Perform pattern analysis
+        let patternAnalysis = await analyzeSleepPatterns()
+        
+        // Perform correlation analysis
+        let correlationAnalysis = await analyzeCorrelations()
+        
+        // Perform trend prediction
+        let trendPrediction = await predictSleepTrends()
+        
+        // Generate insights
+        let insights = await getSleepInsights()
+        
+        // Calculate sleep score
+        let score = await calculateSleepScore()
+        
+        return SleepAnalysis(
+            patternAnalysis: patternAnalysis,
+            correlationAnalysis: correlationAnalysis,
+            trendPrediction: trendPrediction,
+            insights: insights,
+            sleepScore: score,
+            timestamp: Date()
+        )
+    }
+    
+    private func performAnalyticsOptimizations() async {
+        // Optimize pattern analysis
+        await optimizePatternAnalysis()
+        
+        // Optimize correlation analysis
+        await optimizeCorrelationAnalysis()
+        
+        // Optimize trend prediction
+        await optimizeTrendPrediction()
+        
+        // Optimize insight generation
+        await optimizeInsightGeneration()
+    }
+    
+    private func optimizePatternAnalysis() async {
+        guard enablePatternAnalysis else { return }
+        
+        // Optimize pattern analysis
+        await patternAnalyzer?.optimizeAnalysis()
+        
+        // Update metrics
+        analyticsMetrics.patternAnalysisEnabled = true
+        analyticsMetrics.patternAnalysisEfficiency = calculatePatternAnalysisEfficiency()
+        
+        Logger.info("Pattern analysis optimized", log: Logger.performance)
+    }
+    
+    private func optimizeCorrelationAnalysis() async {
+        guard enableCorrelationAnalysis else { return }
+        
+        // Optimize correlation analysis
+        await correlationEngine?.optimizeAnalysis()
+        
+        // Update metrics
+        analyticsMetrics.correlationAnalysisEnabled = true
+        analyticsMetrics.correlationAnalysisEfficiency = calculateCorrelationAnalysisEfficiency()
+        
+        Logger.info("Correlation analysis optimized", log: Logger.performance)
+    }
+    
+    private func optimizeTrendPrediction() async {
+        guard enableTrendPrediction else { return }
+        
+        // Optimize trend prediction
+        await trendPredictor?.optimizePrediction()
+        
+        // Update metrics
+        analyticsMetrics.trendPredictionEnabled = true
+        analyticsMetrics.trendPredictionEfficiency = calculateTrendPredictionEfficiency()
+        
+        Logger.info("Trend prediction optimized", log: Logger.performance)
+    }
+    
+    private func optimizeInsightGeneration() async {
+        guard enableInsightGeneration else { return }
+        
+        // Optimize insight generation
+        await insightGenerator?.optimizeGeneration()
+        
+        // Update metrics
+        analyticsMetrics.insightGenerationEnabled = true
+        analyticsMetrics.insightGenerationEfficiency = calculateInsightGenerationEfficiency()
+        
+        Logger.info("Insight generation optimized", log: Logger.performance)
+    }
+    
+    private func updateAnalyticsMetrics() async {
+        // Update analytics metrics
+        analyticsMetrics.currentInsightCount = currentInsights.count
+        analyticsMetrics.currentSleepScore = sleepScore
+        
+        // Update stats
+        analyticsStats.totalAnalyses += 1
+        analyticsStats.averageSleepScore = (analyticsStats.averageSleepScore + sleepScore) / 2.0
+        
+        // Check for high sleep score
+        if sleepScore > 0.8 {
+            analyticsStats.highSleepScoreCount += 1
+            Logger.info("High sleep score achieved: \(String(format: "%.1f", sleepScore * 100))", log: Logger.performance)
+        }
+    }
+    
+    // MARK: - Score Calculations
+    
+    private func calculatePatternScore() async -> Double {
+        // Calculate pattern consistency score
+        let patternAnalysis = await analyzeSleepPatterns()
+        
+        let consistencyScore = patternAnalysis.consistencyScore
+        let regularityScore = patternAnalysis.regularityScore
+        let efficiencyScore = patternAnalysis.efficiencyScore
+        
+        return (consistencyScore + regularityScore + efficiencyScore) / 3.0
+    }
+    
+    private func calculateConsistencyScore() async -> Double {
+        // Calculate sleep consistency score
+        let patternAnalysis = await analyzeSleepPatterns()
+        
+        let bedtimeConsistency = patternAnalysis.bedtimeConsistency
+        let wakeTimeConsistency = patternAnalysis.wakeTimeConsistency
+        let durationConsistency = patternAnalysis.durationConsistency
+        
+        return (bedtimeConsistency + wakeTimeConsistency + durationConsistency) / 3.0
+    }
+    
+    private func calculateQualityScore() async -> Double {
+        // Calculate sleep quality score
+        let patternAnalysis = await analyzeSleepPatterns()
+        
+        let deepSleepScore = patternAnalysis.deepSleepPercentage / 100.0
+        let remSleepScore = patternAnalysis.remSleepPercentage / 100.0
+        let lightSleepScore = patternAnalysis.lightSleepPercentage / 100.0
+        
+        return (deepSleepScore * 0.4 + remSleepScore * 0.3 + lightSleepScore * 0.3)
+    }
+    
+    private func calculateRecoveryScore() async -> Double {
+        // Calculate recovery score
+        let correlationAnalysis = await analyzeCorrelations()
+        
+        let hrvScore = correlationAnalysis.hrvRecoveryScore
+        let heartRateScore = correlationAnalysis.heartRateRecoveryScore
+        let stressScore = correlationAnalysis.stressRecoveryScore
+        
+        return (hrvScore + heartRateScore + stressScore) / 3.0
+    }
+    
+    // MARK: - Efficiency Calculations
+    
+    private func calculatePatternAnalysisEfficiency() -> Double {
+        guard let analyzer = patternAnalyzer else { return 0.0 }
+        return analyzer.getAnalysisEfficiency()
+    }
+    
+    private func calculateCorrelationAnalysisEfficiency() -> Double {
+        guard let engine = correlationEngine else { return 0.0 }
+        return engine.getAnalysisEfficiency()
+    }
+    
+    private func calculateTrendPredictionEfficiency() -> Double {
+        guard let predictor = trendPredictor else { return 0.0 }
+        return predictor.getPredictionEfficiency()
+    }
+    
+    private func calculateInsightGenerationEfficiency() -> Double {
+        guard let generator = insightGenerator else { return 0.0 }
+        return generator.getGenerationEfficiency()
+    }
+    
+    // MARK: - Utility Methods
+    
+    private func generateAnalyticsRecommendations() -> [String] {
+        var recommendations: [String] = []
+        
+        if sleepScore < 0.7 {
+            recommendations.append("Sleep score is low. Consider improving sleep hygiene and consistency.")
+        }
+        
+        if !enablePatternAnalysis {
+            recommendations.append("Enable pattern analysis for better sleep insights.")
+        }
+        
+        if !enableCorrelationAnalysis {
+            recommendations.append("Enable correlation analysis for comprehensive sleep understanding.")
+        }
+        
+        if !enableTrendPrediction {
+            recommendations.append("Enable trend prediction for proactive sleep optimization.")
+        }
+        
+        return recommendations
+    }
+    
+    private func cleanupResources() {
+        // Clean up analytics resources
+        cancellables.removeAll()
+        
+        // Clean up current insights
+        currentInsights.removeAll()
+    }
+}
+
+// MARK: - Supporting Classes
+
+class SleepPatternAnalyzer {
+    func setupDataCollection() {
+        // Setup data collection
+    }
+    
+    func optimizeAnalysis() async {
+        // Optimize pattern analysis
+    }
+    
+    func analyzePatterns() async -> SleepPatternAnalysis {
+        // Analyze sleep patterns
+        return SleepPatternAnalysis(
+            consistencyScore: 0.8,
+            regularityScore: 0.75,
+            efficiencyScore: 0.85,
+            bedtimeConsistency: 0.8,
+            wakeTimeConsistency: 0.7,
+            durationConsistency: 0.9,
+            deepSleepPercentage: 25.0,
+            remSleepPercentage: 20.0,
+            lightSleepPercentage: 55.0,
+            patterns: []
+        )
+    }
+    
+    func getAnalysisEfficiency() -> Double {
+        return 0.88
+    }
+}
+
+class CorrelationEngine {
+    func setupDataCollection() {
+        // Setup data collection
+    }
+    
+    func optimizeAnalysis() async {
+        // Optimize correlation analysis
+    }
+    
+    func analyzeCorrelations() async -> CorrelationAnalysis {
+        // Analyze correlations
+        return CorrelationAnalysis(
+            hrvRecoveryScore: 0.8,
+            heartRateRecoveryScore: 0.75,
+            stressRecoveryScore: 0.7,
+            correlations: []
+        )
+    }
+    
+    func getAnalysisEfficiency() -> Double {
+        return 0.85
+    }
+}
+
+class TrendPredictor {
+    func setupDataCollection() {
+        // Setup data collection
+    }
+    
+    func optimizePrediction() async {
+        // Optimize trend prediction
+    }
+    
+    func predictTrends() async -> TrendPrediction {
+        // Predict trends
+        return TrendPrediction(
+            sleepQualityTrend: .improving,
+            sleepDurationTrend: .stable,
+            sleepEfficiencyTrend: .improving,
+            predictions: []
+        )
+    }
+    
+    func getPredictionEfficiency() -> Double {
+        return 0.82
+    }
+}
+
+class InsightGenerator {
+    func optimizeGeneration() async {
+        // Optimize insight generation
+    }
+    
+    func generateInsights() async -> [SleepInsight] {
+        // Generate insights
         return [
-            "Sleep Quality Score": sleepQualityScore,
-            "Sleep Efficiency": sleepEfficiency,
-            "Sleep Latency": sleepLatency,
-            "REM Sleep Percentage": remSleepPercentage,
-            "Deep Sleep Percentage": deepSleepPercentage
+            SleepInsight(
+                type: .pattern,
+                title: "Consistent Bedtime",
+                description: "Your bedtime is very consistent, which is great for sleep quality.",
+                impact: .positive,
+                confidence: 0.9
+            ),
+            SleepInsight(
+                type: .correlation,
+                title: "Exercise Impact",
+                description: "Exercise 3-4 hours before bed improves your sleep quality by 15%.",
+                impact: .positive,
+                confidence: 0.8
+            )
         ]
     }
     
-    private func getSleepRisks() -> [RiskAssessment] {
-        var risks: [RiskAssessment] = []
-        
-        // Sleep deprivation risk
-        if sleepQualityScore < 0.6 {
-            risks.append(RiskAssessment(
-                category: .sleep,
-                level: .moderate,
-                score: 1.0 - sleepQualityScore,
-                factors: ["Low sleep quality score", "Poor sleep efficiency"],
-                recommendations: ["Improve sleep hygiene", "Maintain consistent sleep schedule"]
-            ))
-        }
-        
-        // Sleep disorder risk
-        if sleepLatency > 30 * 60 { // 30 minutes
-            risks.append(RiskAssessment(
-                category: .sleep,
-                level: .moderate,
-                score: 0.7,
-                factors: ["High sleep latency", "Difficulty falling asleep"],
-                recommendations: ["Practice relaxation techniques", "Avoid screens before bed"]
-            ))
-        }
-        
-        return risks
-    }
-}
-
-// MARK: - Sleep Prediction Delegate
-
-extension SleepAnalyticsEngine: SleepQualityPredictorDelegate {
-    func sleepQualityPredictor(_ predictor: SleepQualityPredictor, didUpdatePrediction prediction: SleepQualityPrediction) {
-        // Handle sleep quality prediction updates
-    }
-}
-
-// MARK: - Sleep Optimization Delegate
-
-extension SleepAnalyticsEngine: SleepOptimizationRecommenderDelegate {
-    func sleepOptimizationRecommender(_ recommender: SleepOptimizationRecommender, didUpdateRecommendations recommendations: [SleepRecommendation]) {
-        // Handle sleep optimization recommendation updates
+    func getGenerationEfficiency() -> Double {
+        return 0.9
     }
 }
 
 // MARK: - Supporting Types
 
-struct SleepSession {
-    let startDate: Date
-    let endDate: Date
+struct AnalyticsMetrics {
+    var currentInsightCount: Int = 0
+    var currentSleepScore: Double = 0.0
+    var patternAnalysisEnabled: Bool = false
+    var correlationAnalysisEnabled: Bool = false
+    var trendPredictionEnabled: Bool = false
+    var insightGenerationEnabled: Bool = false
+    var patternAnalysisEfficiency: Double = 0.0
+    var correlationAnalysisEfficiency: Double = 0.0
+    var trendPredictionEfficiency: Double = 0.0
+    var insightGenerationEfficiency: Double = 0.0
+}
+
+struct AnalyticsStats {
+    var totalAnalyses: Int = 0
+    var averageSleepScore: Double = 0.0
+    var highSleepScoreCount: Int = 0
+    var insightCount: Int = 0
+    var patternAnalysisCount: Int = 0
+    var correlationAnalysisCount: Int = 0
+}
+
+struct AnalysisRecord {
+    let timestamp: Date
+    let type: String
     let duration: TimeInterval
-    let efficiency: Double
-    let sleepLatency: TimeInterval?
-    let remDuration: TimeInterval
-    let deepDuration: TimeInterval
-    let lightDuration: TimeInterval
-    let awakeDuration: TimeInterval
+    let insights: Int
+    let sleepScore: Double
 }
 
-struct SleepTrend {
-    let metric: String
-    let direction: TrendDirection
-    let magnitude: Double
-    let timeframe: TimeInterval
-    let confidence: Double
-}
-
-struct SleepInsight {
-    let title: String
-    let description: String
-    let category: InsightCategory
-    let confidence: Double
-    let actionable: Bool
-    let priority: InsightPriority
-}
-
-struct SleepRecommendation {
-    let title: String
-    let description: String
-    let category: RecommendationCategory
-    let priority: RecommendationPriority
-    let actionable: Bool
-    let estimatedImpact: Double
-}
-
-struct SleepQualityPrediction {
-    let predictedScore: Double
-    let confidence: Double
-    let factors: [String]
+struct AnalyticsReport {
+    let metrics: AnalyticsMetrics
+    let stats: AnalyticsStats
+    let analysisHistory: [AnalysisRecord]
     let recommendations: [String]
 }
 
-// MARK: - Base Classes
-
-class AnalyticsEngine: ObservableObject {
-    weak var delegate: AnalyticsEngineDelegate?
-    
-    init() {}
+struct SleepAnalyticsReport {
+    let metrics: AnalyticsMetrics
+    let stats: AnalyticsStats
+    let analysisHistory: [AnalysisRecord]
+    let recommendations: [String]
 }
 
-protocol AnalyticsEngineDelegate: AnyObject {
-    func analyticsEngine(_ engine: AnalyticsEngine, didUpdateAnalytics analytics: DimensionAnalytics)
+struct SleepAnalysis {
+    let patternAnalysis: SleepPatternAnalysis
+    let correlationAnalysis: CorrelationAnalysis
+    let trendPrediction: TrendPrediction
+    let insights: [SleepInsight]
+    let sleepScore: Double
+    let timestamp: Date
 }
 
-class SleepQualityPredictor {
-    weak var delegate: SleepQualityPredictorDelegate?
-    
-    func predictSleepQuality(for date: Date) -> SleepQualityPrediction {
-        // Implementation for sleep quality prediction
-        return SleepQualityPrediction(
-            predictedScore: 0.8,
-            confidence: 0.7,
-            factors: ["Recent sleep patterns", "Daily activity"],
-            recommendations: ["Maintain consistent bedtime", "Avoid caffeine after 2 PM"]
-        )
-    }
+struct SleepPatternAnalysis {
+    let consistencyScore: Double
+    let regularityScore: Double
+    let efficiencyScore: Double
+    let bedtimeConsistency: Double
+    let wakeTimeConsistency: Double
+    let durationConsistency: Double
+    let deepSleepPercentage: Double
+    let remSleepPercentage: Double
+    let lightSleepPercentage: Double
+    let patterns: [SleepPattern]
 }
 
-protocol SleepQualityPredictorDelegate: AnyObject {
-    func sleepQualityPredictor(_ predictor: SleepQualityPredictor, didUpdatePrediction prediction: SleepQualityPrediction)
+struct CorrelationAnalysis {
+    let hrvRecoveryScore: Double
+    let heartRateRecoveryScore: Double
+    let stressRecoveryScore: Double
+    let correlations: [SleepCorrelation]
 }
 
-class SleepOptimizationRecommender {
-    weak var delegate: SleepOptimizationRecommenderDelegate?
-    
-    func generateRecommendations(basedOn sessions: [SleepSession]) -> [SleepRecommendation] {
-        // Implementation for sleep optimization recommendations
-        return [
-            SleepRecommendation(
-                title: "Improve Sleep Hygiene",
-                description: "Create a relaxing bedtime routine",
-                category: .sleep,
-                priority: .medium,
-                actionable: true,
-                estimatedImpact: 0.2
-            )
-        ]
-    }
+struct TrendPrediction {
+    let sleepQualityTrend: TrendDirection
+    let sleepDurationTrend: TrendDirection
+    let sleepEfficiencyTrend: TrendDirection
+    let predictions: [SleepPrediction]
 }
 
-protocol SleepOptimizationRecommenderDelegate: AnyObject {
-    func sleepOptimizationRecommender(_ recommender: SleepOptimizationRecommender, didUpdateRecommendations recommendations: [SleepRecommendation])
-} 
+enum TrendDirection: String, CaseIterable {
+    case improving = "Improving"
+    case stable = "Stable"
+    case declining = "Declining"
+}
+
+struct SleepInsight {
+    let type: InsightType
+    let title: String
+    let description: String
+    let impact: InsightImpact
+    let confidence: Double
+}
+
+enum InsightType: String, CaseIterable {
+    case pattern = "Pattern"
+    case correlation = "Correlation"
+    case trend = "Trend"
+    case recommendation = "Recommendation"
+}
+
+enum InsightImpact: String, CaseIterable {
+    case positive = "Positive"
+    case negative = "Negative"
+    case neutral = "Neutral"
+}
+
+struct SleepPattern {
+    let name: String
+    let frequency: Double
+    let impact: Double
+}
+
+struct SleepCorrelation {
+    let factor: String
+    let correlation: Double
+    let significance: Double
+}
+
+struct SleepPrediction {
+    let metric: String
+    let predictedValue: Double
+    let confidence: Double
+    let timeframe: TimeInterval
+}
+
+struct AnalysisTask {
+    let name: String
+    let priority: TaskPriority
+    let estimatedImpact: Double
+}

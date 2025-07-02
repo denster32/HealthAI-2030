@@ -1,594 +1,387 @@
 import SwiftUI
 import HealthKit
-import TipKit
-import AVFoundation
-import AppIntents
+import UserNotifications
 
+@available(iOS 17.0, *)
+@available(macOS 14.0, *)
+
+/// Enhanced OnboardingView with health data training
 struct OnboardingView: View {
-    @Binding var onboardingCompleted: Bool
-    @State private var currentPage = 0
-    @State private var showPermissions = false
-    @State private var healthKitAuthorized = false
-    @State private var notificationsAuthorized = false
-    @State private var siriAuthorized = false
-    @State private var locationAuthorized = false
+    @StateObject private var healthKitManager = HealthKitManager.shared
+    @StateObject private var healthDataTrainer = HealthDataTrainer.shared
+    @StateObject private var appConfiguration = AppConfiguration.shared
     
-    // iOS 18 Animations
-    @State private var animateElements = false
-    @State private var showFeatureHighlights = false
+    @State private var currentStep = 0
+    @State private var showHealthDataTraining = false
+    @State private var healthDataAvailable = false
+    @State private var dataPointsCount = 0
+    @State private var isAnimating = false
     
-    private let totalPages = 6
-    
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    private let totalSteps = 4
+
     var body: some View {
-        ZStack {
-            // Dynamic gradient background
-            LinearGradient(
-                colors: [
-                    Color(.systemIndigo).opacity(0.8),
-                    Color(.systemPurple).opacity(0.6),
-                    Color(.systemBlue).opacity(0.4)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            
-            if showPermissions {
-                permissionsView
-            } else {
-                onboardingPages
+        NavigationStack {
+            ZStack {
+                // Background gradient
+                LinearGradient(
+                    colors: [Color.somnaBackground, Color.somnaCardBackground.opacity(0.3)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+                
+                VStack(spacing: 30) {
+                    // Progress indicator
+                    SomnaProgressView(
+                        value: Float(currentStep + 1) / Float(totalSteps),
+                        color: .somnaPrimary,
+                        showPercentage: true
+                    )
+                    .frame(height: 8)
+                    .padding(.horizontal)
+                    .somnaPulse(duration: 2.0, scale: 1.02)
+                    
+                    // Step content
+                    switch currentStep {
+                    case 0:
+                        welcomeStep
+                    case 1:
+                        permissionsStep
+                    case 2:
+                        healthDataTrainingStep
+                    case 3:
+                        finalStep
+                    default:
+                        welcomeStep
+                    }
+                    
+                    Spacer()
+                    
+                    // Navigation buttons
+                    HStack {
+                        if currentStep > 0 {
+                            Button("Back") {
+                                withAnimation {
+                                    currentStep -= 1
+                                }
+                            }
+                            .buttonStyle(SomnaSecondaryButtonStyle())
+                            .somnaPulse(duration: 2.5, scale: 1.01)
+                        }
+                        
+                        Spacer()
+                        
+                        if currentStep < totalSteps - 1 {
+                            Button(currentStep == 2 && showHealthDataTraining ? "Skip" : "Next") {
+                                withAnimation {
+                                    currentStep += 1
+                                }
+                            }
+                            .buttonStyle(SomnaPrimaryButtonStyle())
+                            .disabled(currentStep == 1 && !healthKitManager.isAuthorized)
+                            .somnaPulse(duration: 2.0, scale: 1.02)
+                        } else {
+                            Button("Get Started") {
+                                completeOnboarding()
+                            }
+                            .buttonStyle(SomnaPrimaryButtonStyle())
+                            .somnaPulse(duration: 1.5, scale: 1.03)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .padding()
             }
+            .navigationBarHidden(true)
         }
         .onAppear {
-            withAnimation(.easeInOut(duration: 1.0)) {
-                animateElements = true
-            }
+            checkHealthDataAvailability()
+            isAnimating = true
         }
     }
     
-    // MARK: - Onboarding Pages
+    // MARK: - Step Views
     
-    private var onboardingPages: some View {
-        TabView(selection: $currentPage) {
-            welcomePage
-                .tag(0)
-            
-            aiCapabilitiesPage
-                .tag(1)
-            
-            personalizationPage
-                .tag(2)
-            
-            ios18FeaturesPage
-                .tag(3)
-            
-            healthIntegrationPage
-                .tag(4)
-            
-            finalSetupPage
-                .tag(5)
-        }
-        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
-        .indexViewStyle(PageIndexViewStyle(backgroundDisplayMode: .always))
-    }
-    
-    // MARK: - Welcome Page
-    
-    private var welcomePage: some View {
+    private var welcomeStep: some View {
         VStack(spacing: 30) {
-            Spacer()
-            
-            // App Icon with animation
-            Image(systemName: "brain.head.profile")
-                .font(.system(size: 100))
-                .foregroundStyle(.white)
-                .shadow(radius: 10)
-                .scaleEffect(animateElements ? 1.0 : 0.5)
-                .animation(.spring(response: 0.8, dampingFraction: 0.6), value: animateElements)
+            Image("AppLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 120, height: 120)
+                .scaleEffect(isAnimating ? 1.05 : 1.0)
+                .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
+                .somnaPulse(duration: 3.0, scale: 1.05)
             
             VStack(spacing: 20) {
-                Text("Welcome to")
-                    .font(.title2)
-                    .foregroundColor(.white.opacity(0.8))
-                
-                Text("HealthAI 2030")
+                Text("Welcome to SomnaSync Pro")
                     .font(.largeTitle)
                     .fontWeight(.bold)
-                    .foregroundColor(.white)
-                
-                Text("Your AI-Powered Health Companion")
-                    .font(.title3)
-                    .foregroundColor(.white.opacity(0.9))
                     .multilineTextAlignment(.center)
-            }
-            .opacity(animateElements ? 1.0 : 0.0)
-            .animation(.easeInOut(duration: 1.0).delay(0.3), value: animateElements)
-            
-            VStack(spacing: 15) {
-                FeatureHighlight(
-                    icon: "sparkles",
-                    title: "Explainable AI",
-                    description: "Understand every health recommendation"
-                )
+                    .somnaPulse(duration: 4.0, scale: 1.01)
                 
-                FeatureHighlight(
-                    icon: "person.crop.circle.badge.clock",
-                    title: "Advanced Personalization",
-                    description: "AI that learns and adapts to you"
-                )
-                
-                FeatureHighlight(
-                    icon: "iphone",
-                    title: "iOS 18 Integration",
-                    description: "Live Activities, Control Center, Siri"
-                )
-            }
-            .opacity(animateElements ? 1.0 : 0.0)
-            .animation(.easeInOut(duration: 1.0).delay(0.6), value: animateElements)
-            
-            Spacer()
-            
-            nextButton
-        }
-        .padding()
-    }
-    
-    // MARK: - AI Capabilities Page
-    
-    private var aiCapabilitiesPage: some View {
-        VStack(spacing: 30) {
-            Text("Advanced AI Engine")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-            
-            Text("Powered by cutting-edge machine learning")
-                .font(.title3)
-                .foregroundColor(.white.opacity(0.8))
-                .multilineTextAlignment(.center)
-            
-            LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ], spacing: 20) {
-                AIFeatureCard(
-                    icon: "brain",
-                    title: "Explainable AI",
-                    description: "Understand why AI makes recommendations",
-                    color: .cyan
-                )
-                
-                AIFeatureCard(
-                    icon: "chart.line.uptrend.xyaxis",
-                    title: "Predictive Analytics",
-                    description: "Forecast health trends and risks",
-                    color: .green
-                )
-                
-                AIFeatureCard(
-                    icon: "person.crop.circle.badge.questionmark",
-                    title: "Health Coaching",
-                    description: "Personalized AI health coach",
-                    color: .orange
-                )
-                
-                AIFeatureCard(
-                    icon: "waveform.path.ecg",
-                    title: "Real-time Analysis",
-                    description: "Continuous health monitoring",
-                    color: .red
-                )
-            }
-            
-            Spacer()
-            
-            HStack {
-                backButton
-                Spacer()
-                nextButton
-            }
-        }
-        .padding()
-    }
-    
-    // MARK: - Personalization Page
-    
-    private var personalizationPage: some View {
-        VStack(spacing: 30) {
-            Text("Personal Health AI")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-            
-            Text("AI that adapts to your unique patterns")
-                .font(.title3)
-                .foregroundColor(.white.opacity(0.8))
-                .multilineTextAlignment(.center)
-            
-            VStack(spacing: 20) {
-                PersonalizationFeature(
-                    icon: "person.circle",
-                    title: "User Modeling",
-                    description: "AI builds a comprehensive model of your health patterns, preferences, and goals"
-                )
-                
-                PersonalizationFeature(
-                    icon: "arrow.triangle.2.circlepath",
-                    title: "Adaptive Learning",
-                    description: "System continuously improves recommendations based on your feedback"
-                )
-                
-                PersonalizationFeature(
-                    icon: "message.circle",
-                    title: "Personalized Communication",
-                    description: "AI adapts its communication style to match your preferences"
-                )
-                
-                PersonalizationFeature(
-                    icon: "target",
-                    title: "Context Awareness",
-                    description: "Recommendations adapt to your current situation and environment"
-                )
-            }
-            
-            Spacer()
-            
-            HStack {
-                backButton
-                Spacer()
-                nextButton
-            }
-        }
-        .padding()
-    }
-    
-    // MARK: - iOS 18 Features Page
-    
-    private var ios18FeaturesPage: some View {
-        VStack(spacing: 30) {
-            Text("iOS 18 Integration")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-            
-            Text("Cutting-edge iOS features")
-                .font(.title3)
-                .foregroundColor(.white.opacity(0.8))
-            
-            VStack(spacing: 20) {
-                iOS18Feature(
-                    icon: "circle.fill",
-                    title: "Live Activities",
-                    description: "Real-time health tracking on your Lock Screen and Dynamic Island"
-                )
-                
-                iOS18Feature(
-                    icon: "rectangle.3.group",
-                    title: "Interactive Widgets",
-                    description: "Control your health directly from the Home Screen"
-                )
-                
-                iOS18Feature(
-                    icon: "mic.circle",
-                    title: "Advanced Siri Integration",
-                    description: "Natural voice commands for all health functions"
-                )
-                
-                iOS18Feature(
-                    icon: "slider.horizontal.below.rectangle",
-                    title: "Control Center",
-                    description: "Quick health controls in Control Center"
-                )
-                
-                iOS18Feature(
-                    icon: "magnifyingglass",
-                    title: "Spotlight Search",
-                    description: "Search your health data with natural language"
-                )
-            }
-            
-            Spacer()
-            
-            HStack {
-                backButton
-                Spacer()
-                nextButton
-            }
-        }
-        .padding()
-    }
-    
-    // MARK: - Health Integration Page
-    
-    private var healthIntegrationPage: some View {
-        VStack(spacing: 30) {
-            Text("Comprehensive Health")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-            
-            Text("Seamless integration with Apple Health")
-                .font(.title3)
-                .foregroundColor(.white.opacity(0.8))
-                .multilineTextAlignment(.center)
-            
-            VStack(spacing: 20) {
-                HealthFeature(
-                    icon: "heart.fill",
-                    title: "Advanced Cardiac Monitoring",
-                    description: "AFib detection, HRV analysis, VO2 Max tracking"
-                )
-                
-                HealthFeature(
-                    icon: "bed.double.fill",
-                    title: "Sleep Optimization",
-                    description: "AI-powered sleep stage detection and environment control"
-                )
-                
-                HealthFeature(
-                    icon: "brain.head.profile",
-                    title: "Mental Health Insights",
-                    description: "Stress monitoring, mood tracking, mindfulness guidance"
-                )
-                
-                HealthFeature(
-                    icon: "lungs.fill",
-                    title: "Respiratory Analysis",
-                    description: "Breathing pattern analysis and respiratory health"
-                )
-            }
-            
-            Spacer()
-            
-            HStack {
-                backButton
-                Spacer()
-                nextButton
-            }
-        }
-        .padding()
-    }
-    
-    // MARK: - Final Setup Page
-    
-    private var finalSetupPage: some View {
-        VStack(spacing: 30) {
-            Text("Ready to Begin")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-            
-            Text("Let's set up your permissions for the best experience")
-                .font(.title3)
-                .foregroundColor(.white.opacity(0.8))
-                .multilineTextAlignment(.center)
-            
-            VStack(spacing: 20) {
-                SetupCard(
-                    icon: "heart.text.square",
-                    title: "Health Data Access",
-                    description: "Enable comprehensive health monitoring",
-                    isRequired: true
-                )
-                
-                SetupCard(
-                    icon: "bell.circle",
-                    title: "Smart Notifications",
-                    description: "Receive timely health insights and alerts",
-                    isRequired: false
-                )
-                
-                SetupCard(
-                    icon: "mic.circle",
-                    title: "Siri Integration",
-                    description: "Voice control for hands-free health management",
-                    isRequired: false
-                )
-                
-                SetupCard(
-                    icon: "location.circle",
-                    title: "Location Services",
-                    description: "Environment-aware health recommendations",
-                    isRequired: false
-                )
-            }
-            
-            Spacer()
-            
-            Button(action: {
-                withAnimation(.spring()) {
-                    showPermissions = true
-                }
-            }) {
-                Text("Set Up Permissions")
+                Text("Your AI-powered sleep optimization companion")
                     .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(.ultraThinMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-            }
-            
-            HStack {
-                backButton
-                Spacer()
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .somnaPulse(duration: 3.5, scale: 1.02)
+                
+                Group {
+                    if horizontalSizeClass == .regular {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 250))], spacing: 15) {
+                            featureRows
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 15) {
+                            featureRows
+                        }
+                    }
+                }
+                .padding(.top)
+                .somnaShimmer()
             }
         }
-        .padding()
     }
     
-    // MARK: - Permissions View
-    
-    private var permissionsView: some View {
+    private var permissionsStep: some View {
         VStack(spacing: 30) {
-            Text("Enable Permissions")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
+            Image(systemName: "heart.text.square")
+                .font(.system(size: 80))
+                .foregroundColor(.somnaPrimary)
+                .scaleEffect(isAnimating ? 1.1 : 1.0)
+                .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
+                .somnaPulse(duration: 2.5, scale: 1.1)
             
-            Text("Grant permissions to unlock the full potential of HealthAI 2030")
-                .font(.body)
-                .foregroundColor(.white.opacity(0.8))
-                .multilineTextAlignment(.center)
-            
-            VStack(spacing: 16) {
-                PermissionRow(
-                    icon: "heart.text.square.fill",
-                    title: "Health Data",
-                    description: "Access health and fitness data",
-                    isGranted: healthKitAuthorized,
-                    action: requestHealthKitPermission
-                )
+            VStack(spacing: 20) {
+                Text("Health Permissions")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .somnaPulse(duration: 3.0, scale: 1.02)
                 
-                PermissionRow(
-                    icon: "bell.fill",
-                    title: "Notifications",
-                    description: "Send health alerts and reminders",
-                    isGranted: notificationsAuthorized,
-                    action: requestNotificationPermission
-                )
+                Text("SomnaSync Pro needs access to your health data to provide personalized sleep insights and optimize your sleep experience.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .somnaShimmer()
                 
-                PermissionRow(
-                    icon: "mic.fill",
-                    title: "Siri & Shortcuts",
-                    description: "Voice control and automation",
-                    isGranted: siriAuthorized,
-                    action: requestSiriPermission
-                )
-                
-                PermissionRow(
-                    icon: "location.fill",
-                    title: "Location",
-                    description: "Environment-aware features",
-                    isGranted: locationAuthorized,
-                    action: requestLocationPermission
-                )
-            }
-            
-            Spacer()
-            
-            if healthKitAuthorized {
-                Button(action: completeOnboarding) {
-                    Text("Get Started")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(
-                            LinearGradient(
-                                colors: [.green, .blue],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                VStack(alignment: .leading, spacing: 15) {
+                    PermissionRow(
+                        icon: "heart.fill",
+                        title: "Heart Rate",
+                        description: "Analyze sleep stages and quality",
+                        isGranted: healthKitManager.heartRatePermission
+                    )
+                    .somnaPulse(duration: 2.0, scale: 1.01)
+                    
+                    PermissionRow(
+                        icon: "waveform.path.ecg",
+                        title: "Heart Rate Variability",
+                        description: "Measure stress and recovery",
+                        isGranted: healthKitManager.hrvPermission
+                    )
+                    .somnaPulse(duration: 2.2, scale: 1.01)
+                    
+                    PermissionRow(
+                        icon: "lungs.fill",
+                        title: "Respiratory Rate",
+                        description: "Monitor breathing patterns",
+                        isGranted: healthKitManager.respiratoryRatePermission
+                    )
+                    .somnaPulse(duration: 2.4, scale: 1.01)
+                    
+                    PermissionRow(
+                        icon: "bed.double.fill",
+                        title: "Sleep Analysis",
+                        description: "Track sleep stages and duration",
+                        isGranted: healthKitManager.sleepAnalysisPermission
+                    )
+                    .somnaPulse(duration: 2.6, scale: 1.01)
                 }
-            }
-            
-            Button(action: {
-                withAnimation(.spring()) {
-                    showPermissions = false
-                }
-            }) {
-                Text("Back")
-                    .foregroundColor(.white.opacity(0.7))
-            }
-        }
-        .padding()
-    }
-    
-    // MARK: - Navigation Buttons
-    
-    private var nextButton: some View {
-        Button(action: {
-            withAnimation(.spring()) {
-                if currentPage < totalPages - 1 {
-                    currentPage += 1
+                .padding(.top)
+                
+                if !healthKitManager.isAuthorized {
+                    Button("Grant Permissions") {
+                        Task {
+                            await healthKitManager.requestPermissions()
+                        }
+                    }
+                    .buttonStyle(SomnaPrimaryButtonStyle())
+                    .padding(.top)
+                    .somnaPulse(duration: 1.5, scale: 1.02)
                 } else {
-                    showPermissions = true
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.somnaSuccess)
+                            .somnaPulse(duration: 2.0, scale: 1.1)
+                        Text("All permissions granted")
+                            .foregroundColor(.somnaSuccess)
+                            .fontWeight(.medium)
+                    }
+                    .padding(.top)
                 }
             }
-        }) {
-            Text(currentPage == totalPages - 1 ? "Continue" : "Next")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundColor(.white)
-                .frame(width: 120, height: 50)
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
     
-    private var backButton: some View {
-        Button(action: {
-            withAnimation(.spring()) {
-                if currentPage > 0 {
-                    currentPage -= 1
+    private var healthDataTrainingStep: some View {
+        VStack(spacing: 30) {
+            Image(systemName: "brain.head.profile")
+                .font(.system(size: 80))
+                .foregroundColor(.somnaSecondary)
+                .scaleEffect(isAnimating ? 1.1 : 1.0)
+                .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
+                .somnaPulse(duration: 2.0, scale: 1.1)
+            
+            VStack(spacing: 20) {
+                Text("Personalize Your AI")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .somnaPulse(duration: 3.0, scale: 1.02)
+                
+                Text("Train the AI model on your historical Apple Health data to get personalized sleep insights from day one.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .somnaShimmer()
+                
+                if healthDataAvailable {
+                    VStack(spacing: 15) {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.somnaSuccess)
+                                .somnaPulse(duration: 2.0, scale: 1.1)
+                            Text("\(dataPointsCount) data points available")
+                                .fontWeight(.medium)
+                        }
+                        
+                        if showHealthDataTraining {
+                            VStack(spacing: 12) {
+                                SomnaProgressView(
+                                    value: 0.7,
+                                    color: .somnaPrimary,
+                                    showPercentage: true
+                                )
+                                .frame(height: 8)
+                                
+                                Text("Training AI model...")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.somnaCardBackground)
+                            )
+                            .somnaShimmer()
+                        } else {
+                            Button("Start Training") {
+                                showHealthDataTraining = true
+                                startHealthDataTraining()
+                            }
+                            .buttonStyle(SomnaPrimaryButtonStyle())
+                            .somnaPulse(duration: 1.5, scale: 1.02)
+                        }
+                    }
+                } else {
+                    Text("No historical health data available")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .somnaShimmer()
                 }
             }
-        }) {
-            Text("Back")
-                .font(.body)
-                .foregroundColor(.white.opacity(0.7))
         }
     }
     
-    // MARK: - Permission Actions
-    
-    private func requestHealthKitPermission() {
-        let healthStore = HKHealthStore()
-        
-        guard HKHealthStore.isHealthDataAvailable() else { return }
-        
-        let healthTypes: Set<HKObjectType> = [
-            HKObjectType.quantityType(forIdentifier: .heartRate)!,
-            HKObjectType.quantityType(forIdentifier: .stepCount)!,
-            HKObjectType.quantityType(forIdentifier: .sleepAnalysis)!,
-            HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!
-        ]
-        
-        healthStore.requestAuthorization(toShare: nil, read: healthTypes) { success, _ in
-            DispatchQueue.main.async {
-                self.healthKitAuthorized = success
+    private var finalStep: some View {
+        VStack(spacing: 30) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 80))
+                .foregroundColor(.somnaSuccess)
+                .scaleEffect(isAnimating ? 1.1 : 1.0)
+                .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
+                .somnaPulse(duration: 2.0, scale: 1.1)
+            
+            VStack(spacing: 20) {
+                Text("You're All Set!")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .somnaPulse(duration: 3.0, scale: 1.02)
+                
+                Text("SomnaSync Pro is ready to optimize your sleep experience. Start your first sleep session when you're ready.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .somnaShimmer()
+                
+                Group {
+                    if horizontalSizeClass == .regular {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 250))], spacing: 15) {
+                            finalFeatureRows
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 15) {
+                            finalFeatureRows
+                        }
+                    }
+                }
+                .padding(.top)
             }
         }
     }
-    
-    private func requestNotificationPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
-            DispatchQueue.main.async {
-                self.notificationsAuthorized = granted
-            }
+
+    private var featureRows: some View {
+        Group {
+            FeatureRow(icon: "brain.head.profile", title: "AI Sleep Analysis", description: "Advanced machine learning for personalized sleep insights")
+                .somnaPulse(duration: 2.0, scale: 1.01)
+            FeatureRow(icon: "waveform.path.ecg", title: "HealthKit Integration", description: "Seamless integration with Apple Health data")
+                .somnaPulse(duration: 2.2, scale: 1.01)
+            FeatureRow(icon: "speaker.wave.3", title: "Smart Audio", description: "Adaptive audio generation for optimal sleep")
+                .somnaPulse(duration: 2.4, scale: 1.01)
+            FeatureRow(icon: "alarm", title: "Smart Alarms", description: "Wake up at the perfect time in your sleep cycle")
+                .somnaPulse(duration: 2.6, scale: 1.01)
+        }
+    }
+
+    private var finalFeatureRows: some View {
+        Group {
+            FeatureRow(icon: "moon.stars.fill", title: "Sleep Tracking", description: "Advanced sleep stage analysis")
+                .somnaPulse(duration: 2.0, scale: 1.01)
+            FeatureRow(icon: "speaker.wave.3", title: "Smart Audio", description: "Personalized sleep sounds")
+                .somnaPulse(duration: 2.2, scale: 1.01)
+            FeatureRow(icon: "alarm", title: "Smart Alarms", description: "Optimal wake-up timing")
+                .somnaPulse(duration: 2.4, scale: 1.01)
+            FeatureRow(icon: "chart.line.uptrend.xyaxis", title: "AI Insights", description: "Personalized recommendations")
+                .somnaPulse(duration: 2.6, scale: 1.01)
         }
     }
     
-    private func requestSiriPermission() {
-        INPreferences.requestSiriAuthorization { status in
-            DispatchQueue.main.async {
-                self.siriAuthorized = status == .authorized
-            }
-        }
-    }
+    // MARK: - Helper Methods
     
-    private func requestLocationPermission() {
-        // This would be handled by a location manager
-        DispatchQueue.main.async {
-            self.locationAuthorized = true
+    private func checkHealthDataAvailability() {
+        Task {
+            let availability = await healthDataTrainer.checkDataAvailability()
+            await MainActor.run {
+                self.healthDataAvailable = availability.available
+                self.dataPointsCount = availability.dataPoints
+            }
         }
     }
     
     private func completeOnboarding() {
-        withAnimation(.spring()) {
-            onboardingCompleted = true
-        }
+        appConfiguration.hasCompletedOnboarding = true
+        appConfiguration.firstLaunchDate = Date()
+        
+        // Save any additional onboarding preferences
+        UserDefaults.standard.set(true, forKey: "OnboardingCompleted")
+        
+        // Post notification to switch to main app
+        NotificationCenter.default.post(name: .onboardingCompleted, object: nil)
     }
 }
 
 // MARK: - Supporting Views
 
-struct FeatureHighlight: View {
+struct FeatureRow: View {
     let icon: String
     let title: String
     let description: String
@@ -597,183 +390,21 @@ struct FeatureHighlight: View {
         HStack(spacing: 15) {
             Image(systemName: icon)
                 .font(.title2)
-                .foregroundColor(.white)
+                .foregroundColor(.blue)
                 .frame(width: 30)
             
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .fontWeight(.medium)
                 
                 Text(description)
                     .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
             }
             
             Spacer()
         }
-    }
-}
-
-struct AIFeatureCard: View {
-    let icon: String
-    let title: String
-    let description: String
-    let color: Color
-    
-    var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.largeTitle)
-                .foregroundColor(color)
-            
-            Text(title)
-                .font(.headline)
-                .foregroundColor(.white)
-                .multilineTextAlignment(.center)
-            
-            Text(description)
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.8))
-                .multilineTextAlignment(.center)
-        }
-        .padding()
-        .frame(height: 140)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-}
-
-struct PersonalizationFeature: View {
-    let icon: String
-    let title: String
-    let description: String
-    
-    var body: some View {
-        HStack(spacing: 15) {
-            Image(systemName: icon)
-                .font(.title)
-                .foregroundColor(.cyan)
-                .frame(width: 40)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundColor(.white)
-                
-                Text(description)
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
-            }
-            
-            Spacer()
-        }
-        .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-}
-
-struct iOS18Feature: View {
-    let icon: String
-    let title: String
-    let description: String
-    
-    var body: some View {
-        HStack(spacing: 15) {
-            Image(systemName: icon)
-                .font(.title)
-                .foregroundColor(.green)
-                .frame(width: 40)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundColor(.white)
-                
-                Text(description)
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
-            }
-            
-            Spacer()
-        }
-        .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-}
-
-struct HealthFeature: View {
-    let icon: String
-    let title: String
-    let description: String
-    
-    var body: some View {
-        HStack(spacing: 15) {
-            Image(systemName: icon)
-                .font(.title)
-                .foregroundColor(.red)
-                .frame(width: 40)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundColor(.white)
-                
-                Text(description)
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
-            }
-            
-            Spacer()
-        }
-        .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-}
-
-struct SetupCard: View {
-    let icon: String
-    let title: String
-    let description: String
-    let isRequired: Bool
-    
-    var body: some View {
-        HStack(spacing: 15) {
-            Image(systemName: icon)
-                .font(.title)
-                .foregroundColor(isRequired ? .red : .blue)
-                .frame(width: 40)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(title)
-                        .font(.headline)
-                        .foregroundColor(.white)
-                    
-                    if isRequired {
-                        Text("Required")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
-                            .background(Color.red.opacity(0.2))
-                            .clipShape(Capsule())
-                    }
-                }
-                
-                Text(description)
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
-            }
-            
-            Spacer()
-        }
-        .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
@@ -782,49 +413,68 @@ struct PermissionRow: View {
     let title: String
     let description: String
     let isGranted: Bool
-    let action: () -> Void
     
     var body: some View {
         HStack(spacing: 15) {
             Image(systemName: icon)
                 .font(.title2)
-                .foregroundColor(isGranted ? .green : .white)
+                .foregroundColor(isGranted ? .green : .orange)
                 .frame(width: 30)
             
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .fontWeight(.medium)
                 
                 Text(description)
                     .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
             }
             
             Spacer()
             
-            if isGranted {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(.green)
-            } else {
-                Button("Enable") {
-                    action()
-                }
-                .font(.caption)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(.blue)
-                .foregroundColor(.white)
-                .clipShape(Capsule())
-            }
+            Image(systemName: isGranted ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .foregroundColor(isGranted ? .green : .red)
         }
-        .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
-#Preview {
-    OnboardingView(onboardingCompleted: .constant(false))
+// MARK: - Button Styles
+
+struct PrimaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundColor(.white)
+            .padding()
+            .frame(maxWidth: .infinity)
+            .background(Color.blue)
+            .cornerRadius(12)
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    }
 }
+
+struct SecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundColor(.blue)
+            .padding()
+            .frame(maxWidth: .infinity)
+            .background(Color.blue.opacity(0.1))
+            .cornerRadius(12)
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Notification Extension
+
+extension Notification.Name {
+    static let onboardingCompleted = Notification.Name("OnboardingCompleted")
+}
+
+#Preview {
+    OnboardingView()
+} 

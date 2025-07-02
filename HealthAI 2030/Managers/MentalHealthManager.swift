@@ -4,6 +4,9 @@ import CoreML
 import Combine
 import SwiftUI
 
+@available(iOS 17.0, *)
+@available(macOS 14.0, *)
+
 /// Mental Health Manager for iOS 18+ mental health features
 /// Integrates mindfulness, mental state tracking, and mood analysis
 @MainActor
@@ -644,7 +647,7 @@ struct MentalStateRecord {
         self.timestamp = sample.startDate
         self.state = mentalState
         self.intensity = sample.metadata?["intensity"] as? Double ?? 0.5
-        self.context = MentalHealthContext() // Simplified for now
+        self.context = MentalHealthContext(from: sample.metadata?["context"] as? String ?? "")
     }
 }
 
@@ -697,7 +700,7 @@ struct MoodChange {
         self.mood = mood
         self.intensity = sample.metadata?["intensity"] as? Double ?? 0.5
         self.trigger = sample.metadata?["trigger"] as? String
-        self.context = MentalHealthContext() // Simplified for now
+        self.context = MentalHealthContext(from: sample.metadata?["context"] as? String ?? "")
     }
 }
 
@@ -740,6 +743,17 @@ struct MentalHealthContext {
         self.location = location
         self.activity = activity
         self.socialContext = socialContext
+    }
+    
+    init(from description: String) {
+        // Parse the description string to reconstruct the context
+        // This is a simplified example; a more robust parsing would be needed for production
+        let components = description.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        self.timeOfDay = Int(components.first(where: { $0.hasPrefix("Time:") })?.replacingOccurrences(of: "Time: ", with: "") ?? "0") ?? 0
+        self.dayOfWeek = Int(components.first(where: { $0.hasPrefix("Day:") })?.replacingOccurrences(of: "Day: ", with: "") ?? "1") ?? 1
+        self.location = components.first(where: { $0.hasPrefix("Location:") })?.replacingOccurrences(of: "Location: ", with: "") ?? "Unknown"
+        self.activity = components.first(where: { $0.hasPrefix("Activity:") })?.replacingOccurrences(of: "Activity: ", with: "") ?? "Unknown"
+        self.socialContext = components.first(where: { $0.hasPrefix("Social:") })?.replacingOccurrences(of: "Social: ", with: "") ?? "Unknown"
     }
     
     var description: String {

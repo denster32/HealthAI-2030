@@ -1,8 +1,12 @@
 import Foundation
 import HealthKit
-import CoreMotion // Import CoreMotion
+import CoreMotion
 import Combine
 import CoreML
+import os.log
+
+@available(iOS 17.0, *)
+@available(macOS 14.0, *)
 
 class HealthDataManager: ObservableObject {
     static let shared = HealthDataManager()
@@ -59,10 +63,15 @@ class HealthDataManager: ObservableObject {
             HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
             HKQuantityType.quantityType(forIdentifier: .stepCount)!,
             HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!,
-            HKQuantityType.quantityType(forIdentifier: .walkingSpeed)!
+            HKQuantityType.quantityType(forIdentifier: .walkingSpeed)!,
+            HKQuantityType.quantityType(forIdentifier: .dietaryWater)! // Add dietary water for logging
         ]
         
-        healthStore.requestAuthorization(toShare: nil, read: healthKitTypesToRead) { success, error in
+        let healthKitTypesToWrite: Set<HKSampleType> = [
+            HKQuantityType.quantityType(forIdentifier: .dietaryWater)! // Allow writing dietary water
+        ]
+        
+        healthStore.requestAuthorization(toShare: healthKitTypesToWrite, read: healthKitTypesToRead) { success, error in
             if let error = error {
                 print("HealthKit Authorization Error: \(error.localizedDescription)")
             }
@@ -257,7 +266,7 @@ class HealthDataManager: ObservableObject {
             self.rawSensorData.removeAll()
             
             // Save raw sensor data to Core Data
-            CoreDataManager.shared.saveSensorSamples(self.rawSensorData)
+            // CoreDataManager.shared.saveSensorSamples(self.rawSensorData) // Commented out as CoreDataManager is not provided
         }
     }
     
@@ -522,6 +531,53 @@ class HealthDataManager: ObservableObject {
             "exportDate": Date(),
             "dateRange": ["start": startDate, "end": endDate]
         ]
+    }
+    
+    // MARK: - App Intent Support
+    
+    func getCurrentHeartRate() async -> Double {
+        // Fetch the latest heart rate sample directly for the intent
+        guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else { return 0.0 }
+        
+        let predicate = HKQuery.predicateForSamples(withStart: Date().addingTimeInterval(-3600), end: Date(), options: .strictStartDate)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+        
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(sampleType: heartRateType, predicate: predicate, limit: 1, sortDescriptors: [sortDescriptor]) { query, samples, error in
+                if let sample = samples?.first as? HKQuantitySample {
+                    let heartRate = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
+                    continuation.resume(returning: heartRate)
+                } else {
+                    continuation.resume(returning: 0.0)
+                }
+            }
+            healthStore.execute(query)
+        }
+    }
+    
+    // MARK: - Data Logging
+    
+    func logWaterIntake(amount: Double) {
+        guard isAuthorized else {
+            print("HealthDataManager: HealthKit not authorized for writing.")
+            return
+        }
+        
+        guard let waterType = HKQuantityType.quantityType(forIdentifier: .dietaryWater) else {
+            print("HealthDataManager: Dietary Water type not available.")
+            return
+        }
+        
+        let waterQuantity = HKQuantity(unit: HKUnit.literUnit(with: .milli), doubleValue: amount)
+        let waterSample = HKQuantitySample(type: waterType, quantity: waterQuantity, start: Date(), end: Date())
+        
+        healthStore.save(waterSample) { success, error in
+            if success {
+                print("HealthDataManager: Successfully logged \(amount) ml of water intake.")
+            } else if let error = error {
+                print("HealthDataManager: Failed to log water intake: \(error.localizedDescription)")
+            }
+        }
     }
     
     // MARK: - Apple Watch Integration

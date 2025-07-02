@@ -1,5 +1,9 @@
 import SwiftUI
 import Charts
+import os.log
+
+@available(iOS 17.0, *)
+@available(macOS 14.0, *)
 
 struct DashboardView: View {
     @StateObject private var healthDataManager = HealthDataManager.shared
@@ -15,42 +19,62 @@ struct DashboardView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVStack(spacing: 20) {
-                    WhatsNewCard()
-                    // Health Status Overview
+            iPadDashboardLayout {
+                // Dashboard Cards
+                WhatsNewCard()
+                
+                // Health Status Overview
+                ResponsiveCard {
                     HealthStatusCard()
-                    
-                    // Quick Actions
+                }
+                
+                // Quick Actions
+                ResponsiveCard {
                     QuickActionsCard()
-                    
-                    // Today's Health Metrics
+                }
+                
+                // Today's Health Metrics
+                ResponsiveCard {
                     TodaysMetricsCard()
-                    
-                    // Sleep Summary
+                }
+                
+                // Sleep Summary
+                ResponsiveCard {
                     SleepSummaryCard()
-                    
-                    // Environment Status
+                }
+                
+                // Environment Status
+                ResponsiveCard {
                     EnvironmentStatusCard()
-                    
-                    // Predictive Insights
+                }
+                
+                // Predictive Insights
+                ResponsiveCard {
                     PredictiveInsightsCard()
-                    
-                    // Health Alerts
+                }
+                
+                // Health Alerts
+                ResponsiveCard {
                     HealthAlertsCard()
-                    
-                    // Recent Activity
+                }
+                
+                // Recent Activity
+                ResponsiveCard {
                     RecentActivityCard()
-                    
-                    // Apple Watch Sync Status
+                }
+                
+                // Apple Watch Sync Status
+                ResponsiveCard {
                     WatchSyncStatusCard()
-                    
-                    // Live Activity Dashboard
+                }
+                
+                // Live Activity Dashboard
+                ResponsiveCard {
                     LiveActivityDashboardCard()
                 }
-                .padding()
             }
             .navigationTitle("Dashboard")
+            .iPadOptimized()
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
@@ -234,6 +258,7 @@ struct QuickActionsCard: View {
                 ) {
                     showingMeditationModal = true
                     HapticManager.shared.impact(.light)
+                    HapticManager.shared.notification(.success)
                 }
                 
                 QuickActionButton(
@@ -245,6 +270,7 @@ struct QuickActionsCard: View {
                         await HealthDataManager.shared.refreshHealthData()
                     }
                     HapticManager.shared.impact(.light)
+                    HapticManager.shared.notification(.success)
                 }
                 
                 QuickActionButton(
@@ -254,6 +280,7 @@ struct QuickActionsCard: View {
                 ) {
                     showingMoodModal = true
                     HapticManager.shared.impact(.light)
+                    HapticManager.shared.notification(.success)
                 }
                 
                 QuickActionButton(
@@ -263,6 +290,7 @@ struct QuickActionsCard: View {
                 ) {
                     showingBreathingModal = true
                     HapticManager.shared.impact(.light)
+                    HapticManager.shared.notification(.success)
                 }
                 
                 QuickActionButton(
@@ -272,6 +300,7 @@ struct QuickActionsCard: View {
                 ) {
                     showingMentalStateModal = true
                     HapticManager.shared.impact(.light)
+                    HapticManager.shared.notification(.success)
                 }
                 
                 QuickActionButton(
@@ -281,6 +310,7 @@ struct QuickActionsCard: View {
                 ) {
                     showingHealthCheckModal = true
                     HapticManager.shared.impact(.light)
+                    HapticManager.shared.notification(.success)
                 }
             }
         }
@@ -682,6 +712,8 @@ struct QuickActionButton: View {
             .frame(height: 60)
             .background(isActive ? Color.blue : Color(.systemGray5))
             .cornerRadius(8)
+            .scaleEffect(isActive ? 1.05 : 1.0) // Add a subtle scale animation
+            .animation(.spring(response: 0.3, dampingFraction: 0.6, blendDuration: 0), value: isActive)
         }
     }
 }

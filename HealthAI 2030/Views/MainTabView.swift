@@ -3,6 +3,9 @@ import MentalHealthDashboardView
 import AdvancedCardiacDashboardView
 import RespiratoryHealthDashboardView
 
+@available(iOS 17.0, *)
+@available(macOS 14.0, *)
+
 struct MainTabView: View {
     @StateObject private var healthDataManager = HealthDataManager.shared
     @StateObject private var sleepOptimizationManager = SleepOptimizationManager.shared
@@ -13,6 +16,33 @@ struct MainTabView: View {
     @StateObject private var systemIntelligenceManager = SystemIntelligenceManager.shared
     
     var body: some View {
+        Group {
+            if DeviceType.current.isIPad {
+                iPadTabLayout
+            } else {
+                iPhoneTabLayout
+            }
+        }
+        .environmentObject(healthDataManager)
+        .environmentObject(sleepOptimizationManager)
+        .environmentObject(environmentManager)
+        .environmentObject(mentalHealthManager)
+        .environmentObject(advancedCardiacManager)
+        .environmentObject(respiratoryHealthManager)
+        .environmentObject(systemIntelligenceManager)
+    }
+    
+    private var iPadTabLayout: some View {
+        NavigationSplitView {
+            // iPad Sidebar Navigation
+            iPadSidebarNavigation()
+        } detail: {
+            // Main content based on selection
+            iPadMainContent()
+        }
+    }
+    
+    private var iPhoneTabLayout: some View {
         TabView {
             DashboardView()
                 .tabItem {
@@ -20,7 +50,7 @@ struct MainTabView: View {
                     Text("Dashboard")
                 }
             
-            AdvancedAnalyticsDashboardView()
+            iPadAnalyticsDashboard()
                 .tabItem {
                     Image(systemName: "chart.bar.fill")
                     Text("Analytics")
@@ -56,13 +86,56 @@ struct MainTabView: View {
                     Text("Settings")
                 }
         }
-        .environmentObject(healthDataManager)
-        .environmentObject(sleepOptimizationManager)
-        .environmentObject(environmentManager)
-        .environmentObject(mentalHealthManager)
-        .environmentObject(advancedCardiacManager)
-        .environmentObject(respiratoryHealthManager)
-        .environmentObject(systemIntelligenceManager)
+    }
+}
+
+// MARK: - iPad Navigation Components
+
+extension MainTabView {
+    func iPadSidebarNavigation() -> some View {
+        List {
+            NavigationLink(destination: DashboardView()) {
+                Label("Dashboard", systemImage: "house.fill")
+            }
+            
+            NavigationLink(destination: iPadAnalyticsDashboard()) {
+                Label("Analytics", systemImage: "chart.bar.fill")
+            }
+            
+            Section("Health Categories") {
+                NavigationLink(destination: MentalHealthDashboardView()) {
+                    Label("Mental Health", systemImage: "brain.head.profile")
+                }
+                
+                NavigationLink(destination: AdvancedCardiacDashboardView()) {
+                    Label("Cardiac", systemImage: "heart.fill")
+                }
+                
+                NavigationLink(destination: RespiratoryHealthDashboardView()) {
+                    Label("Respiratory", systemImage: "lungs.fill")
+                }
+            }
+            
+            Section("Advanced") {
+                NavigationLink(destination: SystemIntelligenceView()) {
+                    Label("AI Intelligence", systemImage: "brain")
+                }
+                
+                NavigationLink(destination: FocusModeView()) {
+                    Label("Focus Modes", systemImage: "moon.circle.fill")
+                }
+                
+                NavigationLink(destination: SettingsView()) {
+                    Label("Settings", systemImage: "gear")
+                }
+            }
+        }
+        .navigationTitle("HealthAI 2030")
+        .listStyle(SidebarListStyle())
+    }
+    
+    func iPadMainContent() -> some View {
+        DashboardView()
     }
 }
 

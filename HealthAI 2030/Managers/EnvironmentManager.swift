@@ -2,6 +2,9 @@ import Foundation
 import HomeKit
 import Combine
 
+@available(iOS 17.0, *)
+@available(macOS 14.0, *)
+
 class EnvironmentManager: ObservableObject {
     static let shared = EnvironmentManager()
     
@@ -20,8 +23,8 @@ class EnvironmentManager: ObservableObject {
     @Published var discoveredAccessories: [String: [HMAccessory]] = [:]
     
     // Environment optimization
-    @Published var isOptimizationActive: Bool = false
-    @Published var currentOptimizationMode: OptimizationMode = .auto
+    @AppStorage("isEnvironmentOptimizationActive") @Published var isOptimizationActive: Bool = false
+    @AppStorage("currentEnvironmentOptimizationMode") @Published var currentOptimizationMode: OptimizationMode = .auto
     
     private init() {
         setupHomeKit()
@@ -401,7 +404,7 @@ class EnvironmentManager: ObservableObject {
 
 // MARK: - Supporting Classes and Models
 
-enum OptimizationMode {
+enum OptimizationMode: String, Codable {
     case auto
     case sleep
     case work

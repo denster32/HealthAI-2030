@@ -5,6 +5,7 @@ struct SettingsView: View {
     @StateObject private var healthDataManager = HealthDataManager.shared
     @StateObject private var sleepOptimizationManager = SleepOptimizationManager.shared
     @StateObject private var environmentManager = EnvironmentManager.shared
+    @StateObject private var audioGenerator = BreathingAudioFileGenerator.shared
     
     @State private var showingHealthKitAuth = false
     @State private var showingDataExport = false
@@ -110,6 +111,9 @@ struct SettingsView: View {
                     .foregroundColor(.red)
                 }
                 #endif
+                
+                // Audio File Generation Section
+                audioFileGenerationSection
             }
             .navigationTitle("Settings")
         }
@@ -118,6 +122,61 @@ struct SettingsView: View {
     private func resetAllData() {
         // Implementation for resetting all data
         print("Resetting all data...")
+    }
+    
+    // MARK: - Audio File Generation Section
+    
+    private var audioFileGenerationSection: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            Text("Audio Files")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Generate missing audio files for Apple TV breathing exercise")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                if audioGenerator.isGenerating {
+                    VStack(spacing: 8) {
+                        ProgressView(value: audioGenerator.generationProgress)
+                            .progressViewStyle(LinearProgressViewStyle())
+                        
+                        HStack {
+                            Text("Generating: \(audioGenerator.currentFile)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            Spacer()
+                            
+                            Text("\(Int(audioGenerator.generationProgress * 100))%")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                } else {
+                    Button(action: {
+                        Task {
+                            await audioGenerator.generateAudioFilesWithProgress()
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "music.note")
+                            Text("Generate Audio Files")
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(Color.blue)
+                        .cornerRadius(8)
+                    }
+                    .disabled(audioGenerator.isGenerating)
+                }
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(10)
+        }
     }
 }
 

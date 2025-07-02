@@ -17,6 +17,9 @@ import TipKit
 import OSLog
 import ActivityKit
 
+@available(iOS 17.0, *)
+@available(macOS 14.0, *)
+
 @main
 struct HealthAI_2030App: App {
     // MARK: - Core Managers
@@ -44,6 +47,7 @@ struct HealthAI_2030App: App {
     @StateObject private var interactiveWidgetManager = InteractiveWidgetManager()
     @StateObject private var controlCenterManager = ControlCenterManager()
     @StateObject private var spotlightManager = SpotlightManager()
+    @StateObject private var appShortcutsManager = AppShortcutsManager()
     
     // MARK: - App State
     @AppStorage("onboarding_completed") private var onboardingCompleted = false
@@ -88,6 +92,7 @@ struct HealthAI_2030App: App {
             .environmentObject(interactiveWidgetManager)
             .environmentObject(controlCenterManager)
             .environmentObject(spotlightManager)
+            .environmentObject(appShortcutsManager)
             .preferredColorScheme(colorSchemeForTheme(appTheme))
             .task {
                 // iOS 18: Initialize TipKit
@@ -152,6 +157,9 @@ struct HealthAI_2030App: App {
         
         // Setup Spotlight search integration
         setupSpotlightIntegration()
+        
+        // Configure App Shortcuts
+        configureAppShortcuts()
     }
     
     private func configureAppAppearance() {
@@ -541,6 +549,7 @@ extension HealthAI_2030App {
         AppDependencyManager.shared.add(dependency: healthDataManager)
         AppDependencyManager.shared.add(dependency: sleepOptimizationManager)
         AppDependencyManager.shared.add(dependency: aiHealthCoach)
+        AppDependencyManager.shared.add(dependency: appShortcutsManager)
     }
     
     private func initializeAIComponents() {
@@ -632,6 +641,12 @@ extension HealthAI_2030App {
             // Donate common user intents
             await shortcutsManager.donateCommonIntents()
         }
+    }
+    
+    private func configureAppShortcuts() {
+        logger.info("Configuring App Shortcuts")
+        // App Shortcuts are automatically discovered by the system
+        // Ensure your AppIntents conform to AppShortcutProvider
     }
     
     private func setupSpotlightIntegration() {

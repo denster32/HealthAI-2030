@@ -10,6 +10,8 @@ struct HealthMonitoringAttributes: ActivityAttributes {
         var oxygenSaturation: Double
         var stressLevel: String
         var sleepQuality: Double
+        var steps: Int
+        var caloriesBurned: Int
         var lastUpdated: Date
     }
     
@@ -51,6 +53,8 @@ class LiveActivityManager: ObservableObject {
             oxygenSaturation: 0.0,
             stressLevel: "Unknown",
             sleepQuality: 0.0,
+            steps: 0,
+            caloriesBurned: 0,
             lastUpdated: Date()
         )
         
@@ -98,6 +102,8 @@ class LiveActivityManager: ObservableObject {
             oxygenSaturation: healthData.oxygenSaturation,
             stressLevel: healthData.stressLevel,
             sleepQuality: healthData.sleepQuality,
+            steps: healthData.steps,
+            caloriesBurned: healthData.caloriesBurned,
             lastUpdated: Date()
         )
         
@@ -106,13 +112,16 @@ class LiveActivityManager: ObservableObject {
     
     // MARK: - Health Data Fetching
     
-    private func fetchCurrentHealthData() async -> (heartRate: Double, oxygenSaturation: Double, stressLevel: String, sleepQuality: Double) {
+    private func fetchCurrentHealthData() async -> (heartRate: Double, oxygenSaturation: Double, stressLevel: String, sleepQuality: Double, steps: Int, caloriesBurned: Int) {
         let heartRate = AdvancedCardiacManager.shared.heartRateData.first?.value ?? 0.0
         let oxygenSaturation = RespiratoryHealthManager.shared.oxygenSaturation
         let stressLevel = MentalHealthManager.shared.stressLevel.displayName
         let sleepQuality = SleepOptimizationManager.shared.sleepQuality
+        // Simulate fetching steps and calories burned
+        let steps = Int.random(in: 1000...10000)
+        let caloriesBurned = Int.random(in: 200...2000)
         
-        return (heartRate, oxygenSaturation, stressLevel, sleepQuality)
+        return (heartRate, oxygenSaturation, stressLevel, sleepQuality, steps, caloriesBurned)
     }
     
     // MARK: - Real-time Updates
@@ -137,7 +146,9 @@ class LiveActivityManager: ObservableObject {
         let healthTypes: Set<HKObjectType> = [
             HKObjectType.quantityType(forIdentifier: .heartRate)!,
             HKObjectType.quantityType(forIdentifier: .oxygenSaturation)!,
-            HKObjectType.quantityType(forIdentifier: .sleepAnalysis)!
+            HKObjectType.quantityType(forIdentifier: .sleepAnalysis)!,
+            HKObjectType.quantityType(forIdentifier: .stepCount)!,
+            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!
         ]
         
         healthStore.requestAuthorization(toShare: nil, read: healthTypes) { success, error in
@@ -199,21 +210,42 @@ struct LockScreenLiveActivityView: View {
                 )
                 
                 HealthMetricView(
+                    title: "Steps",
+                    value: "\(context.state.steps)",
+                    unit: "",
+                    icon: "figure.walk",
+                    color: .green
+                )
+            }
+            
+            HStack(spacing: 20) {
+                HealthMetricView(
                     title: "Stress",
                     value: context.state.stressLevel,
                     unit: "",
                     icon: "brain.head.profile",
                     color: stressColor
                 )
+                
+                HealthMetricView(
+                    title: "Calories",
+                    value: "\(context.state.caloriesBurned)",
+                    unit: "kcal",
+                    icon: "flame.fill",
+                    color: .orange
+                )
+                
+                HealthMetricView(
+                    title: "Sleep Quality",
+                    value: "\(Int(context.state.sleepQuality * 100))%",
+                    unit: "",
+                    icon: "moon.fill",
+                    color: .indigo
+                )
             }
             
             HStack {
-                Text("Sleep Quality: \(Int(context.state.sleepQuality * 100))%")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                
                 Spacer()
-                
                 Button("Stop Monitoring") {
                     LiveActivityManager.shared.stopHealthMonitoring()
                 }
@@ -298,13 +330,25 @@ struct DynamicIslandLiveActivityView: View {
                     Spacer()
                     
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text("Sleep Quality")
+                        Text("Steps")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Text("\(Int(context.state.sleepQuality * 100))%")
+                        Text("\(context.state.steps)")
                             .font(.subheadline)
                             .fontWeight(.medium)
-                            .foregroundColor(.indigo)
+                            .foregroundColor(.green)
+                    }
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("Calories")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text("\(context.state.caloriesBurned)")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.orange)
                     }
                 }
             }

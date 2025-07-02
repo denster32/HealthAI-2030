@@ -3,11 +3,13 @@ import HealthKit
 import WatchConnectivity
 import CoreData
 import BackgroundTasks
+import WidgetKit // Import WidgetKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
     
     var window: UIWindow?
+    var sharedUserDefaults: UserDefaults? // Add shared user defaults for app group
     var healthStore: HKHealthStore?
     var session: WCSession?
     var backgroundTaskScheduler: BackgroundTaskScheduler?
@@ -28,6 +30,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         // Setup notifications
         setupNotifications()
+        
+        // Setup widgets
+        setupWidgets()
         
         return true
     }
@@ -83,6 +88,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 print("Notification authorization error: \(error)")
             }
         }
+    }
+    
+    private func setupWidgets() {
+        // Configure app group for data sharing
+        sharedUserDefaults = UserDefaults(suiteName: "group.com.healthai2030.widgets")
+        
+        // Reload all widget timelines to ensure they are up-to-date
+        WidgetCenter.shared.reloadAllTimelines()
+        print("Widget bundle registered and timelines reloaded.")
     }
 }
 
