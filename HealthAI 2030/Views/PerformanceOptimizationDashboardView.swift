@@ -14,7 +14,7 @@ struct PerformanceOptimizationDashboardView: View {
     @State private var showingPerformanceAlerts = false
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 16) {
                     // Performance Mode Selector

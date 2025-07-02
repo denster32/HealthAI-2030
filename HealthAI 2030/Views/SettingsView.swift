@@ -11,7 +11,7 @@ struct SettingsView: View {
     @State private var showingAbout = false
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 // Health Data Section
                 Section("Health Data") {

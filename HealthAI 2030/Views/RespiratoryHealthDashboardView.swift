@@ -24,7 +24,7 @@ struct RespiratoryHealthDashboardView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 20) {
                     // Respiratory Health Score Card

@@ -7,7 +7,7 @@ struct AnalyticsView: View {
     @EnvironmentObject var sleepOptimizationManager: SleepOptimizationManager
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     Text("Health Analytics")
