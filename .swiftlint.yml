@@ -1,0 +1,31 @@
+excluded:
+  - Pods
+  - Carthage
+  - SomnaSync_Repo/Resources
+  - build
+  - .build
+
+opt_in_rules:
+  - implicit_return
+  - closure_parameter_position
+  - discouraged_optional_boolean
+  - redundant_nil_coalescing
+  - unused_declaration
+
+line_length:
+  warning: 120
+  error: 200
+
+trailing_whitespace:
+  ignores_empty_lines: true
+
+identifier_name:
+  min_length: 3
+
+type_body_length:
+  warning: 400
+  error: 800
+
+function_body_length:
+  warning: 60
+  error: 120 

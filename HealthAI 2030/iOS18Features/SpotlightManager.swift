@@ -7,6 +7,7 @@ import OSLog
 
 // MARK: - Spotlight Manager for iOS 18 Search Integration
 
+@available(iOS 18.0, *)
 class SpotlightManager: ObservableObject {
     
     // MARK: - Published Properties

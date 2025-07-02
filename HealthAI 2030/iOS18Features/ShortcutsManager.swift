@@ -7,6 +7,7 @@ import Combine
 
 // MARK: - Shortcuts Manager for iOS 18 Siri Integration
 
+@available(iOS 18.0, *)
 class ShortcutsManager: ObservableObject {
     
     // MARK: - Published Properties

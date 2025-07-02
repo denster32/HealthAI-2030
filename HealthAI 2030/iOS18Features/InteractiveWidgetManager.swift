@@ -7,6 +7,7 @@ import AppIntents
 
 // MARK: - Interactive Widget Manager for iOS 18
 
+@available(iOS 18.0, *)
 class InteractiveWidgetManager: ObservableObject {
     
     // MARK: - Published Properties
