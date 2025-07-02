@@ -17,8 +17,12 @@ class RealTimeSyncManager: ObservableObject {
     private let coreDataManager = CoreDataManager.shared
     
     private var cancellables = Set<AnyCancellable>()
-    private var syncTimer: Timer?
-    private let syncInterval: TimeInterval = 30.0 // 30 seconds
+    @available(iOS 16.0, macOS 13.0, *)
+    private var syncTask: Task<Void, Never>?
+    @available(iOS 16.0, macOS 13.0, *)
+    private var conflictDetectionTask: Task<Void, Never>?
+    private let syncInterval: Duration = .seconds(30)
+    private let conflictInterval: Duration = .seconds(60)
     
     // Data queues for batch processing
     private var pendingHealthData: [HealthDataSync] = []
@@ -29,24 +33,37 @@ class RealTimeSyncManager: ObservableObject {
     private let conflictResolutionStrategy: ConflictResolutionStrategy = .mostRecent
     
     private init() {
-        setupSyncScheduler()
-        setupConflictDetection()
+        if #available(iOS 16.0, macOS 13.0, *) {
+            setupSyncScheduler()
+            setupConflictDetection()
+        }
         observeHealthDataChanges()
         observeWatchConnectivity()
     }
     
     // MARK: - Setup
     
+    @available(iOS 16.0, macOS 13.0, *)
     private func setupSyncScheduler() {
-        syncTimer = Timer.scheduledTimer(withTimeInterval: syncInterval, repeats: true) { [weak self] _ in
-            self?.performPeriodicSync()
+        // Cancel any existing task before creating a new one
+        syncTask?.cancel()
+        syncTask = Task.detached(priority: .background) { [weak self] in
+            let clock = ContinuousClock()
+            for await _ in clock.timer(interval: self?.syncInterval ?? .seconds(30)) {
+                guard let self else { continue }
+                self.performPeriodicSync()
+            }
         }
     }
     
+    @available(iOS 16.0, macOS 13.0, *)
     private func setupConflictDetection() {
-        // Monitor for data conflicts between sources
-        Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { [weak self] _ in
-            self?.detectAndResolveConflicts()
+        conflictDetectionTask?.cancel()
+        conflictDetectionTask = Task.detached(priority: .background) { [weak self] in
+            let clock = ContinuousClock()
+            for await _ in clock.timer(interval: self?.conflictInterval ?? .seconds(60)) {
+                self?.detectAndResolveConflicts()
+            }
         }
     }
     
