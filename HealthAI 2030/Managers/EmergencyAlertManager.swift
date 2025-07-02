@@ -21,6 +21,11 @@ class EmergencyAlertManager: ObservableObject {
     private var responseCoordinator: ResponseCoordinator?
     private var notificationManager: EmergencyNotificationManager?
     
+    // Enhanced emergency components
+    private var cardiacEmergencyHandler: CardiacEmergencyHandler?
+    private var fallDetector: FallDetector?
+    private var medicalHistoryManager: MedicalHistoryManager?
+    
     // Emergency monitoring
     private var healthThresholds: HealthThresholds = HealthThresholds()
     private var emergencyRules: [EmergencyRule] = []
@@ -163,9 +168,51 @@ class EmergencyAlertManager: ObservableObject {
         responseCoordinator = ResponseCoordinator()
         notificationManager = EmergencyNotificationManager()
         
+        setupEnhancedEmergencyComponents()
         setupHealthDataSubscription()
         setupLocationSubscription()
         loadSavedConfiguration()
+    }
+    
+    private func setupEnhancedEmergencyComponents() {
+        cardiacEmergencyHandler = CardiacEmergencyHandler()
+        fallDetector = FallDetector()
+        medicalHistoryManager = MedicalHistoryManager()
+        
+        setupEmergencyComponentIntegration()
+    }
+    
+    private func setupEmergencyComponentIntegration() {
+        // Subscribe to cardiac emergency alerts
+        cardiacEmergencyHandler?.$activeCardiacAlerts
+            .sink { [weak self] cardiacAlerts in
+                self?.handleCardiacEmergencyAlerts(cardiacAlerts)
+            }
+            .store(in: &cancellables)
+        
+        // Subscribe to fall detection alerts
+        fallDetector?.$activeFallAlerts
+            .sink { [weak self] fallAlerts in
+                self?.handleFallDetectionAlerts(fallAlerts)
+            }
+            .store(in: &cancellables)
+        
+        // Subscribe to emergency status changes
+        cardiacEmergencyHandler?.$emergencyResponseActive
+            .sink { [weak self] isActive in
+                if isActive {
+                    self?.escalateEmergencyResponse(.cardiac)
+                }
+            }
+            .store(in: &cancellables)
+        
+        fallDetector?.$fallDetectionStatus
+            .sink { [weak self] status in
+                if status == .fallDetected {
+                    self?.escalateEmergencyResponse(.fall)
+                }
+            }
+            .store(in: &cancellables)
     }
     
     private func setupHealthDataSubscription() {
@@ -702,6 +749,251 @@ enum ComparisonOperator: String, CaseIterable {
     case lessThan = "<"
     case equalTo = "=="
     case notEqualTo = "!="
+}
+
+    // MARK: - Enhanced Emergency Response Integration
+    
+    private func handleCardiacEmergencyAlerts(_ alerts: [CardiacEmergencyAlert]) {
+        for alert in alerts where alert.status == .active {
+            let emergencyAlert = convertCardiacAlertToEmergencyAlert(alert)
+            processEmergencyAlert(emergencyAlert)
+        }
+    }
+    
+    private func handleFallDetectionAlerts(_ alerts: [FallAlert]) {
+        for alert in alerts where alert.status == .pending || alert.status == .confirmed {
+            let emergencyAlert = convertFallAlertToEmergencyAlert(alert)
+            processEmergencyAlert(emergencyAlert)
+        }
+    }
+    
+    private func convertCardiacAlertToEmergencyAlert(_ cardiacAlert: CardiacEmergencyAlert) -> EmergencyAlert {
+        let severity: EmergencyAlertSeverity
+        switch cardiacAlert.responseLevel {
+        case .immediate:
+            severity = .critical
+        case .urgent:
+            severity = .high
+        case .monitoring:
+            severity = .medium
+        }
+        
+        return EmergencyAlert(
+            id: cardiacAlert.id.uuidString,
+            type: .cardiac,
+            severity: severity,
+            description: "Cardiac emergency detected: \(cardiacAlert.event.type)",
+            timestamp: cardiacAlert.timestamp,
+            location: getCurrentLocation(),
+            healthData: getCurrentHealthData(),
+            isManual: false,
+            responseLevel: mapCardiacToEmergencyResponseLevel(cardiacAlert.responseLevel),
+            medicalData: getMedicalDataForEmergency()
+        )
+    }
+    
+    private func convertFallAlertToEmergencyAlert(_ fallAlert: FallAlert) -> EmergencyAlert {
+        let severity: EmergencyAlertSeverity
+        switch fallAlert.responseLevel {
+        case .immediate:
+            severity = .critical
+        case .urgent:
+            severity = .high
+        case .monitoring:
+            severity = .medium
+        }
+        
+        return EmergencyAlert(
+            id: fallAlert.id.uuidString,
+            type: .fall,
+            severity: severity,
+            description: "Fall detected: \(fallAlert.event.type)",
+            timestamp: fallAlert.timestamp,
+            location: fallAlert.event.location,
+            healthData: getCurrentHealthData(),
+            isManual: false,
+            responseLevel: mapFallToEmergencyResponseLevel(fallAlert.responseLevel),
+            medicalData: getMedicalDataForEmergency()
+        )
+    }
+    
+    private func mapCardiacToEmergencyResponseLevel(_ cardiacLevel: CardiacResponseLevel) -> EmergencyResponseLevel {
+        switch cardiacLevel {
+        case .immediate:
+            return .critical
+        case .urgent:
+            return .urgent
+        case .monitoring:
+            return .monitoring
+        }
+    }
+    
+    private func mapFallToEmergencyResponseLevel(_ fallLevel: FallResponseLevel) -> EmergencyResponseLevel {
+        switch fallLevel {
+        case .immediate:
+            return .critical
+        case .urgent:
+            return .urgent
+        case .monitoring:
+            return .monitoring
+        }
+    }
+    
+    private func escalateEmergencyResponse(_ emergencyType: EmergencyType) {
+        switch emergencyType {
+        case .cardiac:
+            escalationLevel = .critical
+            triggerCriticalEmergencyResponse()
+        case .fall:
+            escalationLevel = .high
+            triggerUrgentEmergencyResponse()
+        default:
+            escalationLevel = .medium
+        }
+        
+        currentAlertStatus = .emergency
+        responseStatus = .responding
+    }
+    
+    private func triggerCriticalEmergencyResponse() {
+        // Immediate emergency services contact
+        callEmergencyServices()
+        
+        // Notify all emergency contacts
+        notifyAllEmergencyContacts(priority: .critical)
+        
+        // Transmit medical data
+        transmitEmergencyMedicalData()
+        
+        // Enhance monitoring
+        enhanceEmergencyMonitoring()
+    }
+    
+    private func triggerUrgentEmergencyResponse() {
+        // Notify emergency contacts
+        notifyAllEmergencyContacts(priority: .high)
+        
+        // Prepare emergency data
+        prepareEmergencyDataTransmission()
+        
+        // Start emergency countdown
+        startEmergencyCountdown()
+    }
+    
+    private func getMedicalDataForEmergency() -> EmergencyMedicalDataPackage? {
+        guard let medicalData = medicalHistoryManager else { return nil }
+        
+        Task {
+            let emergencyData = await medicalData.prepareEmergencyMedicalData()
+            return EmergencyMedicalDataPackage(data: emergencyData)
+        }
+        
+        return nil
+    }
+    
+    private func transmitEmergencyMedicalData() {
+        guard let medicalManager = medicalHistoryManager else { return }
+        
+        Task {
+            let recipient = EmergencyRecipient(
+                id: "emergency_services",
+                name: "Emergency Services",
+                type: .emergencyServices,
+                publicKey: nil,
+                emergencyLevel: .critical
+            )
+            
+            let authorization = EmergencyAuthorization(
+                type: .emergencyOverride,
+                emergencyLevel: .critical,
+                providerId: nil,
+                serviceType: .emergency911,
+                timestamp: Date()
+            )
+            
+            do {
+                let result = try await medicalManager.transmitEmergencyMedicalData(
+                    to: recipient,
+                    with: authorization
+                )
+                print("Emergency medical data transmitted: \(result.success)")
+            } catch {
+                print("Failed to transmit emergency medical data: \(error)")
+            }
+        }
+    }
+    
+    private func prepareEmergencyDataTransmission() {
+        // Prepare data for potential transmission
+    }
+    
+    private func startEmergencyCountdown() {
+        // Start countdown for emergency response
+    }
+    
+    private func enhanceEmergencyMonitoring() {
+        // Increase monitoring frequency during emergency
+        cardiacEmergencyHandler?.startCardiacMonitoring()
+        fallDetector?.startFallDetection()
+    }
+    
+    func notifyEmergencyContacts(message: String, priority: NotificationPriority, location: CLLocation?) {
+        for contact in emergencyContacts {
+            sendEmergencyNotification(to: contact, message: message, priority: priority, location: location)
+        }
+    }
+    
+    private func notifyAllEmergencyContacts(priority: NotificationPriority) {
+        let location = getCurrentLocation()
+        let message = generateEmergencyMessage(priority: priority)
+        
+        notifyEmergencyContacts(message: message, priority: priority, location: location)
+    }
+    
+    private func generateEmergencyMessage(priority: NotificationPriority) -> String {
+        switch priority {
+        case .critical:
+            return "🚨 CRITICAL EMERGENCY: Immediate medical emergency detected. Emergency services contacted."
+        case .high:
+            return "⚠️ URGENT EMERGENCY: Medical emergency detected. Please check immediately."
+        case .medium:
+            return "⚠️ Medical Alert: Health concern detected. Please check when possible."
+        case .low:
+            return "📋 Health Notification: Minor health alert detected."
+        }
+    }
+    
+    private func sendEmergencyNotification(to contact: EmergencyContact, message: String, priority: NotificationPriority, location: CLLocation?) {
+        // Send notification to emergency contact
+        print("Sending emergency notification to \(contact.name): \(message)")
+        
+        // In real implementation, would send SMS, call, or push notification
+    }
+    
+    private func callEmergencyServices() {
+        print("🚨 CALLING EMERGENCY SERVICES (911)")
+        // In real implementation, would integrate with emergency services API
+    }
+}
+
+// MARK: - Enhanced Data Structures
+
+extension EmergencyAlert {
+    convenience init(id: String, type: EmergencyType, severity: EmergencyAlertSeverity, description: String, timestamp: Date, location: CLLocation?, healthData: HealthData?, isManual: Bool, responseLevel: EmergencyResponseLevel, medicalData: EmergencyMedicalDataPackage?) {
+        self.init(id: id, type: type, severity: severity, description: description, timestamp: timestamp, location: location, healthData: healthData, isManual: isManual)
+        // Additional properties would be set here
+    }
+}
+
+struct EmergencyMedicalDataPackage {
+    let data: EmergencyMedicalData
+    let timestamp: Date = Date()
+}
+
+enum EmergencyResponseLevel {
+    case monitoring
+    case urgent
+    case critical
 }
 
 // MARK: - Notification Names

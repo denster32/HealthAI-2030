@@ -2,6 +2,7 @@ import Foundation
 import CoreML
 import Combine
 import CryptoKit
+import UIKit
 
 /// Federated Learning Manager
 /// Enables privacy-preserving ML model training across devices using federated learning techniques
@@ -688,6 +689,36 @@ struct FederatedConfig {
     var localEpochs: Int = 5
     var learningRate: Double = 0.01
     var batchSize: Int = 32
+    var serverURL: URL?
+    var authToken: String?
+    var networkTimeout: TimeInterval = 30.0
+    var minParticipants: Int = 5
+    
+    init(minimumDataSize: Int = 100,
+         privacyEpsilon: Double = 1.0,
+         privacyDelta: Double = 1e-5,
+         dataAugmentationNoise: Double = 0.01,
+         maxRounds: Int = 100,
+         localEpochs: Int = 5,
+         learningRate: Double = 0.01,
+         batchSize: Int = 32,
+         serverURL: URL? = nil,
+         authToken: String? = nil,
+         networkTimeout: TimeInterval = 30.0,
+         minParticipants: Int = 5) {
+        self.minimumDataSize = minimumDataSize
+        self.privacyEpsilon = privacyEpsilon
+        self.privacyDelta = privacyDelta
+        self.dataAugmentationNoise = dataAugmentationNoise
+        self.maxRounds = maxRounds
+        self.localEpochs = localEpochs
+        self.learningRate = learningRate
+        self.batchSize = batchSize
+        self.serverURL = serverURL
+        self.authToken = authToken
+        self.networkTimeout = networkTimeout
+        self.minParticipants = minParticipants
+    }
 }
 
 struct FederatedStats {
@@ -801,6 +832,10 @@ enum FederatedLearningError: Error {
     case privacyBudgetExhausted
     case communicationFailed
     case aggregationFailed
+    case authenticationFailed
+    case serverError
+    case networkTimeout
+    case invalidResponse
 }
 
 // MARK: - Supporting Classes
@@ -888,30 +923,180 @@ struct PrivacyBudget {
 }
 
 class FederatedCommunicationManager: ObservableObject {
+    private var session: URLSession
+    private var baseURL: URL
+    private let maxRetries = 3
+    private let timeoutInterval: TimeInterval = 30.0
+    
+    init() {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = timeoutInterval
+        config.timeoutIntervalForResource = timeoutInterval * 2
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        self.session = URLSession(configuration: config)
+        self.baseURL = URL(string: "https://api.healthai2030.com/federated")!
+    }
+    
     func setup(with config: FederatedConfig) {
-        // Setup communication manager
+        if let customURL = config.serverURL {
+            self.baseURL = customURL
+        }
     }
     
     func sendModelUpdate(_ update: EncryptedModelUpdate, for roundNumber: Int) async throws {
-        // Send model update to server
+        let endpoint = baseURL.appendingPathComponent("rounds/\(roundNumber)/updates")
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(getAuthToken())", forHTTPHeaderField: "Authorization")
+        
+        let updateData = try JSONEncoder().encode(update)
+        request.httpBody = updateData
+        
+        try await performRequestWithRetry(request)
     }
     
     func receiveAggregatedModel(for roundNumber: Int) async throws -> EncryptedModel {
-        // Receive aggregated model from server
-        return EncryptedModel(
-            encryptedData: Data(),
-            modelType: "federated",
-            timestamp: Date()
-        )
+        let endpoint = baseURL.appendingPathComponent("rounds/\(roundNumber)/aggregated")
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(getAuthToken())", forHTTPHeaderField: "Authorization")
+        
+        let (data, _) = try await performRequestWithRetry(request)
+        return try JSONDecoder().decode(EncryptedModel.self, from: data)
     }
     
     func receiveGlobalModel(for roundNumber: Int) async throws -> EncryptedModel {
-        // Receive global model from server
-        return EncryptedModel(
-            encryptedData: Data(),
-            modelType: "global",
-            timestamp: Date()
+        let endpoint = baseURL.appendingPathComponent("rounds/\(roundNumber)/global")
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(getAuthToken())", forHTTPHeaderField: "Authorization")
+        
+        let (data, _) = try await performRequestWithRetry(request)
+        return try JSONDecoder().decode(EncryptedModel.self, from: data)
+    }
+    
+    func checkRoundStatus(for roundNumber: Int) async throws -> FederatedRoundStatus {
+        let endpoint = baseURL.appendingPathComponent("rounds/\(roundNumber)/status")
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(getAuthToken())", forHTTPHeaderField: "Authorization")
+        
+        let (data, _) = try await performRequestWithRetry(request)
+        return try JSONDecoder().decode(FederatedRoundStatus.self, from: data)
+    }
+    
+    func registerForRound() async throws -> Int {
+        let endpoint = baseURL.appendingPathComponent("rounds/register")
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(getAuthToken())", forHTTPHeaderField: "Authorization")
+        
+        let deviceInfo = DeviceRegistration(
+            deviceId: UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString,
+            capabilities: getDeviceCapabilities()
         )
+        
+        let registrationData = try JSONEncoder().encode(deviceInfo)
+        request.httpBody = registrationData
+        
+        let (data, _) = try await performRequestWithRetry(request)
+        let response = try JSONDecoder().decode(RegistrationResponse.self, from: data)
+        return response.roundNumber
+    }
+    
+    private func performRequestWithRetry(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        var lastError: Error?
+        
+        for attempt in 1...maxRetries {
+            do {
+                let (data, response) = try await session.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw FederatedError.communicationFailed
+                }
+                
+                switch httpResponse.statusCode {
+                case 200...299:
+                    return (data, response)
+                case 401:
+                    throw FederatedError.authenticationFailed
+                case 429:
+                    let delay = Double(attempt) * 2.0
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                    continue
+                case 500...599:
+                    if attempt < maxRetries {
+                        let delay = Double(attempt) * 1.5
+                        try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                        continue
+                    }
+                    throw FederatedError.serverError
+                default:
+                    throw FederatedError.communicationFailed
+                }
+            } catch {
+                lastError = error
+                if attempt < maxRetries {
+                    let delay = Double(attempt) * 1.0
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                    continue
+                }
+            }
+        }
+        
+        throw lastError ?? FederatedError.communicationFailed
+    }
+    
+    private func getAuthToken() -> String {
+        return "temp_auth_token_placeholder"
+    }
+    
+    private func getDeviceCapabilities() -> DeviceCapabilities {
+        return DeviceCapabilities(
+            memoryGB: ProcessInfo.processInfo.physicalMemory / (1024 * 1024 * 1024),
+            coreMLSupport: true,
+            networkType: getNetworkType()
+        )
+    }
+    
+    private func getNetworkType() -> String {
+        // Simplified network type detection
+        return "wifi"
+    }
+    
+    func getNetworkDiagnostics() async -> NetworkDiagnostics {
+        let startTime = Date()
+        
+        do {
+            let testEndpoint = baseURL.appendingPathComponent("health")
+            var request = URLRequest(url: testEndpoint)
+            request.httpMethod = "GET"
+            request.timeoutInterval = 5.0
+            
+            let (_, response) = try await session.data(for: request)
+            let responseTime = Date().timeIntervalSince(startTime) * 1000
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                return NetworkDiagnostics(isConnected: false, responseTime: -1, serverStatus: "unknown", lastError: "Invalid response")
+            }
+            
+            return NetworkDiagnostics(
+                isConnected: httpResponse.statusCode == 200,
+                responseTime: responseTime,
+                serverStatus: httpResponse.statusCode == 200 ? "healthy" : "error",
+                lastError: nil
+            )
+        } catch {
+            let responseTime = Date().timeIntervalSince(startTime) * 1000
+            return NetworkDiagnostics(
+                isConnected: false,
+                responseTime: responseTime,
+                serverStatus: "unreachable",
+                lastError: error.localizedDescription
+            )
+        }
     }
 }
 
@@ -942,4 +1127,91 @@ class SecureAggregation: ObservableObject {
         // This is a placeholder implementation
         throw FederatedLearningError.modelCreationFailed
     }
+}
+
+// MARK: - Network Infrastructure Support Structures
+
+struct FederatedRoundStatus: Codable {
+    let roundNumber: Int
+    let status: String
+    let participantCount: Int
+    let requiredParticipants: Int
+    let startTime: Date?
+    let endTime: Date?
+    let isActive: Bool
+}
+
+struct DeviceRegistration: Codable {
+    let deviceId: String
+    let capabilities: DeviceCapabilities
+}
+
+struct DeviceCapabilities: Codable {
+    let memoryGB: UInt64
+    let coreMLSupport: Bool
+    let networkType: String
+}
+
+struct RegistrationResponse: Codable {
+    let roundNumber: Int
+    let participantId: String
+    let serverConfiguration: ServerConfiguration
+}
+
+struct ServerConfiguration: Codable {
+    let maxRounds: Int
+    let minParticipants: Int
+    let roundTimeout: TimeInterval
+    let modelType: String
+}
+
+struct NetworkDiagnostics: Codable {
+    let isConnected: Bool
+    let responseTime: TimeInterval
+    let serverStatus: String
+    let lastError: String?
+}
+
+struct ModelSyncProtocol {
+    static func synchronizeModel(localModel: MLModel, with globalModel: MLModel, strategy: SyncStrategy = .weightedAverage) async throws -> MLModel {
+        switch strategy {
+        case .weightedAverage:
+            return try await performWeightedAverageSync(local: localModel, global: globalModel)
+        case .federatedAveraging:
+            return try await performFederatedAveragingSync(local: localModel, global: globalModel)
+        case .adaptiveSync:
+            return try await performAdaptiveSync(local: localModel, global: globalModel)
+        }
+    }
+    
+    private static func performWeightedAverageSync(local: MLModel, global: MLModel) async throws -> MLModel {
+        // Placeholder for weighted average synchronization
+        return global
+    }
+    
+    private static func performFederatedAveragingSync(local: MLModel, global: MLModel) async throws -> MLModel {
+        // Placeholder for federated averaging synchronization
+        return global
+    }
+    
+    private static func performAdaptiveSync(local: MLModel, global: MLModel) async throws -> MLModel {
+        // Placeholder for adaptive synchronization
+        return global
+    }
+}
+
+enum SyncStrategy {
+    case weightedAverage
+    case federatedAveraging
+    case adaptiveSync
+}
+
+extension FederatedConfig {
+    static let `default` = FederatedConfig(
+        learningRate: 0.01,
+        batchSize: 32,
+        serverURL: URL(string: "https://api.healthai2030.com/federated"),
+        authToken: nil,
+        networkTimeout: 30.0
+    )
 }

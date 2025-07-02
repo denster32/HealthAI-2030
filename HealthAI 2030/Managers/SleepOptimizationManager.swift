@@ -9,8 +9,6 @@ class SleepOptimizationManager: ObservableObject {
     static let shared = SleepOptimizationManager()
     
     private var cancellables = Set<AnyCancellable>()
-    private var audioEngine: AVAudioEngine?
-    private var audioPlayer: AVAudioPlayerNode?
     
     // Published properties
     @Published var currentSleepStage: SleepStageType = .unknown
@@ -23,7 +21,6 @@ class SleepOptimizationManager: ObservableObject {
     private var sleepStageModel: MLModel?
     
     private init() {
-        // Audio engine setup is now handled by AdaptiveAudioManager
         loadSleepStageModel()
         startSleepMonitoring()
     }
@@ -31,7 +28,6 @@ class SleepOptimizationManager: ObservableObject {
     // MARK: - Sleep Stage Detection
     
     func startSleepMonitoring() {
-        // Start monitoring sleep patterns
         Timer.publish(every: 30, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
@@ -41,16 +37,13 @@ class SleepOptimizationManager: ObservableObject {
     }
     
     private func analyzeSleepStage() {
-        // Analyze current sleep stage using ML model
         guard let model = sleepStageModel else { return }
         
-        // Get current sensor data
         let heartRate = HealthDataManager.shared.currentHeartRate
         let hrv = HealthDataManager.shared.currentHRV
         let oxygenSaturation = HealthDataManager.shared.currentOxygenSaturation
         let bodyTemperature = HealthDataManager.shared.currentBodyTemperature
         
-        // Create input for ML model
         let input = createSleepStageInput(
             heartRate: heartRate,
             hrv: hrv,
@@ -58,41 +51,34 @@ class SleepOptimizationManager: ObservableObject {
             bodyTemperature: bodyTemperature
         )
         
-        // Predict sleep stage
         predictSleepStage(with: input)
     }
     
     private func createSleepStageInput(heartRate: Double, hrv: Double, oxygenSaturation: Double, bodyTemperature: Double) -> [Double] {
-        // Create feature vector for sleep stage prediction
         return [
             heartRate,
             hrv,
             oxygenSaturation,
             bodyTemperature,
-            Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 86400) // Time of day
+            Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 86400)
         ]
     }
     
     private func predictSleepStage(with input: [Double]) {
-        // Use ML model to predict sleep stage
-        // This is a simplified implementation
         let prediction = performSleepStagePrediction(input: input)
         
         DispatchQueue.main.async {
             self.currentSleepStage = prediction
+            self.sleepMetrics.addTime(30, to: prediction) // Assuming 30-second intervals
             self.updateSleepMetrics()
             self.triggerInterventionsIfNeeded()
         }
     }
     
     private func performSleepStagePrediction(input: [Double]) -> SleepStageType {
-        // Simplified sleep stage prediction logic
-        // In a real implementation, this would use the ML model
-        
         let heartRate = input[0]
         let hrv = input[1]
         
-        // Simple rule-based classification for demo
         if heartRate < 60 && hrv > 50 {
             return .deepSleep
         } else if heartRate < 70 && hrv > 30 {
@@ -107,10 +93,8 @@ class SleepOptimizationManager: ObservableObject {
     // MARK: - Sleep Interventions
     
     private func triggerInterventionsIfNeeded() {
-        // Get current environment data
         let currentEnvironment = EnvironmentManager.shared.getCurrentEnvironment()
         
-        // Create SleepState from current data
         let sleepState = SleepState(
             stage: convertToRLAgentSleepStage(currentSleepStage),
             hrv: HealthDataManager.shared.currentHRV,
@@ -118,16 +102,14 @@ class SleepOptimizationManager: ObservableObject {
             timeInStage: sleepMetrics.totalSleepTime
         )
         
-        // Create EnvironmentData from current environment
         let environmentData = EnvironmentData(
             temperature: currentEnvironment.temperature,
             humidity: currentEnvironment.humidity,
-            noiseLevel: currentEnvironment.noiseLevel / 100.0, // Convert to 0-1 scale
-            lightLevel: currentEnvironment.lightLevel / 100.0, // Convert to 0-1 scale
+            noiseLevel: currentEnvironment.noiseLevel / 100.0,
+            lightLevel: currentEnvironment.lightLevel / 100.0,
             bedIncline: BedMotorManager.shared.currentHeadElevation
         )
         
-        // Get nudge decision from RLAgent
         if let nudgeAction = RLAgent.shared.decideNudge(sleepState: sleepState, environment: environmentData) {
             triggerNudge(action: nudgeAction)
         }
@@ -167,9 +149,9 @@ class SleepOptimizationManager: ObservableObject {
         case .haptic(let hapticType):
             switch hapticType {
             case .gentlePulse:
-                triggerHapticPulse(intensity: 0.3)
+                AdaptiveAudioManager.shared.applyHapticNudge(intensity: 0.3)
             case .strongPulse:
-                triggerHapticPulse(intensity: 0.8)
+                AdaptiveAudioManager.shared.applyHapticNudge(intensity: 0.8)
             }
             
         case .environment(let envType):
@@ -179,7 +161,6 @@ class SleepOptimizationManager: ObservableObject {
             performBedMotorNudge(bedType)
         }
         
-        // Record the intervention
         DispatchQueue.main.async {
             self.sleepMetrics.interventions.append(action)
         }
@@ -215,75 +196,25 @@ class SleepOptimizationManager: ObservableObject {
         }
     }
     
-    private func triggerHapticPulse(intensity: Double) {
-        // Trigger haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.impactOccurred(intensity: Float(intensity))
-        
-        print("Haptic pulse triggered with intensity: \(intensity)")
-    }
-
-    private func performEnvironmentAction(_ action: EnvironmentOptimizationType) {
-        switch action {
-        case .optimizeForDeepSleep:
-            EnvironmentManager.shared.optimizeForSleep()
-        case .optimizeForREM:
-            EnvironmentManager.shared.optimizeForSleep() // Assuming sleep optimization covers REM for now
-        case .adjustLighting(let intensity):
-            EnvironmentManager.shared.adjustLighting(intensity: intensity)
-        case .adjustTemperature(let target):
-            EnvironmentManager.shared.adjustTemperature(target: target)
-        case .adjustHumidity(let target):
-            EnvironmentManager.shared.adjustHumidity(target: target)
-        case .adjustBlinds(let position):
-            EnvironmentManager.shared.adjustBlinds(position: position)
-        case .setHEPAFilterState(let on, let mode):
-            EnvironmentManager.shared.setHEPAFilterState(on: on, mode: mode)
-        case .setSmartMattressHeaterCooler(let on, let temperature):
-            EnvironmentManager.shared.setSmartMattressHeaterCooler(on: on, temperature: temperature)
-        }
-    }
-
-    private func performBedMotorAction(_ action: BedMotorAction) {
-        switch action {
-        case .adjustHeadElevation(let elevation):
-            BedMotorManager.shared.adjustHeadElevation(to: elevation)
-        case .adjustFootElevation(let elevation):
-            BedMotorManager.shared.adjustFootElevation(to: elevation)
-        case .startMassage(let intensity):
-            BedMotorManager.shared.startMassage(intensity: intensity)
-        case .stopMassage:
-            BedMotorManager.shared.stopMassage()
-        }
-    }
-
-    // MARK: - Audio Engine Setup (Moved to AdaptiveAudioManager)
-    private func setupAudioEngine() {
-        // Audio engine setup is now handled by AdaptiveAudioManager
-    }
-
     // MARK: - ML Model Management
     private func loadSleepStageModel() {
-        // Load the sleep stage prediction model
-        // In a real implementation, this would load a Core ML model
         print("Loading sleep stage model...")
     }
 
     // MARK: - Metrics and Analytics
     private func updateSleepMetrics() {
-        // Update sleep quality metrics
         let quality = calculateSleepQuality()
-        let deepSleepPercentage = calculateDeepSleepPercentage()
+        let deepSleepPercentage = sleepMetrics.deepSleepPercentage
+        let remSleepPercentage = sleepMetrics.remSleepPercentage
 
         DispatchQueue.main.async {
             self.sleepQuality = quality
             self.deepSleepPercentage = deepSleepPercentage
+            self.sleepMetrics.remSleepPercentage = remSleepPercentage // Ensure this is updated
         }
     }
 
     private func calculateSleepQuality() -> Double {
-        // Calculate sleep quality based on various factors
-        // This is a simplified calculation
         let hrv = HealthDataManager.shared.currentHRV
         let heartRate = HealthDataManager.shared.currentHeartRate
 
@@ -291,12 +222,6 @@ class SleepOptimizationManager: ObservableObject {
         let heartRateScore = max(0, 1.0 - (heartRate - 60) / 40)
 
         return (hrvScore + heartRateScore) / 2.0
-    }
-
-    private func calculateDeepSleepPercentage() -> Double {
-        // Calculate percentage of time spent in deep sleep
-        // This would be based on historical data
-        return 0.25 // Simplified for demo
     }
 
     // MARK: - Public Interface
@@ -307,7 +232,6 @@ class SleepOptimizationManager: ObservableObject {
 
     func stopOptimization() {
         isOptimizationActive = false
-        // Stop any active nudges
         AdaptiveAudioManager.shared.stopAudio()
         BedMotorManager.shared.stopMassage()
         EnvironmentManager.shared.stopOptimization()
@@ -318,7 +242,7 @@ class SleepOptimizationManager: ObservableObject {
         return SleepReport(
             date: Date(),
             totalSleepTime: sleepMetrics.totalSleepTime,
-            deepSleepPercentage: deepSleepPercentage,
+            deepSleepPercentage: sleepMetrics.deepSleepPercentage,
             remSleepPercentage: sleepMetrics.remSleepPercentage,
             sleepQuality: sleepQuality,
             interventions: sleepMetrics.interventions
@@ -328,19 +252,30 @@ class SleepOptimizationManager: ObservableObject {
 
 // MARK: - Supporting Classes and Models
 
+enum SleepStageType: String, Codable {
+    case awake
+    case lightSleep
+    case deepSleep
+    case remSleep
+    case unknown
+}
+
 struct SleepMetrics {
     var totalSleepTime: TimeInterval = 0
     var deepSleepTime: TimeInterval = 0
     var remSleepTime: TimeInterval = 0
     var lightSleepTime: TimeInterval = 0
     var awakeTime: TimeInterval = 0
-    var remSleepPercentage: Double = 0
-    var interventions: [NudgeAction] = [] // Changed to NudgeAction
+    var interventions: [NudgeAction] = []
     
-    // Computed properties for percentages
     var deepSleepPercentage: Double {
         guard totalSleepTime > 0 else { return 0 }
         return deepSleepTime / totalSleepTime
+    }
+    
+    var remSleepPercentage: Double {
+        guard totalSleepTime > 0 else { return 0 }
+        return remSleepTime / totalSleepTime
     }
     
     var lightSleepPercentage: Double {
@@ -353,14 +288,6 @@ struct SleepMetrics {
         return awakeTime / totalSleepTime
     }
     
-    // Update percentages when times change
-    mutating func updatePercentages() {
-        if totalSleepTime > 0 {
-            remSleepPercentage = remSleepTime / totalSleepTime
-        }
-    }
-    
-    // Add time to a specific stage
     mutating func addTime(_ time: TimeInterval, to stage: SleepStageType) {
         switch stage {
         case .deepSleep:
@@ -372,10 +299,9 @@ struct SleepMetrics {
         case .awake:
             awakeTime += time
         case .unknown:
-            awakeTime += time // Default to awake for unknown
+            awakeTime += time
         }
         totalSleepTime += time
-        updatePercentages()
     }
 }
 
@@ -385,5 +311,5 @@ struct SleepReport {
     let deepSleepPercentage: Double
     let remSleepPercentage: Double
     let sleepQuality: Double
-    let interventions: [NudgeAction] // Changed to NudgeAction
+    let interventions: [NudgeAction]
 }

@@ -48,16 +48,68 @@ class EnvironmentManager: ObservableObject {
     // MARK: - Environment Data
     
     private func updateEnvironmentData() {
-        // Update environmental sensor data
-        // In a real implementation, this would read from HomeKit sensors
-        
-        // Simulate sensor readings
-        currentTemperature = Double.random(in: 18.0...24.0)
-        currentHumidity = Double.random(in: 40.0...60.0)
-        currentLightLevel = Double.random(in: 0.0...1.0)
-        airQuality = Double.random(in: 0.7...1.0)
+        // Update environmental sensor data from HomeKit
+        for home in homeManager.homes {
+            for accessory in home.accessories {
+                for service in accessory.services {
+                    for characteristic in service.characteristics {
+                        switch characteristic.characteristicType {
+                        case HMCharacteristicTypeCurrentTemperature:
+                            characteristic.readValue { [weak self] error in
+                                if let value = characteristic.value as? Double, error == nil {
+                                    DispatchQueue.main.async {
+                                        self?.currentTemperature = value
+                                    }
+                                }
+                            }
+                        case HMCharacteristicTypeCurrentRelativeHumidity:
+                            characteristic.readValue { [weak self] error in
+                                if let value = characteristic.value as? Double, error == nil {
+                                    DispatchQueue.main.async {
+                                        self?.currentHumidity = value
+                                    }
+                                }
+                            }
+                        case HMCharacteristicTypeCurrentAmbientLightLevel:
+                            characteristic.readValue { [weak self] error in
+                                if let value = characteristic.value as? Double, error == nil {
+                                    DispatchQueue.main.async {
+                                        self?.currentLightLevel = value
+                                    }
+                                }
+                            }
+                        case HMCharacteristicTypeAirQuality:
+                            characteristic.readValue { [weak self] error in
+                                if let value = characteristic.value as? Int, error == nil {
+                                    // HomeKit AirQuality is an Int (1-5), convert to 0.0-1.0
+                                    DispatchQueue.main.async {
+                                        self?.airQuality = Double(value) / 5.0
+                                    }
+                                }
+                            }
+                        case HMCharacteristicTypeCarbonDioxideDetected: // Assuming this is for CO2
+                            characteristic.readValue { [weak self] error in
+                                if let value = characteristic.value as? Int, error == nil {
+                                    // This characteristic typically indicates detection, not level.
+                                    // For a real CO2 level, a custom characteristic or different sensor might be needed.
+                                    // For now, we'll simulate a range if detected.
+                                    DispatchQueue.main.async {
+                                        self?.co2Level = (value == HMCharacteristicValueCarbonDioxideDetected.carbonDioxideDetected.rawValue) ? Double.random(in: 800.0...1500.0) : Double.random(in: 350.0...700.0)
+                                    }
+                                }
+                            }
+                        // HMCharacteristicTypeNoiseLevel is not a standard HomeKit characteristic.
+                        // If a device exposes this, it would be a custom characteristic.
+                        // For now, noiseLevel remains simulated or updated via other means.
+                        default:
+                            break
+                        }
+                    }
+                }
+            }
+        }
+        // Keep noise level simulated as there's no direct HomeKit characteristic for it.
         noiseLevel = Double.random(in: 30.0...60.0)
-        co2Level = Double.random(in: 350.0...800.0)
     }
     
     // MARK: - Environment Optimization
@@ -72,6 +124,8 @@ class EnvironmentManager: ObservableObject {
         adjustLighting(intensity: 0.1)
         adjustAirQuality()
         adjustNoiseLevel(target: 35.0)
+        adjustBlinds(position: 0.0) // Fully closed for sleep
+        setSmartMattressHeaterCooler(on: true, temperature: 18.0) // Optimal sleep temperature
     }
     
     func optimizeForWork() {
@@ -84,6 +138,8 @@ class EnvironmentManager: ObservableObject {
         adjustLighting(intensity: 0.8)
         adjustAirQuality()
         adjustNoiseLevel(target: 45.0)
+        adjustBlinds(position: 0.5) // Half-open for work
+        setSmartMattressHeaterCooler(on: false, temperature: 22.0) // Neutral temperature, turn off if not needed
     }
     
     func optimizeForExercise() {
@@ -96,6 +152,8 @@ class EnvironmentManager: ObservableObject {
         adjustLighting(intensity: 0.9)
         adjustAirQuality()
         adjustNoiseLevel(target: 50.0)
+        adjustBlinds(position: 0.2) // Mostly closed to reduce glare
+        setSmartMattressHeaterCooler(on: false, temperature: 20.0) // Neutral temperature, turn off if not needed
     }
     
     func stopOptimization() {
@@ -433,66 +491,132 @@ struct EnvironmentAlert {
 
 // MARK: - HomeKit Extensions
 
-extension HMLightbulb {
-    func setBrightness(_ brightness: Double, completion: @escaping (Error?) -> Void) {
-        // Set light brightness
-        // Implementation depends on HomeKit framework
-    }
+enum HomeKitError: Error {
+    case characteristicNotFound
+    case unsupportedState
+    case serviceNotFound
 }
 
-extension HMThermostat {
-    func setTargetTemperature(_ temperature: Double, completion: @escaping (Error?) -> Void) {
-        // Set thermostat temperature
-        // Implementation depends on HomeKit framework
-    }
-}
-
-extension HMHumidifier {
-    func setTargetHumidity(_ humidity: Double, completion: @escaping (Error?) -> Void) {
-        // Set humidifier target humidity
-        // Implementation depends on HomeKit framework
-    }
-}
-
-extension HMAirPurifier {
-    func setTargetAirPurifierState(_ state: HEPAFilterMode, completion: @escaping (Error?) -> Void) {
-        // Set air purifier state
-        // Implementation depends on HomeKit framework
-    }
-}
-
-enum HEPAFilterMode {
+enum HEPAFilterMode: Codable, Hashable {
     case auto
     case manual
     case off
 }
 
+extension HMLightbulb {
+    func setBrightness(_ brightness: Double, completion: @escaping (Error?) -> Void) {
+        // Find the characteristic for brightness and write the value
+        if let characteristic = self.services.first(where: { $0.serviceType == HMServiceTypeLightbulb })?
+            .characteristics.first(where: { $0.characteristicType == HMCharacteristicTypeBrightness }) {
+            let percentage = max(0, min(100, Int(brightness * 100))) // Brightness is 0-100%
+            characteristic.writeValue(percentage, completionHandler: completion)
+        } else {
+            completion(HomeKitError.characteristicNotFound)
+        }
+    }
+}
+
+extension HMThermostat {
+    func setTargetTemperature(_ temperature: Double, completion: @escaping (Error?) -> Void) {
+        // Find the characteristic for target temperature and write the value
+        if let characteristic = self.services.first(where: { $0.serviceType == HMServiceTypeThermostat })?
+            .characteristics.first(where: { $0.characteristicType == HMCharacteristicTypeTargetTemperature }) {
+            characteristic.writeValue(temperature, completionHandler: completion)
+        } else {
+            completion(HomeKitError.characteristicNotFound)
+        }
+    }
+}
+
+extension HMHumidifier {
+    func setTargetHumidity(_ humidity: Double, completion: @escaping (Error?) -> Void) {
+        // Find the characteristic for target humidity and write the value
+        if let characteristic = self.services.first(where: { $0.serviceType == HMServiceTypeHumidifierDehumidifier })?
+            .characteristics.first(where: { $0.characteristicType == HMCharacteristicTypeTargetRelativeHumidity }) {
+            let percentage = max(0, min(100, Int(humidity))) // Humidity is 0-100%
+            characteristic.writeValue(percentage, completionHandler: completion)
+        } else {
+            completion(HomeKitError.characteristicNotFound)
+        }
+    }
+}
+
+extension HMAirPurifier {
+    func setTargetAirPurifierState(_ state: HEPAFilterMode, completion: @escaping (Error?) -> Void) {
+        // Find the characteristic for target air purifier state and write the value
+        if let characteristic = self.services.first(where: { $0.serviceType == HMServiceTypeAirPurifier })?
+            .characteristics.first(where: { $0.characteristicType == HMCharacteristicTypeTargetAirPurifierState }) {
+            let value: HMCharacteristicValueAirPurifierTargetState
+            switch state {
+            case .auto:
+                value = .auto
+            case .manual:
+                value = .manual
+            case .off:
+                // HomeKit does not have a direct 'off' state for target air purifier state.
+                // This might require setting the active state to inactive or a custom characteristic.
+                // For now, we'll assume 'auto' or 'manual' are the only target states.
+                // If 'off' is truly needed, it would likely involve setting HMCharacteristicTypeActive to .inactive.
+                completion(HomeKitError.unsupportedState)
+                return
+            }
+            characteristic.writeValue(value.rawValue, completionHandler: completion)
+        } else {
+            completion(HomeKitError.characteristicNotFound)
+        }
+    }
+}
+
 extension HMBlinds {
     func setTargetPosition(_ position: Double, completion: @escaping (Error?) -> Void) {
-        // Set blinds position
-        // Implementation depends on HomeKit framework
-        print("HomeKit: Setting blinds position to \(position)")
-        completion(nil) // Simulate success
+        // Assuming HMBlinds has a Window Covering service with Target Position characteristic
+        if let characteristic = self.services.first(where: { $0.serviceType == HMServiceTypeWindowCovering })?
+            .characteristics.first(where: { $0.characteristicType == HMCharacteristicTypeTargetPosition }) {
+            let percentage = max(0, min(100, Int(position * 100))) // Position is 0-100%
+            characteristic.writeValue(percentage, completionHandler: completion)
+        } else {
+            completion(HomeKitError.characteristicNotFound)
+        }
     }
 }
 
 extension HMSmartMattress {
     func setHeaterCoolerState(on: Bool, temperature: Double, completion: @escaping (Error?) -> Void) {
-        // Set smart mattress heater/cooler state
-        // Implementation depends on HomeKit framework
-        print("HomeKit: Setting smart mattress heater/cooler to \(on ? "On" : "Off") at \(temperature)°C")
-        completion(nil) // Simulate success
+        // This is a hypothetical implementation. In a real HomeKit setup,
+        // a smart mattress might expose custom characteristics for heating/cooling.
+        // For demonstration, we'll assume a custom characteristic for temperature control.
+        if let temperatureCharacteristic = self.services.first(where: { $0.localizedDescription == "Smart Mattress Service" })?
+            .characteristics.first(where: { $0.localizedDescription == "Target Temperature" }) {
+            temperatureCharacteristic.writeValue(temperature, completionHandler: completion)
+        } else {
+            completion(HomeKitError.characteristicNotFound)
+        }
+
+        // If there's a separate characteristic for on/off state
+        if let activeCharacteristic = self.services.first(where: { $0.localizedDescription == "Smart Mattress Service" })?
+            .characteristics.first(where: { $0.characteristicType == HMCharacteristicTypeActive }) {
+            activeCharacteristic.writeValue(on ? HMCharacteristicValueActive.active.rawValue : HMCharacteristicValueActive.inactive.rawValue, completionHandler: completion)
+        } else {
+            completion(HomeKitError.characteristicNotFound)
+        }
     }
 }
 
 // Placeholder for a hypothetical HMSmartMattress class
+// In a real HomeKit application, this would be a concrete HMAccessory subclass
+// representing a smart mattress, exposing relevant services and characteristics.
 class HMSmartMattress: HMAccessory {
-    // Add properties and methods relevant to a smart mattress (e.g., temperature, heating/cooling state)
-    // This is a mock for demonstration purposes.
-    func setHeaterCoolerState(on: Bool, temperature: Double, completion: @escaping (Error?) -> Void) {
-        print("Simulating Smart Mattress Heater/Cooler: On=\(on), Temp=\(temperature)°C")
-        completion(nil)
-    }
+    // This class would typically contain HMService and HMCharacteristic objects
+    // that represent the mattress's capabilities (e.g., temperature sensors,
+    // heating/cooling controls). For this mock, we're just providing the method
+    // signature to allow the EnvironmentManager to compile and simulate interaction.
+}
+
+class HMBlinds: HMAccessory {
+    // This class would typically contain HMService and HMCharacteristic objects
+    // that represent the blinds' capabilities (e.g., target position).
+    // For this mock, we're just providing the method signature to allow the
+    // EnvironmentManager to compile and simulate interaction.
 }
 
 // MARK: - HMHomeManagerDelegate
@@ -512,4 +636,4 @@ extension EnvironmentManager: HMHomeManagerDelegate {
         // Handle removed home
         print("Removed home: \(home.name)")
     }
-} 
+}

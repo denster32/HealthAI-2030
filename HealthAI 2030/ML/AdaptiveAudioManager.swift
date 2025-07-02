@@ -32,16 +32,17 @@ class AdaptiveAudioManager: ObservableObject {
     private let highCoherenceThreshold: Double = 0.9
     
     private var cancellables = Set<AnyCancellable>()
-    private let audioEngine = AudioGenerationEngine.shared
     private var hapticEngine: CHHapticEngine?
+    
+    // MARK: - Audio Generation Engine
+    private let audioGenerationEngine = AudioGenerationEngine.shared
     
     private init() {
         setupHapticEngine()
-        setupAudioEngine()
     }
     
     deinit {
-        cleanup()
+        audioGenerationEngine.stopAudio()
     }
     
     // MARK: - Haptic Engine Setup
@@ -60,39 +61,27 @@ class AdaptiveAudioManager: ObservableObject {
     }
     
     // MARK: - Audio Adjustments
-    func applyAudioNudge(type: AudioType, intensity: Double) {
-        currentAudioType = type
-        currentVolume = Float(intensity)
-        audioEngine.setVolume(currentVolume)
+    func applyAudioNudge(type: AudioNudgeType, intensity: Double) {
+        audioGenerationEngine.setVolume(Float(intensity))
         
         switch type {
         case .pinkNoise:
-            audioEngine.generatePinkNoise(intensity: intensity)
+            audioGenerationEngine.generatePinkNoise(intensity: intensity)
         case .isochronicTones:
-            // Assuming a default frequency for isochronic tones if not specified by NudgeAction
-            audioEngine.generateIsochronicTones(frequency: 4.0)
+            audioGenerationEngine.generateIsochronicTones(frequency: 4.0)
         case .binauralBeats:
-            // Assuming default base and beat frequencies for binaural beats
-            audioEngine.generateBinauralBeats(baseFrequency: 200, beatFrequency: 10.0)
-        case .whiteNoise:
-            audioEngine.generateWhiteNoise(intensity: intensity)
+            audioGenerationEngine.generateBinauralBeats(baseFrequency: 200, beatFrequency: 10.0)
         case .natureSounds:
-            // Assuming a default nature sound type if not specified by NudgeAction
-            audioEngine.generateNatureSounds(type: .rain)
-        case .none:
-            audioEngine.stopAudio()
+            audioGenerationEngine.generateNatureSounds(type: .rain)
         }
     }
     
     func setUserPreferredVolume(_ volume: Float) {
-        currentVolume = max(0.0, min(1.0, volume))
-        audioEngine.setVolume(currentVolume)
+        audioGenerationEngine.setVolume(volume)
     }
     
     func stopAudio() {
-        audioEngine.stopAudio()
-        currentAudioType = .none
-        currentVolume = 0.0
+        audioGenerationEngine.stopAudio()
     }
     
     // MARK: - Specific Audio Methods for RLAgent Integration
@@ -115,14 +104,12 @@ class AdaptiveAudioManager: ObservableObject {
     
     // MARK: - Haptic Feedback
     func applyHapticNudge(intensity: Double) {
-        // Using a default sharpness for now, as NudgeAction only provides intensity
         playHapticPattern(intensity: intensity, sharpness: 0.5)
     }
     
     private func playHapticPattern(intensity: Double, sharpness: Double) {
         guard let hapticEngine = hapticEngine else { return }
         
-        // Create a haptic event
         let hapticEvent = CHHapticEvent(eventType: .hapticContinuous, parameters: [
             CHHapticEventParameter(parameterID: .hapticIntensity, value: Float(intensity)),
             CHHapticEventParameter(parameterID: .hapticSharpness, value: Float(sharpness))
@@ -139,49 +126,44 @@ class AdaptiveAudioManager: ObservableObject {
     
     // MARK: - Public Methods
     
-    /// Configure audio for biofeedback sessions
     func configureForBiofeedback() {
-        generateBaseAudioBuffer()
+        // This method might be removed or adapted if audio generation is fully externalized
     }
     
-    /// Start adaptive audio playback
     func startAdaptiveAudio(coherence: Double) {
-        currentCoherence = coherence
-        updateAudioParameters()
-        
-        guard let audioEngine = audioEngine,
-              let audioPlayer = audioPlayer else { return }
-        
-        do {
-            try audioEngine.start()
-            audioPlayer.play()
-            isPlaying = true
-            
-            // Start timer for continuous parameter updates
-            timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-                self.updateAudioParameters()
-            }
-        } catch {
-            print("Failed to start audio: \(error)")
-        }
+        // This method might be removed or adapted if audio generation is fully externalized
     }
     
-    /// Stop audio playback
-    func stopAudio() {
-        audioPlayer?.stop()
-        audioEngine?.stop()
-        timer?.invalidate()
-        timer = nil
-        isPlaying = false
-    }
-    
-    /// Update coherence value and adjust audio accordingly
     func updateCoherence(_ coherence: Double) {
-        currentCoherence = coherence
-        updateAudioParameters()
+        // This method might be removed or adapted if audio generation is fully externalized
     }
+}
+
+// MARK: - Supporting Types
+
+enum AudioNudgeType: Codable, Hashable {
+    case pinkNoise
+    case isochronicTones
+    case binauralBeats
+    case natureSounds
+}
+
+// Placeholder for AudioGenerationEngine - this would be a separate class
+class AudioGenerationEngine {
+    static let shared = AudioGenerationEngine()
     
-    // MARK: - Private Methods
+    private var audioEngine: AVAudioEngine?
+    private var audioPlayer: AVAudioPlayerNode?
+    private var audioBuffer: AVAudioPCMBuffer?
+    private var timer: Timer?
+    
+    private var baseFrequency: Float = 440.0
+    private var sampleRate: Double = 44100.0
+    private var frameCount: AVAudioFrameCount = 44100
+    
+    private init() {
+        setupAudioEngine()
+    }
     
     private func setupAudioEngine() {
         audioEngine = AVAudioEngine()
@@ -195,7 +177,6 @@ class AdaptiveAudioManager: ObservableObject {
         let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2)!
         audioEngine.connect(audioPlayer, to: audioEngine.mainMixerNode, format: format)
         
-        // Add reverb effect for immersive experience
         let reverb = AVAudioUnitReverb()
         reverb.loadFactoryPreset(.cathedral)
         reverb.wetDryMix = 30.0
@@ -211,202 +192,56 @@ class AdaptiveAudioManager: ObservableObject {
         }
     }
     
-    private func generateBaseAudioBuffer() {
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2) else { return }
+    func setVolume(_ volume: Float) {
+        audioPlayer?.volume = volume
+    }
+    
+    func stopAudio() {
+        audioPlayer?.stop()
+        audioEngine?.stop()
+        timer?.invalidate()
+        timer = nil
+    }
+    
+    func generatePinkNoise(intensity: Double) {
+        print("Generating pink noise with intensity: \(intensity)")
+        // Placeholder for actual pink noise generation
+        startPlayback()
+    }
+    
+    func generateIsochronicTones(frequency: Double) {
+        print("Generating isochronic tones with frequency: \(frequency)")
+        // Placeholder for actual isochronic tone generation
+        startPlayback()
+    }
+    
+    func generateBinauralBeats(baseFrequency: Double, beatFrequency: Double) {
+        print("Generating binaural beats with base: \(baseFrequency), beat: \(beatFrequency)")
+        // Placeholder for actual binaural beats generation
+        startPlayback()
+    }
+    
+    func generateNatureSounds(type: NatureSoundType) {
+        print("Generating nature sounds of type: \(type)")
+        // Placeholder for actual nature sounds generation
+        startPlayback()
+    }
+    
+    private func startPlayback() {
+        guard let audioEngine = audioEngine,
+              let audioPlayer = audioPlayer else { return }
         
-        audioBuffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)
-        guard let buffer = audioBuffer else { return }
-        
-        // Generate base ambient sound
-        let channelData = buffer.floatChannelData!
-        let channelCount = Int(format.channelCount)
-        
-        for frame in 0..<Int(frameCount) {
-            let time = Double(frame) / sampleRate
-            let frequency = baseFrequency
-            
-            // Generate sine wave with harmonics
-            var sample: Float = 0.0
-            for harmonic in 1...3 {
-                let harmonicFreq = frequency * Float(harmonic)
-                sample += sin(2.0 * Float.pi * harmonicFreq * Float(time)) / Float(harmonic)
-            }
-            
-            // Apply envelope for smooth transitions
-            let envelope = calculateEnvelope(time: time)
-            sample *= envelope
-            
-            // Apply to all channels
-            for channel in 0..<channelCount {
-                channelData[channel][frame] = sample * 0.3 // Reduce volume
-            }
+        do {
+            try audioEngine.start()
+            audioPlayer.play()
+        } catch {
+            print("Failed to start audio playback: \(error)")
         }
-        
-        buffer.frameLength = frameCount
-    }
-    
-    private func calculateEnvelope(time: Double) -> Float {
-        // Create a smooth envelope that repeats every 4 seconds (breathing cycle)
-        let cycleTime = time.truncatingRemainder(dividingBy: 4.0)
-        let normalizedTime = cycleTime / 4.0
-        
-        // Smooth rise and fall
-        if normalizedTime < 0.5 {
-            // Rise phase (inhale)
-            return Float(sin(normalizedTime * .pi))
-        } else {
-            // Fall phase (exhale)
-            return Float(sin((1.0 - normalizedTime) * .pi))
-        }
-    }
-    
-    private func updateAudioParameters() {
-        guard let audioPlayer = audioPlayer else { return }
-        
-        // Update volume based on coherence
-        let targetVolume = calculateTargetVolume()
-        audioPlayer.volume = targetVolume
-        currentVolume = targetVolume
-        
-        // Update tempo based on coherence
-        let targetTempo = calculateTargetTempo()
-        currentTempo = targetTempo
-        
-        // Update harmony based on coherence
-        let targetHarmony = calculateTargetHarmony()
-        currentHarmony = targetHarmony
-        
-        // Apply real-time effects
-        applyCoherenceEffects()
-    }
-    
-    private func calculateTargetVolume() -> Float {
-        switch currentCoherence {
-        case 0.0..<lowCoherenceThreshold:
-            return 0.4 // Lower volume for low coherence
-        case lowCoherenceThreshold..<mediumCoherenceThreshold:
-            return 0.6 // Medium volume
-        case mediumCoherenceThreshold..<highCoherenceThreshold:
-            return 0.8 // Higher volume for good coherence
-        default:
-            return 1.0 // Full volume for excellent coherence
-        }
-    }
-    
-    private func calculateTargetTempo() -> Double {
-        switch currentCoherence {
-        case 0.0..<lowCoherenceThreshold:
-            return 45.0 // Slower tempo for low coherence
-        case lowCoherenceThreshold..<mediumCoherenceThreshold:
-            return 55.0 // Medium tempo
-        case mediumCoherenceThreshold..<highCoherenceThreshold:
-            return 65.0 // Faster tempo for good coherence
-        default:
-            return 75.0 // Optimal tempo for excellent coherence
-        }
-    }
-    
-    private func calculateTargetHarmony() -> Double {
-        switch currentCoherence {
-        case 0.0..<lowCoherenceThreshold:
-            return 0.2 // Simple harmony for low coherence
-        case lowCoherenceThreshold..<mediumCoherenceThreshold:
-            return 0.5 // Medium harmony complexity
-        case mediumCoherenceThreshold..<highCoherenceThreshold:
-            return 0.8 // Rich harmony for good coherence
-        default:
-            return 1.0 // Full harmonic complexity for excellent coherence
-        }
-    }
-    
-    private func applyCoherenceEffects() {
-        guard let audioPlayer = audioPlayer else { return }
-        
-        // Apply pitch shift based on coherence
-        let pitchShift = calculatePitchShift()
-        audioPlayer.pitch = pitchShift
-        
-        // Apply playback rate based on tempo
-        let playbackRate = currentTempo / 60.0
-        audioPlayer.rate = Float(playbackRate)
-    }
-    
-    private func calculatePitchShift() -> Float {
-        switch currentCoherence {
-        case 0.0..<lowCoherenceThreshold:
-            return -0.5 // Lower pitch for low coherence
-        case lowCoherenceThreshold..<mediumCoherenceThreshold:
-            return 0.0 // Normal pitch
-        case mediumCoherenceThreshold..<highCoherenceThreshold:
-            return 0.3 // Slightly higher pitch for good coherence
-        default:
-            return 0.5 // Higher pitch for excellent coherence
-        }
-    }
-    
-    private func cleanup() {
-        stopAudio()
-        audioEngine = nil
-        audioPlayer = nil
-        audioBuffer = nil
     }
 }
 
-// MARK: - Audio Generation Extensions
-
-extension AdaptiveAudioManager {
-    
-    /// Generate binaural beats for enhanced relaxation
-    func generateBinauralBeats(frequency: Double, duration: TimeInterval) -> AVAudioPCMBuffer? {
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2) else { return nil }
-        
-        let frameCount = AVAudioFrameCount(sampleRate * duration)
-        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)
-        guard let audioBuffer = buffer else { return nil }
-        
-        let channelData = audioBuffer.floatChannelData!
-        
-        for frame in 0..<Int(frameCount) {
-            let time = Double(frame) / sampleRate
-            
-            // Left channel: base frequency
-            let leftSample = sin(2.0 * .pi * frequency * time)
-            
-            // Right channel: base frequency + beat frequency
-            let beatFrequency = 10.0 // 10 Hz alpha wave
-            let rightSample = sin(2.0 * .pi * (frequency + beatFrequency) * time)
-            
-            channelData[0][frame] = Float(leftSample) * 0.3
-            channelData[1][frame] = Float(rightSample) * 0.3
-        }
-        
-        audioBuffer.frameLength = frameCount
-        return audioBuffer
-    }
-    
-    /// Generate isochronic tones for brain entrainment
-    func generateIsochronicTones(baseFrequency: Double, beatFrequency: Double, duration: TimeInterval) -> AVAudioPCMBuffer? {
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2) else { return nil }
-        
-        let frameCount = AVAudioFrameCount(sampleRate * duration)
-        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)
-        guard let audioBuffer = buffer else { return nil }
-        
-        let channelData = audioBuffer.floatChannelData!
-        
-        for frame in 0..<Int(frameCount) {
-            let time = Double(frame) / sampleRate
-            
-            // Create amplitude modulation for isochronic effect
-            let modulation = 0.5 + 0.5 * sin(2.0 * .pi * beatFrequency * time)
-            let sample = sin(2.0 * .pi * baseFrequency * time) * modulation
-            
-            // Apply to both channels
-            channelData[0][frame] = Float(sample) * 0.3
-            channelData[1][frame] = Float(sample) * 0.3
-        }
-        
-        audioBuffer.frameLength = frameCount
-        return audioBuffer
-    }
+enum NatureSoundType {
+    case rain
+    case ocean
+    case forest
 }

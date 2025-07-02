@@ -406,7 +406,7 @@ struct AddAutomationRuleView: View {
     @State private var selectedActions: Set<AutomationRule.AutomationAction> = []
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section("Rule Details") {
                     TextField("Rule Name", text: $name)
@@ -476,7 +476,7 @@ struct ShortcutDetailView: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 24) {
                 VStack(spacing: 16) {
                     Image(systemName: shortcut.icon)

@@ -1,0 +1,27 @@
+{
+  "orchestrator": {
+    "provider": "ollama",
+    "baseUrl": "http://localhost:11434",
+    "model": "phi3:mini"
+  },
+  "agents": {
+    "codegen": {
+      "provider": "ollama",
+      "baseUrl": "http://localhost:11434",
+      "model": "deepseek-coder:6.7b"
+    },
+    "docgen": {
+      "provider": "ollama",
+      "baseUrl": "http://localhost:11434",
+      "model": "phi3:mini"
+    }
+  },
+  "tasks": {
+    "generate_code": "codegen",
+    "explain_code": "docgen",
+    "write_commit_message": "docgen",
+    "generate_docstring": "docgen",
+    "summarize_code": "docgen"
+  }
+}
+

@@ -4,60 +4,25 @@ import CoreML
 import GameplayKit // For potential future use with more complex RL algorithms
 
 // MARK: - Nudge Actions
-enum NudgeAction: Codable, Hashable {
-    case audio(AudioType, Double) // AudioType, intensity (0.0-1.0)
-    case haptic(Double) // intensity (0.0-1.0)
-    case environment(EnvironmentOptimizationType) // e.g., temperature, humidity, lighting
-    case bedMotor(BedMotorAction) // specific bed motor action
-    case none
-}
-
-enum EnvironmentOptimizationType: Codable, Hashable {
-    case optimizeForDeepSleep
-    case optimizeForREM
-    case adjustLighting(Double) // 0.0-1.0
-    case adjustTemperature(Double) // Celsius
-    case adjustHumidity(Double) // Percentage
-    case adjustBlinds(Double) // 0.0-1.0 (closed to open)
-    case setHEPAFilterState(Bool, HEPAFilterMode)
-    case setSmartMattressHeaterCooler(Bool, Double) // On/Off, Temperature
-}
-
-enum BedMotorAction: Codable, Hashable {
-    case adjustHeadElevation(Double) // 0.0 to 1.0
-    case adjustFootElevation(Double) // 0.0 to 1.0
-    case startMassage(Double) // intensity 0.0 to 1.0
-    case stopMassage
-}
-
 enum HEPAFilterMode: Codable, Hashable {
     case auto
     case manual
     case off
 }
 
-// MARK: - NudgeAction
-
-enum NudgeActionType {
-    case audio(AudioNudgeType)
-    case haptic(HapticNudgeType)
-    case environment(EnvironmentNudgeType)
-    case bedMotor(BedMotorNudgeType)
-}
-
-enum AudioNudgeType {
+enum AudioNudgeType: Codable, Hashable {
     case pinkNoise
     case isochronicTones
     case binauralBeats
     case natureSounds
 }
 
-enum HapticNudgeType {
+enum HapticNudgeType: Codable, Hashable {
     case gentlePulse
     case strongPulse
 }
 
-enum EnvironmentNudgeType {
+enum EnvironmentNudgeType: Codable, Hashable {
     case lowerTemperature(Double)
     case raiseHumidity(Double)
     case dimLights(Double)
@@ -66,14 +31,21 @@ enum EnvironmentNudgeType {
     case stopHEPAFilter
 }
 
-enum BedMotorNudgeType {
+enum BedMotorNudgeType: Codable, Hashable {
     case adjustHead(Double)
     case adjustFoot(Double)
     case startMassage(Double)
     case stopMassage
 }
 
-struct NudgeAction {
+enum NudgeActionType: Codable, Hashable {
+    case audio(AudioNudgeType)
+    case haptic(HapticNudgeType)
+    case environment(EnvironmentNudgeType)
+    case bedMotor(BedMotorNudgeType)
+}
+
+struct NudgeAction: Codable, Hashable {
     let type: NudgeActionType
     let reason: String
 }
