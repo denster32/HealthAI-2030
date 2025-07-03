@@ -69,22 +69,117 @@ class SleepStageClassifier {
     // MARK: - Model Loading
     
     private func loadModel() {
-        // In a real implementation, this would load a trained CoreML model
-        // For now, we'll use algorithmic classification
-        print("SleepStageClassifier: Using algorithmic classification (CoreML model not found)")
+        // Load trained CoreML model for sleep stage classification
+        do {
+            let productionModels = ProductionMLModels.shared
+            model = try productionModels.loadSleepStageModel()
+            print("SleepStageClassifier: Successfully loaded CoreML sleep stage model")
+        } catch {
+            print("SleepStageClassifier: Failed to load CoreML model, falling back to algorithmic classification: \(error)")
+            model = nil
+        }
     }
     
     // MARK: - Sleep Stage Classification
     
     func classifySleepStage(features: SleepFeatures) -> SleepStageResult {
-        // Use ensemble approach: algorithmic + ML model + temporal consistency
-        let algorithmicResult = classifyAlgorithmically(features: features)
-        let temporallyConsistentResult = applyTemporalConsistency(to: algorithmicResult, features: features)
+        // Use ensemble approach: CoreML model + algorithmic + temporal consistency
+        var primaryResult: SleepStageResult
+        
+        if let mlModel = model {
+            // Use CoreML model as primary classifier
+            primaryResult = classifyWithCoreML(features: features, model: mlModel)
+        } else {
+            // Fall back to algorithmic classification
+            primaryResult = classifyAlgorithmically(features: features)
+        }
+        
+        // Apply temporal consistency
+        let temporallyConsistentResult = applyTemporalConsistency(to: primaryResult, features: features)
         
         // Store classification for temporal consistency
         addToHistory(stage: temporallyConsistentResult.stage, confidence: temporallyConsistentResult.confidence)
         
         return temporallyConsistentResult
+    }
+    
+    private func classifyWithCoreML(features: SleepFeatures, model: MLModel) -> SleepStageResult {
+        do {
+            // Create feature dictionary for CoreML input
+            let inputFeatures: [String: Any] = [
+                "heartRate": features.heartRateAverage,
+                "hrv": features.hrv,
+                "movement": features.movementVariance,
+                "temperature": features.temperatureAverage,
+                "oxygenSaturation": features.oxygenSaturationAverage,
+                "timeOfDay": features.circadianPhase * 24.0, // Convert back to hours
+                "timeSinceLastWake": features.timeSinceLastWake
+            ]
+            
+            // Create MLFeatureProvider
+            let featureProvider = try MLDictionaryFeatureProvider(dictionary: inputFeatures)
+            
+            // Make prediction
+            let prediction = try model.prediction(from: featureProvider)
+            
+            // Extract sleep stage and confidence
+            var sleepStage: SleepStageType = .unknown
+            var confidence: Double = 0.0
+            var allScores: [SleepStageType: Double] = [:]
+            
+            // Handle different output formats
+            if let stageOutput = prediction.featureValue(for: "sleepStage") {
+                if let stageName = stageOutput.stringValue {
+                    sleepStage = mapStringToSleepStage(stageName)
+                    confidence = 0.85 // Default confidence for string output
+                }
+            }
+            
+            // Try to get confidence/probability scores
+            if let probabilities = prediction.featureValue(for: "sleepStageProbability")?.dictionaryValue {
+                for (stage, prob) in probabilities {
+                    let stageType = mapStringToSleepStage(stage)
+                    let probability = prob.doubleValue
+                    allScores[stageType] = probability
+                    
+                    if probability > confidence {
+                        sleepStage = stageType
+                        confidence = probability
+                    }
+                }
+            }
+            
+            // Update classification accuracy tracking
+            let currentAccuracy = classificationAccuracy[sleepStage] ?? 0.0
+            classificationAccuracy[sleepStage] = currentAccuracy
+            
+            return SleepStageResult(
+                stage: sleepStage,
+                confidence: confidence,
+                allScores: allScores,
+                method: .coreML
+            )
+            
+        } catch {
+            print("SleepStageClassifier: CoreML prediction failed: \(error)")
+            // Fall back to algorithmic classification
+            return classifyAlgorithmically(features: features)
+        }
+    }
+    
+    private func mapStringToSleepStage(_ stageName: String) -> SleepStageType {
+        switch stageName.lowercased() {
+        case "awake":
+            return .awake
+        case "lightsleep", "light_sleep", "lightSleep", "stage1", "stage2":
+            return .lightSleep
+        case "deepsleep", "deep_sleep", "deepSleep", "stage3", "stage4":
+            return .deepSleep
+        case "remsleep", "rem_sleep", "remSleep", "rem":
+            return .remSleep
+        default:
+            return .unknown
+        }
     }
     
     private func classifyAlgorithmically(features: SleepFeatures) -> SleepStageResult {

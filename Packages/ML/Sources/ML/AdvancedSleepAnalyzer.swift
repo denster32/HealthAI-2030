@@ -106,13 +106,21 @@ class AdvancedSleepAnalyzer: ObservableObject {
             disturbances: disturbances
         )
         
-        // Create analysis result
-        let analysis = SleepAnalysisResult(
+        // ENHANCED: Perform predictive analytics
+        let riskAnalysis = performSleepRiskAnalysis(features: features, stage: stageResult.stage, disturbances: disturbances)
+        let interventionSuggestions = generatePredictiveInterventions(riskAnalysis: riskAnalysis, currentStage: stageResult.stage)
+        let healthDeteriorationRisk = assessHealthDeteriorationRisk(features: features, historicalData: historicalSleepData)
+        
+        // Create enhanced analysis result
+        let analysis = EnhancedSleepAnalysisResult(
             currentStage: stageResult.stage,
             stageConfidence: stageResult.confidence,
             sleepQuality: qualityPrediction.quality,
             qualityFactors: qualityPrediction.factors,
             disturbances: disturbances,
+            riskAnalysis: riskAnalysis,
+            interventionSuggestions: interventionSuggestions,
+            healthDeteriorationRisk: healthDeteriorationRisk,
             recommendations: generateSleepRecommendations(
                 stage: stageResult.stage,
                 quality: qualityPrediction.quality,
@@ -123,6 +131,11 @@ class AdvancedSleepAnalyzer: ObservableObject {
         
         DispatchQueue.main.async {
             self.currentSleepAnalysis = analysis
+        }
+        
+        // Trigger alerts if high risk detected
+        if healthDeteriorationRisk.severity > 0.7 {
+            triggerPredictiveHealthAlert(analysis: analysis)
         }
         
         // Update sleep cycle tracking
@@ -526,6 +539,380 @@ class AdvancedSleepAnalyzer: ObservableObject {
         
         return insights
     }
+    
+    // MARK: - Predictive Analytics
+    
+    private func performSleepRiskAnalysis(features: SleepFeatures, stage: SleepStageType, disturbances: [SleepDisturbance]) -> SleepRiskAnalysis {
+        var riskFactors: [RiskFactor] = []
+        var overallRiskScore: Double = 0.0
+        
+        // Heart rate risk analysis
+        if features.heartRateAverage > 85 {
+            let severity = min(1.0, (features.heartRateAverage - 85) / 30.0)
+            riskFactors.append(RiskFactor(
+                type: .elevatedHeartRate,
+                severity: severity,
+                description: "Heart rate elevated during sleep (\(Int(features.heartRateAverage)) BPM)",
+                predictedImpact: severity * 0.3
+            ))
+            overallRiskScore += severity * 0.2
+        }
+        
+        // HRV risk analysis
+        if features.hrv < 20 {
+            let severity = min(1.0, (20 - features.hrv) / 15.0)
+            riskFactors.append(RiskFactor(
+                type: .lowHRV,
+                severity: severity,
+                description: "Low heart rate variability indicating stress/fatigue (\(Int(features.hrv))ms)",
+                predictedImpact: severity * 0.4
+            ))
+            overallRiskScore += severity * 0.25
+        }
+        
+        // Movement-based risk
+        if features.movementVariance > 0.6 {
+            let severity = min(1.0, (features.movementVariance - 0.6) / 0.4)
+            riskFactors.append(RiskFactor(
+                type: .excessiveMovement,
+                severity: severity,
+                description: "Excessive movement during sleep indicating restlessness",
+                predictedImpact: severity * 0.2
+            ))
+            overallRiskScore += severity * 0.15
+        }
+        
+        // Temperature instability risk
+        if features.temperatureStability < 0.7 {
+            let severity = 1.0 - features.temperatureStability
+            riskFactors.append(RiskFactor(
+                type: .temperatureInstability,
+                severity: severity,
+                description: "Body temperature regulation issues during sleep",
+                predictedImpact: severity * 0.15
+            ))
+            overallRiskScore += severity * 0.1
+        }
+        
+        // Breathing irregularity risk
+        if features.breathingPatternRegularity < 0.6 {
+            let severity = 1.0 - features.breathingPatternRegularity
+            riskFactors.append(RiskFactor(
+                type: .breathingIrregularity,
+                severity: severity,
+                description: "Irregular breathing patterns detected",
+                predictedImpact: severity * 0.5
+            ))
+            overallRiskScore += severity * 0.3
+        }
+        
+        // Oxygen saturation risk
+        if features.oxygenSaturationAverage < 95 {
+            let severity = min(1.0, (95 - features.oxygenSaturationAverage) / 10.0)
+            riskFactors.append(RiskFactor(
+                type: .lowOxygenSaturation,
+                severity: severity,
+                description: "Low oxygen saturation (\(Int(features.oxygenSaturationAverage))%)",
+                predictedImpact: severity * 0.6
+            ))
+            overallRiskScore += severity * 0.35
+        }
+        
+        // Disturbance-based risk
+        let disturbanceRisk = calculateDisturbanceRisk(disturbances)
+        overallRiskScore += disturbanceRisk * 0.2
+        
+        return SleepRiskAnalysis(
+            overallRiskScore: min(1.0, overallRiskScore),
+            riskFactors: riskFactors,
+            predictedSleepQualityImpact: calculatePredictedQualityImpact(riskFactors),
+            interventionUrgency: calculateInterventionUrgency(overallRiskScore),
+            timestamp: Date()
+        )
+    }
+    
+    private func generatePredictiveInterventions(riskAnalysis: SleepRiskAnalysis, currentStage: SleepStageType) -> [PredictiveIntervention] {
+        var interventions: [PredictiveIntervention] = []
+        
+        for riskFactor in riskAnalysis.riskFactors {
+            switch riskFactor.type {
+            case .elevatedHeartRate:
+                if currentStage != .awake {
+                    interventions.append(PredictiveIntervention(
+                        type: .environmentalAdjustment,
+                        action: "Reduce room temperature by 2°C",
+                        timing: .immediate,
+                        expectedBenefit: 0.3,
+                        confidence: 0.8
+                    ))
+                }
+                
+            case .lowHRV:
+                interventions.append(PredictiveIntervention(
+                    type: .biofeedbackGuidance,
+                    action: "Initiate gentle breathing guidance if in light sleep",
+                    timing: .nextLightSleepPhase,
+                    expectedBenefit: 0.4,
+                    confidence: 0.7
+                ))
+                
+            case .excessiveMovement:
+                interventions.append(PredictiveIntervention(
+                    type: .environmentalAdjustment,
+                    action: "Activate white noise and reduce ambient light",
+                    timing: .immediate,
+                    expectedBenefit: 0.25,
+                    confidence: 0.75
+                ))
+                
+            case .breathingIrregularity:
+                interventions.append(PredictiveIntervention(
+                    type: .healthAlert,
+                    action: "Monitor for sleep apnea symptoms - consider medical consultation",
+                    timing: .immediate,
+                    expectedBenefit: 0.8,
+                    confidence: 0.9
+                ))
+                
+            case .lowOxygenSaturation:
+                interventions.append(PredictiveIntervention(
+                    type: .emergencyAlert,
+                    action: "Severe: Wake user if SpO2 < 90%, seek medical attention",
+                    timing: .immediate,
+                    expectedBenefit: 1.0,
+                    confidence: 0.95
+                ))
+                
+            case .temperatureInstability:
+                interventions.append(PredictiveIntervention(
+                    type: .environmentalAdjustment,
+                    action: "Adjust bedding and room climate control",
+                    timing: .immediate,
+                    expectedBenefit: 0.2,
+                    confidence: 0.6
+                ))
+            }
+        }
+        
+        return interventions
+    }
+    
+    private func assessHealthDeteriorationRisk(features: SleepFeatures, historicalData: [SleepSession]) -> HealthDeteriorationRisk {
+        var riskScore: Double = 0.0
+        var riskFactors: [String] = []
+        
+        // Analyze trends over the past week
+        if historicalData.count >= 7 {
+            let recentSessions = Array(historicalData.suffix(7))
+            let qualityTrend = analyzeQualityTrend(sessions: recentSessions)
+            
+            if qualityTrend == .declining {
+                riskScore += 0.3
+                riskFactors.append("Declining sleep quality trend over past week")
+            }
+            
+            // Check for concerning patterns
+            let avgHeartRate = recentSessions.map { $0.averageHeartRate ?? 70 }.reduce(0, +) / Double(recentSessions.count)
+            if avgHeartRate > 80 {
+                riskScore += 0.2
+                riskFactors.append("Consistently elevated sleep heart rate")
+            }
+            
+            let avgHRV = recentSessions.map { $0.averageHRV ?? 35 }.reduce(0, +) / Double(recentSessions.count)
+            if avgHRV < 25 {
+                riskScore += 0.25
+                riskFactors.append("Persistently low HRV indicating chronic stress")
+            }
+        }
+        
+        // Current acute risks
+        if features.heartRateAverage > 90 {
+            riskScore += 0.4
+            riskFactors.append("Acute: Very high heart rate during sleep")
+        }
+        
+        if features.oxygenSaturationAverage < 93 {
+            riskScore += 0.6
+            riskFactors.append("Critical: Low oxygen saturation")
+        }
+        
+        if features.breathingPatternRegularity < 0.5 {
+            riskScore += 0.5
+            riskFactors.append("Severe breathing irregularities")
+        }
+        
+        let severity = min(1.0, riskScore)
+        
+        return HealthDeteriorationRisk(
+            severity: severity,
+            riskFactors: riskFactors,
+            recommendedActions: generateHealthRiskActions(severity: severity),
+            timeToIntervention: calculateTimeToIntervention(severity: severity),
+            confidence: calculateRiskConfidence(riskFactors.count, historicalDataPoints: historicalData.count)
+        )
+    }
+    
+    private func triggerPredictiveHealthAlert(analysis: EnhancedSleepAnalysisResult) {
+        // Send alert to alert manager for immediate processing
+        let alert = PredictiveHealthAlert(
+            severity: analysis.healthDeteriorationRisk.severity,
+            message: "Health deterioration risk detected during sleep",
+            riskFactors: analysis.healthDeteriorationRisk.riskFactors,
+            recommendedActions: analysis.healthDeteriorationRisk.recommendedActions,
+            interventions: analysis.interventionSuggestions,
+            timestamp: Date()
+        )
+        
+        // Post notification for background processing
+        NotificationCenter.default.post(
+            name: .predictiveHealthAlertTriggered,
+            object: alert
+        )
+        
+        print("AdvancedSleepAnalyzer: Predictive health alert triggered - severity: \(analysis.healthDeteriorationRisk.severity)")
+    }
+    
+    // MARK: - Risk Calculation Helpers
+    
+    private func calculateDisturbanceRisk(_ disturbances: [SleepDisturbance]) -> Double {
+        let totalSeverity = disturbances.reduce(0) { $0 + $1.severity }
+        return min(1.0, totalSeverity / 3.0) // Normalize based on expected max disturbances
+    }
+    
+    private func calculatePredictedQualityImpact(_ riskFactors: [RiskFactor]) -> Double {
+        return riskFactors.reduce(0) { $0 + $1.predictedImpact } / Double(max(1, riskFactors.count))
+    }
+    
+    private func calculateInterventionUrgency(_ riskScore: Double) -> InterventionUrgency {
+        if riskScore > 0.8 { return .critical }
+        else if riskScore > 0.6 { return .high }
+        else if riskScore > 0.4 { return .medium }
+        else { return .low }
+    }
+    
+    private func generateHealthRiskActions(severity: Double) -> [String] {
+        var actions: [String] = []
+        
+        if severity > 0.8 {
+            actions.append("Consider waking user and seeking immediate medical attention")
+            actions.append("Document current symptoms and vital signs")
+        }
+        
+        if severity > 0.6 {
+            actions.append("Increase monitoring frequency to every 30 seconds")
+            actions.append("Prepare emergency contact protocols")
+        }
+        
+        if severity > 0.4 {
+            actions.append("Implement immediate environmental interventions")
+            actions.append("Schedule follow-up analysis in 15 minutes")
+        }
+        
+        actions.append("Log event for medical review")
+        return actions
+    }
+    
+    private func calculateTimeToIntervention(severity: Double) -> TimeInterval {
+        if severity > 0.8 { return 30 } // 30 seconds
+        else if severity > 0.6 { return 120 } // 2 minutes
+        else if severity > 0.4 { return 300 } // 5 minutes
+        else { return 900 } // 15 minutes
+    }
+    
+    private func calculateRiskConfidence(_ factorCount: Int, historicalDataPoints: Int) -> Double {
+        let factorConfidence = min(1.0, Double(factorCount) / 3.0)
+        let dataConfidence = min(1.0, Double(historicalDataPoints) / 14.0)
+        return (factorConfidence + dataConfidence) / 2.0
+    }
+}
+
+// MARK: - Enhanced Supporting Types
+
+struct EnhancedSleepAnalysisResult {
+    let currentStage: SleepStageType
+    let stageConfidence: Double
+    let sleepQuality: Double
+    let qualityFactors: [QualityFactor]
+    let disturbances: [SleepDisturbance]
+    let riskAnalysis: SleepRiskAnalysis
+    let interventionSuggestions: [PredictiveIntervention]
+    let healthDeteriorationRisk: HealthDeteriorationRisk
+    let recommendations: [SleepRecommendation]
+    let timestamp: Date
+}
+
+struct SleepRiskAnalysis {
+    let overallRiskScore: Double
+    let riskFactors: [RiskFactor]
+    let predictedSleepQualityImpact: Double
+    let interventionUrgency: InterventionUrgency
+    let timestamp: Date
+}
+
+struct RiskFactor {
+    let type: RiskType
+    let severity: Double
+    let description: String
+    let predictedImpact: Double
+}
+
+enum RiskType {
+    case elevatedHeartRate
+    case lowHRV
+    case excessiveMovement
+    case temperatureInstability
+    case breathingIrregularity
+    case lowOxygenSaturation
+}
+
+struct PredictiveIntervention {
+    let type: InterventionType
+    let action: String
+    let timing: InterventionTiming
+    let expectedBenefit: Double
+    let confidence: Double
+}
+
+enum InterventionType {
+    case environmentalAdjustment
+    case biofeedbackGuidance
+    case healthAlert
+    case emergencyAlert
+}
+
+enum InterventionTiming {
+    case immediate
+    case nextLightSleepPhase
+    case nextREMPhase
+    case uponWaking
+}
+
+enum InterventionUrgency {
+    case low
+    case medium
+    case high
+    case critical
+}
+
+struct HealthDeteriorationRisk {
+    let severity: Double
+    let riskFactors: [String]
+    let recommendedActions: [String]
+    let timeToIntervention: TimeInterval
+    let confidence: Double
+}
+
+struct PredictiveHealthAlert {
+    let severity: Double
+    let message: String
+    let riskFactors: [String]
+    let recommendedActions: [String]
+    let interventions: [PredictiveIntervention]
+    let timestamp: Date
+}
+
+extension Notification.Name {
+    static let predictiveHealthAlertTriggered = Notification.Name("predictiveHealthAlertTriggered")
 }
 
 // MARK: - Supporting Types

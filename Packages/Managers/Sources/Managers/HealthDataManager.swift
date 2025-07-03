@@ -253,22 +253,302 @@ class HealthDataManager: ObservableObject {
         
         DispatchQueue.main.async {
             self.sleepData = samples
-            self.currentSleepFeatures = self.sleepFeatureExtractor.extractFeatures(from: self.rawSensorData)
             
-            if let features = self.currentSleepFeatures {
-                let sleepPrediction = self.coreMLIntegrationManager.predictSleepStage(from: self.rawSensorData)
-                self.predictedSleepStage = sleepPrediction.stage.rawValue
-                
-                if self.federatedLearningManager.isEnabled() {
-                    self.federatedLearningManager.generateLocalModelUpdate(with: features.toArray().map { String($0) })
+            // Enhanced real-time processing with predictive analytics
+            self.performAdvancedSleepProcessing()
+        }
+    }
+    
+    private func performAdvancedSleepProcessing() {
+        // Extract enhanced sleep features
+        self.currentSleepFeatures = self.sleepFeatureExtractor.extractFeatures(from: self.rawSensorData)
+        
+        guard let features = self.currentSleepFeatures else { return }
+        
+        // Perform real-time ML prediction with production models
+        let sleepPrediction = self.coreMLIntegrationManager.predictSleepStage(from: self.rawSensorData)
+        self.predictedSleepStage = sleepPrediction.stage.rawValue
+        
+        // Enhanced: Perform real-time health risk assessment
+        self.performRealtimeHealthRiskAssessment(features: features, prediction: sleepPrediction)
+        
+        // Enhanced: Trigger predictive interventions if needed
+        self.triggerPredictiveInterventions(features: features, prediction: sleepPrediction)
+        
+        // Enhanced: Update federated learning with high-quality features
+        if self.federatedLearningManager.isEnabled() && sleepPrediction.confidence > 0.7 {
+            self.federatedLearningManager.generateLocalModelUpdate(with: features.toArray().map { String($0) })
+        }
+        
+        // Enhanced: Real-time data streaming for continuous monitoring
+        self.updateContinuousMonitoring(features: features, prediction: sleepPrediction)
+        
+        // Clear processed data
+        self.rawSensorData.removeAll()
+        
+        // Save enhanced data to Core Data
+        self.saveEnhancedHealthData(features: features, prediction: sleepPrediction)
+    }
+    
+    private func performRealtimeHealthRiskAssessment(features: SleepFeatures, prediction: SleepPredictionResult) {
+        var riskLevel: HealthRiskLevel = .low
+        var riskFactors: [String] = []
+        
+        // Real-time cardiovascular risk assessment
+        if features.heartRateAverage > 85 {
+            riskLevel = .elevated
+            riskFactors.append("Elevated heart rate during sleep: \(Int(features.heartRateAverage)) BPM")
+        }
+        
+        // Real-time respiratory risk assessment
+        if features.oxygenSaturationAverage < 95 {
+            riskLevel = max(riskLevel, .high)
+            riskFactors.append("Low oxygen saturation: \(Int(features.oxygenSaturationAverage))%")
+        }
+        
+        if features.oxygenSaturationAverage < 90 {
+            riskLevel = .critical
+            riskFactors.append("Critical oxygen saturation: \(Int(features.oxygenSaturationAverage))%")
+        }
+        
+        // Real-time autonomic nervous system assessment
+        if features.heartRateVariability < 20 {
+            riskLevel = max(riskLevel, .elevated)
+            riskFactors.append("Low HRV indicating stress/fatigue: \(Int(features.heartRateVariability))ms")
+        }
+        
+        // Real-time temperature regulation assessment
+        if features.wristTemperatureAverage < 35.5 || features.wristTemperatureAverage > 38.5 {
+            riskLevel = max(riskLevel, .elevated)
+            riskFactors.append("Temperature dysregulation: \(String(format: "%.1f", features.wristTemperatureAverage))°C")
+        }
+        
+        // Real-time sleep architecture assessment
+        if prediction.confidence < 0.5 {
+            riskLevel = max(riskLevel, .elevated)
+            riskFactors.append("Poor sleep stage classification confidence")
+        }
+        
+        // Store risk assessment
+        let riskAssessment = RealtimeHealthRiskAssessment(
+            level: riskLevel,
+            factors: riskFactors,
+            timestamp: Date(),
+            confidence: prediction.confidence
+        )
+        
+        // Trigger immediate alerts for high/critical risks
+        if riskLevel >= .high {
+            self.triggerImmediateHealthAlert(assessment: riskAssessment)
+        }
+        
+        // Post notification for background processing
+        NotificationCenter.default.post(
+            name: .realtimeHealthRiskAssessed,
+            object: riskAssessment
+        )
+    }
+    
+    private func triggerPredictiveInterventions(features: SleepFeatures, prediction: SleepPredictionResult) {
+        var interventions: [PredictiveIntervention] = []
+        
+        // Smart environment interventions
+        if features.heartRateAverage > 80 && prediction.stage.rawValue != "awake" {
+            interventions.append(PredictiveIntervention(
+                type: .environmentalAdjustment,
+                description: "Reduce room temperature to lower heart rate",
+                urgency: .withinMinutes,
+                expectedBenefit: 0.3
+            ))
+        }
+        
+        // Audio therapy interventions
+        if features.heartRateVariability < 25 && prediction.stage.rawValue == "lightSleep" {
+            interventions.append(PredictiveIntervention(
+                type: .audioTherapy,
+                description: "Initiate HRV coherence audio guidance",
+                urgency: .immediate,
+                expectedBenefit: 0.4
+            ))
+        }
+        
+        // Movement-based interventions
+        if features.activityCount > 30 && prediction.stage.rawValue != "awake" {
+            interventions.append(PredictiveIntervention(
+                type: .environmentalAdjustment,
+                description: "Activate white noise to reduce disturbances",
+                urgency: .immediate,
+                expectedBenefit: 0.25
+            ))
+        }
+        
+        // Smart alarm interventions
+        let timeUntilMorning = calculateTimeUntilMorning()
+        if timeUntilMorning < 7200 && prediction.stage.rawValue == "lightSleep" { // 2 hours until morning
+            interventions.append(PredictiveIntervention(
+                type: .smartAlarmOptimization,
+                description: "Optimize wake window for natural awakening",
+                urgency: .scheduled,
+                expectedBenefit: 0.5
+            ))
+        }
+        
+        // Execute interventions
+        for intervention in interventions {
+            self.executeRealtimeIntervention(intervention)
+        }
+        
+        if !interventions.isEmpty {
+            print("HealthDataManager: Executed \(interventions.count) predictive interventions")
+        }
+    }
+    
+    private func updateContinuousMonitoring(features: SleepFeatures, prediction: SleepPredictionResult) {
+        // Update continuous monitoring stream for Apple Watch and other devices
+        let monitoringData = ContinuousMonitoringData(
+            heartRate: features.heartRateAverage,
+            hrv: features.heartRateVariability,
+            oxygenSaturation: features.spo2Average,
+            sleepStage: prediction.stage.rawValue,
+            confidence: prediction.confidence,
+            timestamp: Date()
+        )
+        
+        // Send to Apple Watch via Watch Connectivity
+        if let watchManager = AppleWatchManager.shared {
+            watchManager.sendContinuousMonitoringData(monitoringData)
+        }
+        
+        // Update live activities on iPhone
+        if let liveActivityManager = HealthLiveActivity.shared {
+            liveActivityManager.updateSleepMonitoring(data: monitoringData)
+        }
+        
+        // Stream to health dashboard
+        NotificationCenter.default.post(
+            name: .continuousMonitoringDataUpdated,
+            object: monitoringData
+        )
+    }
+    
+    private func executeRealtimeIntervention(_ intervention: PredictiveIntervention) {
+        switch intervention.type {
+        case .environmentalAdjustment:
+            // Trigger smart home adjustments
+            if let smartHomeManager = SmartHomeManager.shared {
+                Task {
+                    await smartHomeManager.executeRealtimeAdjustment(intervention)
                 }
             }
             
-            self.rawSensorData.removeAll()
+        case .audioTherapy:
+            // Start immediate audio therapy
+            if let audioEngine = EnhancedAudioEngine.shared {
+                Task {
+                    await audioEngine.startRealtimeAudioTherapy(intervention)
+                }
+            }
             
-            // Save raw sensor data to Core Data
-            // CoreDataManager.shared.saveSensorSamples(self.rawSensorData) // Commented out as CoreDataManager is not provided
+        case .smartAlarmOptimization:
+            // Optimize alarm timing
+            if let alarmSystem = SmartAlarmSystem.shared {
+                Task {
+                    await alarmSystem.optimizeAlarmTiming(based: intervention)
+                }
+            }
+            
+        case .biofeedbackGuidance:
+            // Provide real-time biofeedback
+            if let biofeedbackEngine = AdvancedBiofeedback.shared {
+                Task {
+                    await biofeedbackEngine.provideRealtimeBiofeedback(intervention)
+                }
+            }
         }
+        
+        print("HealthDataManager: Executed intervention: \(intervention.description)")
+    }
+    
+    private func triggerImmediateHealthAlert(assessment: RealtimeHealthRiskAssessment) {
+        let alertTitle: String
+        let alertBody: String
+        let sound: UNNotificationSound
+        
+        switch assessment.level {
+        case .critical:
+            alertTitle = "🚨 Critical Health Alert"
+            alertBody = "Critical health issue detected during sleep. Consider waking up and seeking medical attention."
+            sound = .critical
+        case .high:
+            alertTitle = "⚠️ High Health Risk Alert"
+            alertBody = "High health risk detected during sleep. Monitoring closely."
+            sound = .default
+        default:
+            return // Don't send notifications for elevated/low risks during sleep
+        }
+        
+        let content = UNMutableNotificationContent()
+        content.title = alertTitle
+        content.body = alertBody
+        content.sound = sound
+        content.categoryIdentifier = "HEALTH_RISK_ALERT"
+        
+        let request = UNNotificationRequest(
+            identifier: "health_risk_\(UUID().uuidString)",
+            content: content,
+            trigger: nil // Immediate delivery
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("HealthDataManager: Failed to send health alert: \(error)")
+            } else {
+                print("HealthDataManager: Health alert sent for \(assessment.level) risk")
+            }
+        }
+    }
+    
+    private func saveEnhancedHealthData(features: SleepFeatures, prediction: SleepPredictionResult) {
+        let enhancedData = EnhancedHealthSnapshot(
+            // Basic vitals
+            heartRate: features.heartRateAverage,
+            hrv: features.heartRateVariability,
+            oxygenSaturation: features.spo2Average,
+            bodyTemperature: features.wristTemperatureAverage,
+            
+            // Sleep-specific features
+            sleepStage: prediction.stage.rawValue,
+            sleepStageConfidence: prediction.confidence,
+            sleepQuality: prediction.quality,
+            
+            // Advanced features
+            activityCount: features.activityCount,
+            temperatureStability: features.wristTemperatureGradient,
+            breathingRegularity: features.sdnn, // Proxy for breathing
+            
+            // Metadata
+            timestamp: Date(),
+            modelVersion: prediction.modelUsed
+        )
+        
+        // Save to Core Data
+        CoreDataManager.shared.saveEnhancedHealthData(enhancedData)
+    }
+    
+    private func calculateTimeUntilMorning() -> TimeInterval {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        // Assume 7 AM as target wake time
+        var wakeTime = calendar.startOfDay(for: now)
+        wakeTime = calendar.date(byAdding: .hour, value: 7, to: wakeTime) ?? wakeTime
+        
+        // If it's already past 7 AM, target tomorrow's 7 AM
+        if now > wakeTime {
+            wakeTime = calendar.date(byAdding: .day, value: 1, to: wakeTime) ?? wakeTime
+        }
+        
+        return wakeTime.timeIntervalSince(now)
     }
     
     private func processStepSamples(_ samples: [HKSample]?) {
@@ -915,4 +1195,80 @@ extension SleepFeatures {
             wristTemperatureGradient
         ]
     }
+}
+
+// MARK: - Enhanced Real-Time Processing Types
+
+enum HealthRiskLevel: Comparable {
+    case low
+    case elevated
+    case high
+    case critical
+    
+    static func < (lhs: HealthRiskLevel, rhs: HealthRiskLevel) -> Bool {
+        let order: [HealthRiskLevel] = [.low, .elevated, .high, .critical]
+        guard let lhsIndex = order.firstIndex(of: lhs),
+              let rhsIndex = order.firstIndex(of: rhs) else {
+            return false
+        }
+        return lhsIndex < rhsIndex
+    }
+}
+
+struct RealtimeHealthRiskAssessment {
+    let level: HealthRiskLevel
+    let factors: [String]
+    let timestamp: Date
+    let confidence: Double
+}
+
+struct PredictiveIntervention {
+    let type: InterventionType
+    let description: String
+    let urgency: InterventionUrgency
+    let expectedBenefit: Double
+    
+    enum InterventionType {
+        case environmentalAdjustment
+        case audioTherapy
+        case smartAlarmOptimization
+        case biofeedbackGuidance
+    }
+    
+    enum InterventionUrgency {
+        case immediate
+        case withinMinutes
+        case scheduled
+    }
+}
+
+struct ContinuousMonitoringData {
+    let heartRate: Double
+    let hrv: Double
+    let oxygenSaturation: Double
+    let sleepStage: String
+    let confidence: Double
+    let timestamp: Date
+}
+
+struct EnhancedHealthSnapshot {
+    let heartRate: Double
+    let hrv: Double
+    let oxygenSaturation: Double
+    let bodyTemperature: Double
+    let sleepStage: String
+    let sleepStageConfidence: Double
+    let sleepQuality: Double
+    let activityCount: Double
+    let temperatureStability: Double
+    let breathingRegularity: Double
+    let timestamp: Date
+    let modelVersion: String
+}
+
+// MARK: - Notification Extensions
+
+extension Notification.Name {
+    static let realtimeHealthRiskAssessed = Notification.Name("realtimeHealthRiskAssessed")
+    static let continuousMonitoringDataUpdated = Notification.Name("continuousMonitoringDataUpdated")
 }

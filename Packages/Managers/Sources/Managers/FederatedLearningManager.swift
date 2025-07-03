@@ -37,6 +37,8 @@ class FederatedLearningManager: ObservableObject {
     // Privacy and security
     private var differentialPrivacy: DifferentialPrivacy?
     private var secureAggregation: SecureAggregation?
+    private let keychainManager = KeychainManager.shared
+    private let federatedConfigKey = "federatedConfig"
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -627,8 +629,7 @@ class FederatedLearningManager: ObservableObject {
         
         return ModelPerformance(
             accuracy: accuracy,
-            loss: 0.0, // Calculate loss if needed
-            timestamp: Date()
+            loss: 0.0 // Calculate loss if needed
         )
     }
     
@@ -762,7 +763,14 @@ class FederatedLearningManager: ObservableObject {
     
     private func saveFederatedConfiguration() {
         // Save federated learning configuration
-        // This is a placeholder implementation
+        do {
+            let configData = try JSONEncoder().encode(federatedConfig)
+            if let configString = String(data: configData, encoding: .utf8) {
+                keychainManager.save(value: configString, for: federatedConfigKey)
+            }
+        } catch {
+            print("Error saving federated configuration: \(error.localizedDescription)")
+        }
     }
     
     private func loadPrivacySettings() {
@@ -782,7 +790,7 @@ class FederatedLearningManager: ObservableObject {
 
 // MARK: - Supporting Types
 
-struct FederatedConfig {
+struct FederatedConfig: Codable {
     // Data requirements
     var minimumDataSize: Int = 100
     
@@ -923,16 +931,71 @@ struct PrivacyBudgetStatus {
     let isExhausted: Bool
 }
 
-struct EncryptedModelUpdate {
+struct EncryptedModelUpdate: Codable {
     let encryptedParameters: Data
     let roundNumber: Int
     let timestamp: Date
+    
+    // Additional metadata for debugging and tracking
+    let deviceId: String
+    let modelVersion: String
+    let updateSize: Int
+    
+    init(encryptedParameters: Data, roundNumber: Int, timestamp: Date) {
+        self.encryptedParameters = encryptedParameters
+        self.roundNumber = roundNumber
+        self.timestamp = timestamp
+        
+        // Default values for additional metadata
+        self.deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+        self.modelVersion = "1.0"
+        self.updateSize = encryptedParameters.count
+    }
 }
 
-struct EncryptedModel {
+struct EncryptedModel: Codable {
     let encryptedData: Data
     let modelType: String
     let timestamp: Date
+    let modelURL: URL? // URL to the model file instead of the MLModel itself
+    let modelVersion: String
+    let roundNumber: Int
+    
+    // Non-Codable property for the actual model
+    var model: MLModel? {
+        get {
+            guard let url = modelURL else { return nil }
+            do {
+                return try MLModel(contentsOf: url)
+            } catch {
+                print("Error loading model: \(error)")
+                return nil
+            }
+        }
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case encryptedData, modelType, timestamp, modelURL, modelVersion, roundNumber
+    }
+    
+    init(encryptedData: Data, modelType: String, timestamp: Date, modelURL: URL?, modelVersion: String = "1.0", roundNumber: Int = 0) {
+        self.encryptedData = encryptedData
+        self.modelType = modelType
+        self.timestamp = timestamp
+        self.modelURL = modelURL
+        self.modelVersion = modelVersion
+        self.roundNumber = roundNumber
+    }
+    
+    // Convenience initializer that takes an MLModel
+    init(encryptedData: Data, modelType: String, timestamp: Date, model: MLModel, modelVersion: String = "1.0", roundNumber: Int = 0) {
+        self.encryptedData = encryptedData
+        self.modelType = modelType
+        self.timestamp = timestamp
+        self.modelURL = model.modelURL
+        self.modelVersion = modelVersion
+        self.roundNumber = roundNumber
+    }
 }
 
 enum TrainingStatus: String, CaseIterable {
@@ -1176,17 +1239,117 @@ enum AggregationMethod {
 class PrivacyManager: ObservableObject {
     @Published var privacyBudget: PrivacyBudget = PrivacyBudget()
     
+    // Privacy settings
+    private var privacyEpsilon: Double = 1.0
+    private var privacyDelta: Double = 1e-5
+    private var noiseScale: Double = 1.0
+    private var differentialPrivacy: DifferentialPrivacy?
+    
+    // Consent tracking
+    private var userConsentStatus: Bool = false
+    private var consentDate: Date?
+    
+    // Privacy policy version
+    private var privacyPolicyVersion: String = "1.0.0"
+    
     var privacyBudgetPublisher: AnyPublisher<PrivacyBudget, Never> {
         $privacyBudget.eraseToAnyPublisher()
     }
     
+    init() {
+        differentialPrivacy = DifferentialPrivacy()
+        loadPrivacySettings()
+    }
+    
     func setup(with config: FederatedConfig) {
-        // Setup privacy manager
+        // Setup privacy manager with configuration
+        self.privacyEpsilon = config.privacyEpsilon
+        self.privacyDelta = config.privacyDelta
+        self.noiseScale = config.dataAugmentationNoise
+        
+        // Update privacy budget based on configuration
+        updatePrivacyBudget(totalBudget: config.privacyEpsilon * 10) // Example: total budget is 10x epsilon
     }
     
     func hasPrivacyConsent() -> Bool {
-        return true // Simplified implementation
+        return userConsentStatus
+        
+        // Also reset the differential privacy tracking
+        differentialPrivacy?.resetPrivacyBudget()
     }
+    
+    func updatePrivacyConsent(granted: Bool) {
+        userConsentStatus = granted
+        consentDate = granted ? Date() : nil
+        savePrivacySettings()
+    }
+    
+    func checkPrivacyBudgetForOperation(epsilon: Double, delta: Double) -> Bool {
+        // Check if we have enough privacy budget for this operation
+        return privacyBudget.remainingBudget >= epsilon
+    }
+    
+    func consumePrivacyBudget(amount: Double) {
+        // Update privacy budget
+        privacyBudget.remainingBudget -= amount
+        privacyBudget.usedBudget += amount
+        
+        // Ensure we don't go below zero
+        if privacyBudget.remainingBudget < 0 {
+            privacyBudget.remainingBudget = 0
+        }
+        
+        savePrivacySettings()
+    }
+    
+    // MARK: - Private Helper Methods
+    
+    private func loadPrivacySettings() {
+        // In a real app, this would load from UserDefaults or Keychain
+        // For now, we'll just set some default values
+        userConsentStatus = false
+        privacyBudget = PrivacyBudget(
+            totalBudget: 10.0,
+            remainingBudget: 10.0,
+            usedBudget: 0.0
+        )
+    }
+    
+    private func savePrivacySettings() {
+        // In a real app, this would save to UserDefaults or Keychain
+        // For now, we'll just print the current status
+        print("Privacy settings updated: Consent=\(userConsentStatus), Remaining budget=\(privacyBudget.remainingBudget)")
+    }
+    
+    private func updatePrivacyBudget(totalBudget: Double) {
+        let oldRemaining = privacyBudget.remainingBudget
+        let oldTotal = privacyBudget.totalBudget
+        
+        // If we're increasing the budget, add to remaining
+        if totalBudget > oldTotal {
+            let increase = totalBudget - oldTotal
+            privacyBudget.remainingBudget += increase
+        } else if totalBudget < oldTotal {
+            // If we're decreasing, adjust proportionally
+            let ratio = totalBudget / oldTotal
+            privacyBudget.remainingBudget = oldRemaining * ratio
+        }
+        
+        privacyBudget.totalBudget = totalBudget
+        savePrivacySettings()
+    }
+}
+
+struct PrivacyBudget {
+    var totalBudget: Double = 1.0
+    var remainingBudget: Double = 1.0
+    var usedBudget: Double = 0.0
+    
+    init(totalBudget: Double = 1.0, remainingBudget: Double = 1.0, usedBudget: Double = 0.0) {
+        self.totalBudget = totalBudget
+        self.remainingBudget = remainingBudget
+        self.usedBudget = usedBudget
+    }}
     
     func getPrivacyBudgetStatus() -> PrivacyBudgetStatus {
         return PrivacyBudgetStatus(
@@ -1551,7 +1714,12 @@ class SecureAggregation: ObservableObject {
         
         // Convert parameters to Data
         let parametersData = try JSONEncoder().encode(update.modelParameters)
+        guard let model = encryptedModel.model else {
+            throw FederatedLearningError.modelNotAvailable
+        }
         
+        // If we have a valid model, return it
+        return model
         // Encrypt data
         let encryptedData = try encryptData(parametersData, with: publicKey, iv: iv)
         
@@ -1685,6 +1853,7 @@ enum SyncStrategy {
 
 extension FederatedConfig {
     static let `default` = FederatedConfig(
+        learningRate: 0.01,
         learningRate: 0.01,
         batchSize: 32,
         serverURL: URL(string: "https://api.healthai2030.com/federated"),
