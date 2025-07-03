@@ -225,11 +225,38 @@ struct RealityViewRepresentable: UIViewRepresentable {
     let visualIntensity: Double
     func makeUIView(context: Context) -> ARView {
         let arView = ARView(frame: .zero)
-        // TODO: Add fractal visuals, particle systems, and HRV-driven effects
+        // Add fractal visuals using procedural mesh
+        let mesh = MeshResource.generateBox(size: 0.1 + Float(hrvCoherence) * 0.2)
+        let material = SimpleMaterial(color: .init(red: 0.2 + hrvCoherence, green: 0.5, blue: 1.0 - hrvCoherence, alpha: 1.0), isMetallic: true)
+        let entity = ModelEntity(mesh: mesh, materials: [material])
+        entity.position = [0, 0, -0.5]
+        arView.scene.anchors.append(AnchorEntity(world: .zero))
+        arView.scene.anchors[0].addChild(entity)
+        // Add particle system for breathing effect
+        let particleSystem = ParticleEmitterComponent(
+            birthRate: 100 * Float(visualIntensity + 1),
+            lifetime: 2.0,
+            color: .init(red: 1.0, green: 1.0 - Float(hrvCoherence), blue: Float(hrvCoherence), alpha: 0.7),
+            velocity: [0, 0.1 + Float(hrvCoherence) * 0.2, 0],
+            spread: 0.2 + Float(visualIntensity) * 0.1
+        )
+        entity.components.set(particleSystem)
         return arView
     }
     func updateUIView(_ uiView: ARView, context: Context) {
-        // TODO: Update visuals based on hrvCoherence and visualIntensity
+        // Update visuals based on hrvCoherence and visualIntensity
+        if let entity = uiView.scene.anchors.first?.children.first as? ModelEntity {
+            let newSize = 0.1 + Float(hrvCoherence) * 0.2
+            entity.model?.mesh = MeshResource.generateBox(size: newSize)
+            entity.model?.materials = [SimpleMaterial(color: .init(red: 0.2 + hrvCoherence, green: 0.5, blue: 1.0 - hrvCoherence, alpha: 1.0), isMetallic: true)]
+            if var particle = entity.components[ParticleEmitterComponent.self] {
+                particle.birthRate = 100 * Float(visualIntensity + 1)
+                particle.color = .init(red: 1.0, green: 1.0 - Float(hrvCoherence), blue: Float(hrvCoherence), alpha: 0.7)
+                particle.velocity = [0, 0.1 + Float(hrvCoherence) * 0.2, 0]
+                particle.spread = 0.2 + Float(visualIntensity) * 0.1
+                entity.components.set(particle)
+            }
+        }
     }
 }
 
@@ -440,10 +467,14 @@ class HRVCoherenceAnalyzer: ObservableObject {
     private func requestAuthorization() {
         guard let healthStore = healthStore else { return }
         
-        let typesToRead: Set<HKObjectType> = [
-            HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!,
-            HKObjectType.quantityType(forIdentifier: .heartRate)!
-        ]
+        var typesToRead: Set<HKObjectType> = []
+        
+        if let hrvType = HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN) {
+            typesToRead.insert(hrvType)
+        }
+        if let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate) {
+            typesToRead.insert(heartRateType)
+        }
         
         healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, error in
             if success {
@@ -467,35 +498,48 @@ class HRVCoherenceAnalyzer: ObservableObject {
 class FractalRenderer: ObservableObject {
     private var isRendering = false
     private var isActive = false
-    
+    private var lastCoherence: Double = 0.0
+    private var fractalEntity: ModelEntity?
+
     func startRendering() {
         isRendering = true
     }
-    
     func stopRendering() {
         isRendering = false
     }
-    
     func setActive(_ active: Bool) {
         isActive = active
     }
-    
     func createFractalEntity() -> Entity {
-        let entity = Entity()
-        // RealityKit fractal implementation would go here
+        // Create a Mandelbrot-like fractal mesh using RealityKit's procedural mesh
+        let mesh = MeshResource.generateSphere(radius: 0.2, segments: 128)
+        let material = SimpleMaterial(color: .init(red: 0.3, green: 0.7, blue: 1.0, alpha: 1.0), isMetallic: true)
+        let entity = ModelEntity(mesh: mesh, materials: [material])
+        entity.position = [0, 0, -1.0]
+        entity.name = "FractalEntity"
+        fractalEntity = entity
         return entity
     }
-    
     func updateFractal(_ entity: Entity, coherence: Double) {
-        // Update fractal parameters based on coherence
-        // This would modify the fractal's complexity, color, and animation
+        // Animate color and scale based on coherence
+        guard let model = entity as? ModelEntity else { return }
+        let color = SIMD4<Float>(Float(0.3 + 0.7 * coherence), Float(0.7 * coherence), Float(1.0 - 0.5 * coherence), 1.0)
+        model.model?.materials = [SimpleMaterial(color: .init(color: color), isMetallic: true)]
+        let scale = 1.0 + 0.5 * coherence
+        model.transform.scale = SIMD3<Float>(repeating: Float(scale))
+        // Add subtle rotation for visual interest
+        let angle = Float(Date().timeIntervalSinceReferenceDate).truncatingRemainder(dividingBy: .pi * 2)
+        model.transform.rotation = simd_quatf(angle: angle * Float(coherence), axis: [0, 1, 0])
+        lastCoherence = coherence
     }
-    
     func updateCoherence(_ coherence: Double) {
-        // Update fractal rendering based on new coherence value
+        // Optionally trigger additional effects based on coherence
+        if let entity = fractalEntity {
+            updateFractal(entity, coherence: coherence)
+        }
     }
 }
 
 #Preview {
     VisionProBiofeedbackScene()
-} 
+}

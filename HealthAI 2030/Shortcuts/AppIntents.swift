@@ -95,24 +95,56 @@ struct HealthAI2030Shortcuts: AppShortcutsProvider {
 class AppDependencyManager {
     static let shared = AppDependencyManager()
     private var dependencies: [String: Any] = [:]
+    private let lock = NSLock()
 
+    /// Register a dependency instance for a given type.
     func add<T>(_ dependency: T) {
         let key = String(describing: T.self)
+        lock.lock(); defer { lock.unlock() }
         dependencies[key] = dependency
     }
 
-    func get<T>() -> T {
+    /// Retrieve a dependency instance for a given type, or nil if not found.
+    func get<T>() -> T? {
         let key = String(describing: T.self)
+        lock.lock(); defer { lock.unlock() }
         guard let dependency = dependencies[key] as? T else {
-            fatalError("Dependency \(key) not found. Ensure it is added in AppDependencyManager.")
+            print("[AppDependencyManager] Warning: Dependency \(key) not found. Returning nil.")
+            return nil
         }
         return dependency
     }
+
+    /// Remove a dependency for a given type.
+    func remove<T>(_ type: T.Type) {
+        let key = String(describing: T.self)
+        lock.lock(); defer { lock.unlock() }
+        dependencies.removeValue(forKey: key)
+    }
+
+    /// Clear all dependencies (for testing or teardown).
+    func clear() {
+        lock.lock(); defer { lock.unlock() }
+        dependencies.removeAll()
+    }
 }
 
+/// Property wrapper for AppIntent dependency injection.
 @available(iOS 18.0, *)
-private struct Dependency: AppIntent.Dependency {
-    func resolve<T>() -> T {
-        AppDependencyManager.shared.get()
+@propertyWrapper
+struct Dependency<T>: DynamicProperty {
+    private var value: T?
+    public var wrappedValue: T {
+        mutating get {
+            if value == nil {
+                value = AppDependencyManager.shared.get()
+                if value == nil {
+                    fatalError("[Dependency] Could not resolve dependency of type \(T.self). Make sure it is registered in AppDependencyManager.")
+                }
+            }
+            return value!
+        }
+        set { value = newValue }
     }
+    init() {}
 }

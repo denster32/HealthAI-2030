@@ -105,27 +105,39 @@ struct OnboardingView: View {
     
     private var welcomeStep: some View {
         VStack(spacing: 30) {
-            Image("AppLogo")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 120, height: 120)
-                .scaleEffect(isAnimating ? 1.05 : 1.0)
-                .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
-                .somnaPulse(duration: 3.0, scale: 1.05)
-            
+            ZStack {
+                PremiumAssets.onboardingBackground
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(height: 220)
+                    .clipped()
+                    .cornerRadius(24)
+                    .shadow(radius: 10)
+                    .padding(.bottom, 10)
+                Image("AppLogo")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 120, height: 120)
+                    .scaleEffect(isAnimating ? 1.05 : 1.0)
+                    .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
+                    .somnaPulse(duration: 3.0, scale: 1.05)
+            }
             VStack(spacing: 20) {
                 Text("Welcome to SomnaSync Pro")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .multilineTextAlignment(.center)
                     .somnaPulse(duration: 4.0, scale: 1.01)
-                
                 Text("Your AI-powered sleep optimization companion")
                     .font(.title2)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .somnaPulse(duration: 3.5, scale: 1.02)
-                
+                VideoPlayerView(videoName: InAppTutorials.onboardingVideo)
+                    .frame(height: 180)
+                    .cornerRadius(16)
+                    .shadow(radius: 8)
+                    .padding(.top, 10)
                 Group {
                     if horizontalSizeClass == .regular {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 250))], spacing: 15) {
@@ -294,25 +306,37 @@ struct OnboardingView: View {
     
     private var finalStep: some View {
         VStack(spacing: 30) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 80))
-                .foregroundColor(.somnaSuccess)
-                .scaleEffect(isAnimating ? 1.1 : 1.0)
-                .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
-                .somnaPulse(duration: 2.0, scale: 1.1)
-            
+            ZStack {
+                PremiumAssets.dashboardHero
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(height: 180)
+                    .clipped()
+                    .cornerRadius(20)
+                    .shadow(radius: 8)
+                    .padding(.bottom, 10)
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 80))
+                    .foregroundColor(.somnaSuccess)
+                    .scaleEffect(isAnimating ? 1.1 : 1.0)
+                    .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
+                    .somnaPulse(duration: 2.0, scale: 1.1)
+            }
             VStack(spacing: 20) {
                 Text("You're All Set!")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .somnaPulse(duration: 3.0, scale: 1.02)
-                
                 Text("SomnaSync Pro is ready to optimize your sleep experience. Start your first sleep session when you're ready.")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .somnaShimmer()
-                
+                VideoPlayerView(videoName: InAppTutorials.dashboardWalkthrough)
+                    .frame(height: 160)
+                    .cornerRadius(14)
+                    .shadow(radius: 6)
+                    .padding(.top, 8)
                 Group {
                     if horizontalSizeClass == .regular {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 250))], spacing: 15) {
@@ -477,4 +501,4 @@ extension Notification.Name {
 
 #Preview {
     OnboardingView()
-} 
+}

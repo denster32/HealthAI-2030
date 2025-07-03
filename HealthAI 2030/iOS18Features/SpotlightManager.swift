@@ -1,6 +1,10 @@
 import Foundation
 import CoreSpotlight
+#if canImport(MobileCoreServices)
 import MobileCoreServices
+#elseif canImport(CoreServices)
+import CoreServices
+#endif
 import SwiftUI
 import Combine
 import OSLog

@@ -1,6 +1,6 @@
 import Foundation
-import ControlCenterUI
-import ControlCenterUIKit
+// import ControlCenterUI // Module not available
+// import ControlCenterUIKit // Module not available
 import SwiftUI
 import Combine
 import OSLog

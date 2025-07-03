@@ -1,7 +1,7 @@
 import SwiftUI
-import MentalHealthDashboardView
-import AdvancedCardiacDashboardView
-import RespiratoryHealthDashboardView
+// import MentalHealthDashboardView // Module not found
+// import AdvancedCardiacDashboardView // Module not found
+// import RespiratoryHealthDashboardView // Module not found
 
 @available(iOS 17.0, *)
 @available(macOS 14.0, *)

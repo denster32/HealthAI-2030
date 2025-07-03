@@ -1,9 +1,14 @@
+#if os(iOS)
 import UIKit
+#endif
 import HealthKit
-import WatchConnectivity
 import CoreData
 import BackgroundTasks
 import WidgetKit // Import WidgetKit
+
+#if canImport(WatchConnectivity)
+import WatchConnectivity
+#endif
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -43,15 +48,30 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         guard let healthStore = healthStore else { return }
         
         // Request authorization for required data types
-        let typesToRead: Set<HKObjectType> = [
-            HKObjectType.quantityType(forIdentifier: .heartRate)!,
-            HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!,
-            HKObjectType.quantityType(forIdentifier: .oxygenSaturation)!,
-            HKObjectType.quantityType(forIdentifier: .bodyTemperature)!,
-            HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
-            HKObjectType.quantityType(forIdentifier: .stepCount)!,
-            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!
-        ]
+        var typesToRead: Set<HKObjectType> = []
+        
+        // Safely add HealthKit types
+        if let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate) {
+            typesToRead.insert(heartRateType)
+        }
+        if let hrvType = HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN) {
+            typesToRead.insert(hrvType)
+        }
+        if let oxygenType = HKObjectType.quantityType(forIdentifier: .oxygenSaturation) {
+            typesToRead.insert(oxygenType)
+        }
+        if let temperatureType = HKObjectType.quantityType(forIdentifier: .bodyTemperature) {
+            typesToRead.insert(temperatureType)
+        }
+        if let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) {
+            typesToRead.insert(sleepType)
+        }
+        if let stepType = HKObjectType.quantityType(forIdentifier: .stepCount) {
+            typesToRead.insert(stepType)
+        }
+        if let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) {
+            typesToRead.insert(energyType)
+        }
         
         healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, error in
             if let error = error {
@@ -61,11 +81,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
     
     private func setupWatchConnectivity() {
+        #if canImport(WatchConnectivity)
         if WCSession.isSupported() {
             session = WCSession.default
             session?.delegate = self
             session?.activate()
         }
+        #endif
     }
     
     private func setupBackgroundTasks() {
@@ -101,6 +123,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 
 // MARK: - WCSessionDelegate
+#if canImport(WatchConnectivity)
 extension AppDelegate: WCSessionDelegate {
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         if let error = error {
@@ -115,4 +138,5 @@ extension AppDelegate: WCSessionDelegate {
     func sessionDidDeactivate(_ session: WCSession) {
         print("Watch session deactivated")
     }
-} 
+}
+#endif

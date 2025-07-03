@@ -1,5 +1,7 @@
 import SwiftUI
 import WatchKit
+import AVFoundation
+import CoreML
 
 @main
 struct HealthAI2030WatchApp: App {
@@ -8,6 +10,9 @@ struct HealthAI2030WatchApp: App {
     @StateObject private var sessionManager = WatchSessionManager.shared
     @StateObject private var connectivityManager = WatchConnectivityManager.shared
     @StateObject private var hapticManager = WatchHapticManager.shared
+    
+    // Integrate premium content and features
+    let appIntegration = AppIntegration()
     
     // App state
     @State private var isAppActive = false
@@ -495,4 +500,4 @@ extension ConnectionStatus {
         case .error: return "Error"
         }
     }
-} 
+}

@@ -1,4 +1,6 @@
 import SwiftUI
+import AVFoundation
+import CoreML
 
 @main
 struct HealthAI2030TVApp: App {
@@ -10,6 +12,9 @@ struct HealthAI2030TVApp: App {
     @StateObject private var performanceManager = PerformanceOptimizationManager.shared
     @StateObject private var smartHomeManager = SmartHomeManager.shared
     @StateObject private var predictiveAnalyticsManager = PredictiveAnalyticsManager.shared
+    
+    // Integrate premium content and features
+    let appIntegration = AppIntegration()
     
     // MARK: - App Body
     

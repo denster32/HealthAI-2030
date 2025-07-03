@@ -793,6 +793,14 @@ struct TVOSAlertsDashboard: View {
 
 struct TVOSAmbientDashboard: View {
     @ObservedObject private var healthDataManager = HealthDataManager.shared
+                }
+            }
+        }
+    }
+}
+
+struct TVOSAmbientDashboard: View {
+    @ObservedObject private var healthDataManager = HealthDataManager.shared
     @ObservedObject private var environmentManager = EnvironmentManager.shared
     
     var body: some View {
@@ -886,14 +894,6 @@ struct TVOSLargeCard<Content: View>: View {
 struct TVOSMetric: View {
     let title: String
     let value: String
-    let unit: String
-    let color: Color
-    let trend: TrendDirection
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(title)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 

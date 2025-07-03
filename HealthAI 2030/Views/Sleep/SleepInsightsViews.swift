@@ -389,3 +389,5 @@ struct AppleWatchSetupView: View {
                 }
             }
         }
+    }
+}

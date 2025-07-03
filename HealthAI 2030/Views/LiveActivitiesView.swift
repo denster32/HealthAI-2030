@@ -143,13 +143,23 @@ class LiveActivityManager: ObservableObject {
     
     private func setupHealthMonitoring() {
         // Request HealthKit permissions for Live Activity data
-        let healthTypes: Set<HKObjectType> = [
-            HKObjectType.quantityType(forIdentifier: .heartRate)!,
-            HKObjectType.quantityType(forIdentifier: .oxygenSaturation)!,
-            HKObjectType.quantityType(forIdentifier: .sleepAnalysis)!,
-            HKObjectType.quantityType(forIdentifier: .stepCount)!,
-            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!
-        ]
+        var healthTypes: Set<HKObjectType> = []
+        
+        if let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate) {
+            healthTypes.insert(heartRateType)
+        }
+        if let oxygenType = HKObjectType.quantityType(forIdentifier: .oxygenSaturation) {
+            healthTypes.insert(oxygenType)
+        }
+        if let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) {
+            healthTypes.insert(sleepType)
+        }
+        if let stepType = HKObjectType.quantityType(forIdentifier: .stepCount) {
+            healthTypes.insert(stepType)
+        }
+        if let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) {
+            healthTypes.insert(energyType)
+        }
         
         healthStore.requestAuthorization(toShare: nil, read: healthTypes) { success, error in
             if success {

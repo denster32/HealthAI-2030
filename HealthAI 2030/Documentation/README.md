@@ -52,7 +52,6 @@ HealthAI 2030 is a comprehensive AI-powered health companion ecosystem that leve
 ### 🔧 **Integration Guides**
 - [Apple Watch Integration](HealthAI%202030/Apple_Watch_Integration_README.md) - Watch app features and setup
 - [Apple TV Integration](HealthAI%202030/Apple_TV_Integration_README.md) - TV app functionality
-- [SomnaSync Integration](SomnaSync_Repo/README.md) - Sleep optimization features
 
 ## 🏗️ Architecture
 

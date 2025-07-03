@@ -16,6 +16,8 @@ import AppIntents
 import TipKit
 import OSLog
 import ActivityKit
+import AVFoundation
+import CoreML
 
 @available(iOS 17.0, *)
 @available(macOS 14.0, *)
@@ -33,11 +35,13 @@ struct HealthAI_2030App: App {
     @StateObject private var emergencyAlertManager = EmergencyAlertManager.shared
     @StateObject private var federatedLearningManager = FederatedLearningManager.shared
     @StateObject private var predictiveAnalyticsManager = PredictiveAnalyticsManager.shared
+    @StateObject private var smartHomeManager = SmartHomeManager.shared
     
     // MARK: - Advanced AI/ML Managers
     @StateObject private var advancedMLEngine = AdvancedMLEngine.shared
     @StateObject private var personalizationEngine = PersonalizationEngine()
     @StateObject private var aiHealthCoach = AIHealthCoach.shared
+    @StateObject private var generativeHealthCoach = GenerativeHealthCoach()
     @StateObject private var audioGenerationEngine = AudioGenerationEngine.shared
     @StateObject private var audioTransitionEngine = AudioTransitionEngine.shared
     
@@ -57,64 +61,223 @@ struct HealthAI_2030App: App {
     // MARK: - Logger
     private let logger = Logger(subsystem: "com.healthai2030.app", category: "main")
     
+    // Integrate premium content and features
+    let appIntegration = AppIntegration()
+    
     init() {
-        setupApp()
+        // Device-specific setup
+        #if os(iOS)
+        logger.info("Launching HealthAI 2030 on iOS")
+        #elseif os(macOS)
+        logger.info("Launching HealthAI 2030 on macOS")
+        #elseif os(tvOS)
+        logger.info("Launching HealthAI 2030 on tvOS")
+        #elseif os(watchOS)
+        logger.info("Launching HealthAI 2030 on watchOS")
+        #endif
+        // Analyze all Apple Health data on install, prefer Mac if available
+        HealthDataAnalyzer.shared.analyzeAllHealthData(preferMac: ProcessInfo.processInfo.isMacCatalystApp)
     }
     
     var body: some Scene {
         WindowGroup {
-            Group {
-                if onboardingCompleted {
-                    MainTabView()
-                } else {
-                    OnboardingView(onboardingCompleted: $onboardingCompleted)
+            #if os(iOS)
+            ContentView()
+                .environmentObject(healthDataManager)
+                .environmentObject(sleepOptimizationManager)
+                .environmentObject(environmentManager)
+                .environmentObject(mentalHealthManager)
+                .environmentObject(advancedCardiacManager)
+                .environmentObject(respiratoryHealthManager)
+                .environmentObject(systemIntelligenceManager)
+                .environmentObject(emergencyAlertManager)
+                .environmentObject(federatedLearningManager)
+                .environmentObject(predictiveAnalyticsManager)
+                .environmentObject(smartHomeManager)
+                // Advanced AI/ML Environment Objects
+                .environmentObject(advancedMLEngine)
+                .environmentObject(personalizationEngine)
+                .environmentObject(aiHealthCoach)
+                .environmentObject(generativeHealthCoach)
+                .environmentObject(audioGenerationEngine)
+                .environmentObject(audioTransitionEngine)
+                // iOS 18 Feature Environment Objects
+                .environmentObject(liveActivityManager)
+                .environmentObject(shortcutsManager)
+                .environmentObject(interactiveWidgetManager)
+                .environmentObject(controlCenterManager)
+                .environmentObject(spotlightManager)
+                .environmentObject(appShortcutsManager)
+                .preferredColorScheme(colorSchemeForTheme(appTheme))
+                .task {
+                    // iOS 18: Initialize TipKit
+                    try? Tips.configure([
+                        .displayFrequency(.immediate),
+                        .datastoreLocation(.applicationDefault)
+                    ])
                 }
-            }
-            .environmentObject(healthDataManager)
-            .environmentObject(sleepOptimizationManager)
-            .environmentObject(environmentManager)
-            .environmentObject(mentalHealthManager)
-            .environmentObject(advancedCardiacManager)
-            .environmentObject(respiratoryHealthManager)
-            .environmentObject(systemIntelligenceManager)
-            .environmentObject(emergencyAlertManager)
-            .environmentObject(federatedLearningManager)
-            .environmentObject(predictiveAnalyticsManager)
-            // Advanced AI/ML Environment Objects
-            .environmentObject(advancedMLEngine)
-            .environmentObject(personalizationEngine)
-            .environmentObject(aiHealthCoach)
-            .environmentObject(audioGenerationEngine)
-            .environmentObject(audioTransitionEngine)
-            // iOS 18 Feature Environment Objects
-            .environmentObject(liveActivityManager)
-            .environmentObject(shortcutsManager)
-            .environmentObject(interactiveWidgetManager)
-            .environmentObject(controlCenterManager)
-            .environmentObject(spotlightManager)
-            .environmentObject(appShortcutsManager)
-            .preferredColorScheme(colorSchemeForTheme(appTheme))
-            .task {
-                // iOS 18: Initialize TipKit
-                try? Tips.configure([
-                    .displayFrequency(.immediate),
-                    .datastoreLocation(.applicationDefault)
-                ])
-            }
-            .onAppear {
-                setupApp()
-                setupWidgets()
-                requestPermissions()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                refreshApp()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-                handleForegroundTransition()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
-                handleBackgroundTransition()
-            }
+                .onAppear {
+                    setupApp()
+                    setupWidgets()
+                    requestPermissions()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                    refreshApp()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                    handleForegroundTransition()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+                    handleBackgroundTransition()
+                }
+            #elseif os(macOS)
+            MacContentView()
+                .environmentObject(healthDataManager)
+                .environmentObject(sleepOptimizationManager)
+                .environmentObject(environmentManager)
+                .environmentObject(mentalHealthManager)
+                .environmentObject(advancedCardiacManager)
+                .environmentObject(respiratoryHealthManager)
+                .environmentObject(systemIntelligenceManager)
+                .environmentObject(emergencyAlertManager)
+                .environmentObject(federatedLearningManager)
+                .environmentObject(predictiveAnalyticsManager)
+                .environmentObject(smartHomeManager)
+                // Advanced AI/ML Environment Objects
+                .environmentObject(advancedMLEngine)
+                .environmentObject(personalizationEngine)
+                .environmentObject(aiHealthCoach)
+                .environmentObject(generativeHealthCoach)
+                .environmentObject(audioGenerationEngine)
+                .environmentObject(audioTransitionEngine)
+                // iOS 18 Feature Environment Objects
+                .environmentObject(liveActivityManager)
+                .environmentObject(shortcutsManager)
+                .environmentObject(interactiveWidgetManager)
+                .environmentObject(controlCenterManager)
+                .environmentObject(spotlightManager)
+                .environmentObject(appShortcutsManager)
+                .preferredColorScheme(colorSchemeForTheme(appTheme))
+                .task {
+                    // iOS 18: Initialize TipKit
+                    try? Tips.configure([
+                        .displayFrequency(.immediate),
+                        .datastoreLocation(.applicationDefault)
+                    ])
+                }
+                .onAppear {
+                    setupApp()
+                    setupWidgets()
+                    requestPermissions()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                    refreshApp()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                    handleForegroundTransition()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+                    handleBackgroundTransition()
+                }
+            #elseif os(tvOS)
+            TVOSContentView()
+                .environmentObject(healthDataManager)
+                .environmentObject(sleepOptimizationManager)
+                .environmentObject(environmentManager)
+                .environmentObject(mentalHealthManager)
+                .environmentObject(advancedCardiacManager)
+                .environmentObject(respiratoryHealthManager)
+                .environmentObject(systemIntelligenceManager)
+                .environmentObject(emergencyAlertManager)
+                .environmentObject(federatedLearningManager)
+                .environmentObject(predictiveAnalyticsManager)
+                .environmentObject(smartHomeManager)
+                // Advanced AI/ML Environment Objects
+                .environmentObject(advancedMLEngine)
+                .environmentObject(personalizationEngine)
+                .environmentObject(aiHealthCoach)
+                .environmentObject(generativeHealthCoach)
+                .environmentObject(audioGenerationEngine)
+                .environmentObject(audioTransitionEngine)
+                // iOS 18 Feature Environment Objects
+                .environmentObject(liveActivityManager)
+                .environmentObject(shortcutsManager)
+                .environmentObject(interactiveWidgetManager)
+                .environmentObject(controlCenterManager)
+                .environmentObject(spotlightManager)
+                .environmentObject(appShortcutsManager)
+                .preferredColorScheme(colorSchemeForTheme(appTheme))
+                .task {
+                    // iOS 18: Initialize TipKit
+                    try? Tips.configure([
+                        .displayFrequency(.immediate),
+                        .datastoreLocation(.applicationDefault)
+                    ])
+                }
+                .onAppear {
+                    setupApp()
+                    setupWidgets()
+                    requestPermissions()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                    refreshApp()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                    handleForegroundTransition()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+                    handleBackgroundTransition()
+                }
+            #elseif os(watchOS)
+            WatchContentView()
+                .environmentObject(healthDataManager)
+                .environmentObject(sleepOptimizationManager)
+                .environmentObject(environmentManager)
+                .environmentObject(mentalHealthManager)
+                .environmentObject(advancedCardiacManager)
+                .environmentObject(respiratoryHealthManager)
+                .environmentObject(systemIntelligenceManager)
+                .environmentObject(emergencyAlertManager)
+                .environmentObject(federatedLearningManager)
+                .environmentObject(predictiveAnalyticsManager)
+                .environmentObject(smartHomeManager)
+                // Advanced AI/ML Environment Objects
+                .environmentObject(advancedMLEngine)
+                .environmentObject(personalizationEngine)
+                .environmentObject(aiHealthCoach)
+                .environmentObject(generativeHealthCoach)
+                .environmentObject(audioGenerationEngine)
+                .environmentObject(audioTransitionEngine)
+                // iOS 18 Feature Environment Objects
+                .environmentObject(liveActivityManager)
+                .environmentObject(shortcutsManager)
+                .environmentObject(interactiveWidgetManager)
+                .environmentObject(controlCenterManager)
+                .environmentObject(spotlightManager)
+                .environmentObject(appShortcutsManager)
+                .preferredColorScheme(colorSchemeForTheme(appTheme))
+                .task {
+                    // iOS 18: Initialize TipKit
+                    try? Tips.configure([
+                        .displayFrequency(.immediate),
+                        .datastoreLocation(.applicationDefault)
+                    ])
+                }
+                .onAppear {
+                    setupApp()
+                    setupWidgets()
+                    requestPermissions()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                    refreshApp()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                    handleForegroundTransition()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+                    handleBackgroundTransition()
+                }
+            #endif
         }
         .commands {
             MenuBarCommands()
@@ -222,6 +385,7 @@ struct HealthAI_2030App: App {
             await emergencyAlertManager.initialize()
             await federatedLearningManager.initialize()
             await predictiveAnalyticsManager.initialize()
+            await smartHomeManager.initialize()
         }
     }
     
@@ -537,6 +701,13 @@ extension PredictiveAnalyticsManager {
     }
 }
 
+extension SmartHomeManager {
+    func initialize() async {
+        // Initialize smart home manager
+        print("Smart Home Manager Initialized")
+    }
+}
+
 // MARK: - iOS 18 Feature Setup Methods
 
 extension HealthAI_2030App {
@@ -713,6 +884,9 @@ extension HealthAI_2030App {
             
             // Check for coaching opportunities
             await aiHealthCoach.checkForCoachingOpportunities()
+
+            // Update smart home lighting
+            smartHomeManager.updateCircadianLighting()
         }
     }
     

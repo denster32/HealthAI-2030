@@ -74,7 +74,8 @@ struct SleepStagePrediction {
 
 #### **Core ML Integration**
 ```swift
-class SleepStagePredictor {
+// Example implementation outline for SleepStagePredictor
+struct SleepStagePredictorExample {
     private var model: SleepStagePredictorModel?
     
     func predictSleepStage(_ features: SleepFeatures) -> SleepStagePrediction {

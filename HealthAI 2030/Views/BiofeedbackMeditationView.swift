@@ -31,6 +31,18 @@ struct BiofeedbackMeditationView: View {
 
             VStack {
                 Spacer()
+                // Premium guided meditation audio
+                PremiumAudioPlayer(audioFile: PremiumAudio.meditationGuide)
+                    .frame(height: 50)
+                    .padding(.bottom, 8)
+                // Premium animated avatar
+                PremiumAvatars.coachAvatar
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 70, height: 70)
+                    .clipShape(Circle())
+                    .shadow(radius: 5)
+                    .padding(.bottom, 8)
                 Button(action: {
                     isMeditating.toggle()
                     if isMeditating {

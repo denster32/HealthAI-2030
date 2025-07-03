@@ -1,0 +1,7 @@
+{
+  "skills": [
+    { "id": "sleep-analysis-pro", "name": "Sleep Analysis Pro", "description": "Advanced sleep analytics." },
+    { "id": "cardiac-insights", "name": "Cardiac Insights", "description": "Cardiac health monitoring." },
+    { "id": "mindfulness-coach", "name": "Mindfulness Coach", "description": "Guided meditation and stress reduction." }
+  ]
+}

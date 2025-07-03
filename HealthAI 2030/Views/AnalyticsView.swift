@@ -15,6 +15,22 @@ struct AnalyticsView: View {
                         .fontWeight(.bold)
                         .padding(.horizontal)
 
+                    // Premium analytics hero image
+                    PremiumAssets.dashboardHero
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(height: 120)
+                        .clipped()
+                        .cornerRadius(14)
+                        .shadow(radius: 6)
+                        .padding(.bottom, 8)
+                    // Analytics tutorial video
+                    VideoPlayerView(videoName: InAppTutorials.dashboardWalkthrough)
+                        .frame(height: 90)
+                        .cornerRadius(8)
+                        .shadow(radius: 3)
+                        .padding(.bottom, 8)
+
                     // Daily Summary Section
                     DailySummarySection()
 

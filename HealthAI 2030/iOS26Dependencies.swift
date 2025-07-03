@@ -2,7 +2,7 @@
 //  iOS26Dependencies.swift
 //  HealthAI 2030
 //
-//  iOS 26 Dependency Management and Compatibility Layer
+//  iOS 18 Dependency Management and Compatibility Layer
 
 import Foundation
 import SwiftUI
@@ -33,7 +33,9 @@ import ContactsUI
 import StoreKit
 import SafariServices
 import QuickLook
+#if os(iOS)
 import MessageUI
+#endif
 import MapKit
 import PhotosUI
 import LinkPresentation
@@ -89,7 +91,7 @@ class iOS26DependencyManager {
         return false
     }
     
-    // MARK: - iOS 26 Specific Features
+    // MARK: - iOS 18 Specific Features
     
     var isAdvancedMLOptimizationAvailable: Bool {
         if #available(iOS 17.0, *) {
@@ -123,7 +125,7 @@ class iOS26DependencyManager {
             missingDependencies.append("HealthKit not available on this device")
         }
         
-        // iOS 26 Feature Checks
+        // iOS 18 Feature Checks
         if !isCreateMLAvailable {
             warnings.append("CreateML not available - ML features limited")
         }
@@ -233,7 +235,7 @@ struct DependencyVerificationResult {
     
     var statusMessage: String {
         if allDependenciesAvailable && !hasWarnings {
-            return "All dependencies available and iOS 26 ready"
+            return "All dependencies available and iOS 18 ready"
         } else if allDependenciesAvailable {
             return "Core dependencies available with \(warnings.count) warnings"
         } else {
@@ -279,7 +281,7 @@ extension iOS26DependencyManager {
 @available(iOS 17.0, *)
 extension iOS26DependencyManager {
     
-    /// Configure iOS 26 specific optimizations
+    /// Configure iOS 18 specific optimizations
     func configureIOS26Optimizations() {
         configureAdvancedMLOptimizations()
         configureEnhancedHealthKitFeatures()
@@ -287,18 +289,18 @@ extension iOS26DependencyManager {
     }
     
     private func configureAdvancedMLOptimizations() {
-        // iOS 26+ ML optimizations
-        Logger.app.info("Configuring advanced ML optimizations for iOS 26")
+        // iOS 18+ ML optimizations
+        Logger.app.info("Configuring advanced ML optimizations for iOS 18")
     }
     
     private func configureEnhancedHealthKitFeatures() {
-        // iOS 26+ HealthKit enhancements
-        Logger.app.info("Configuring enhanced HealthKit features for iOS 26")
+        // iOS 18+ HealthKit enhancements
+        Logger.app.info("Configuring enhanced HealthKit features for iOS 18")
     }
     
     private func configurePerformanceOptimizations() {
-        // iOS 26+ performance optimizations
-        Logger.app.info("Configuring performance optimizations for iOS 26")
+        // iOS 18+ performance optimizations
+        Logger.app.info("Configuring performance optimizations for iOS 18")
     }
 }
 

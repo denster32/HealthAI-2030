@@ -3,6 +3,7 @@ import CoreML
 import Metal
 import MetalPerformanceShaders
 import ResearchKit
+import AVFoundation
 
 @main
 struct HealthAI2030MacApp: App {
@@ -22,11 +23,14 @@ struct HealthAI2030MacApp: App {
     @State private var showingOnboarding = false
     @State private var currentWindow: MacWindow = .dashboard
     
+    // Integrate premium content and features
+    let appIntegration = AppIntegration()
+    
     // MARK: - App Body
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MacContentView()
                 .environmentObject(healthDataManager)
                 .environmentObject(sleepOptimizationManager)
                 .environmentObject(predictiveAnalyticsManager)
@@ -37,6 +41,7 @@ struct HealthAI2030MacApp: App {
                 .environmentObject(dataExportManager)
                 .onAppear {
                     setupApp()
+                    HealthDataAnalyzer.shared.analyzeAllHealthData(preferMac: true)
                 }
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
                     handleAppDidBecomeActive()
@@ -560,4 +565,4 @@ struct OnboardingView: View {
         }
         .padding()
     }
-} 
+}

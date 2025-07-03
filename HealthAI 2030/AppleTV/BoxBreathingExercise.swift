@@ -1,5 +1,7 @@
 import SwiftUI
+#if os(iOS)
 import WatchConnectivity
+#endif
 import AVFoundation
 import HealthKit
 import Combine
@@ -194,7 +196,7 @@ class BoxBreathingExercise: NSObject, ObservableObject {
         // Calculate session results
         calculateSessionResults()
         
-        Logger.info("Box breathing session completed: \(completedCycles) cycles in \(String(format: \"%.1f\", sessionDuration))s", log: Logger.relaxation)
+        Logger.info("Box breathing session completed: \(completedCycles) cycles in \(String(format: "%.1f", sessionDuration))s", log: Logger.relaxation)
     }
     
     // MARK: - Breathing Phases

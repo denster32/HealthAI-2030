@@ -29,7 +29,19 @@ struct MentalHealthTimelineProvider: TimelineProvider {
     
     func getTimeline(in context: Context, completion: @escaping (Timeline<MentalHealthEntry>) -> Void) {
         let currentDate = Date()
-        let refreshDate = Calendar.current.date(byAdding: .minute, value: 15, to: currentDate)!
+        guard let refreshDate = Calendar.current.date(byAdding: .minute, value: 15, to: currentDate) else {
+            // Fallback to 15 minutes from now if calendar operation fails
+            let fallbackDate = currentDate.addingTimeInterval(15 * 60)
+            let entry = MentalHealthEntry(
+                date: currentDate,
+                score: MentalHealthManager.shared.mentalHealthScore,
+                stressLevel: MentalHealthManager.shared.stressLevel,
+                mindfulnessMinutes: Int(MentalHealthManager.shared.mindfulnessSessions.reduce(0) { $0 + $1.duration } / 60)
+            )
+            let timeline = Timeline(entries: [entry], policy: .after(fallbackDate))
+            completion(timeline)
+            return
+        }
         
         let entry = MentalHealthEntry(
             date: currentDate,
@@ -207,7 +219,20 @@ struct CardiacHealthTimelineProvider: TimelineProvider {
     
     func getTimeline(in context: Context, completion: @escaping (Timeline<CardiacHealthEntry>) -> Void) {
         let currentDate = Date()
-        let refreshDate = Calendar.current.date(byAdding: .minute, value: 10, to: currentDate)!
+        guard let refreshDate = Calendar.current.date(byAdding: .minute, value: 10, to: currentDate) else {
+            // Fallback to 10 minutes from now if calendar operation fails
+            let fallbackDate = currentDate.addingTimeInterval(10 * 60)
+            let entry = CardiacHealthEntry(
+                date: currentDate,
+                heartRate: AdvancedCardiacManager.shared.heartRateData.first?.value ?? 70,
+                hrv: AdvancedCardiacManager.shared.hrvData.first?.value ?? 45,
+                afibStatus: AdvancedCardiacManager.shared.afibStatus,
+                vo2Max: AdvancedCardiacManager.shared.vo2Max
+            )
+            let timeline = Timeline(entries: [entry], policy: .after(fallbackDate))
+            completion(timeline)
+            return
+        }
         
         let entry = CardiacHealthEntry(
             date: currentDate,
@@ -378,7 +403,20 @@ struct RespiratoryHealthTimelineProvider: TimelineProvider {
     
     func getTimeline(in context: Context, completion: @escaping (Timeline<RespiratoryHealthEntry>) -> Void) {
         let currentDate = Date()
-        let refreshDate = Calendar.current.date(byAdding: .minute, value: 12, to: currentDate)!
+        guard let refreshDate = Calendar.current.date(byAdding: .minute, value: 12, to: currentDate) else {
+            // Fallback to 12 minutes from now if calendar operation fails
+            let fallbackDate = currentDate.addingTimeInterval(12 * 60)
+            let entry = RespiratoryHealthEntry(
+                date: currentDate,
+                respiratoryRate: RespiratoryHealthManager.shared.respiratoryRate,
+                oxygenSaturation: RespiratoryHealthManager.shared.oxygenSaturation,
+                efficiency: RespiratoryHealthManager.shared.respiratoryEfficiency,
+                pattern: RespiratoryHealthManager.shared.breathingPattern
+            )
+            let timeline = Timeline(entries: [entry], policy: .after(fallbackDate))
+            completion(timeline)
+            return
+        }
         
         let entry = RespiratoryHealthEntry(
             date: currentDate,
@@ -550,7 +588,21 @@ struct SleepOptimizationTimelineProvider: TimelineProvider {
     
     func getTimeline(in context: Context, completion: @escaping (Timeline<SleepOptimizationEntry>) -> Void) {
         let currentDate = Date()
-        let refreshDate = Calendar.current.date(byAdding: .minute, value: 5, to: currentDate)!
+        guard let refreshDate = Calendar.current.date(byAdding: .minute, value: 5, to: currentDate) else {
+            // Fallback to 5 minutes from now if calendar operation fails
+            let fallbackDate = currentDate.addingTimeInterval(5 * 60)
+            let entry = SleepOptimizationEntry(
+                date: currentDate,
+                quality: SleepOptimizationManager.shared.sleepQuality,
+                stage: SleepOptimizationManager.shared.currentSleepStage,
+                isActive: SleepOptimizationManager.shared.isOptimizationActive,
+                temperature: EnvironmentManager.shared.currentTemperature,
+                humidity: EnvironmentManager.shared.currentHumidity
+            )
+            let timeline = Timeline(entries: [entry], policy: .after(fallbackDate))
+            completion(timeline)
+            return
+        }
         
         let entry = SleepOptimizationEntry(
             date: currentDate,

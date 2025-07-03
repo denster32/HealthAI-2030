@@ -114,6 +114,35 @@ struct SettingsView: View {
                 
                 // Audio File Generation Section
                 audioFileGenerationSection
+                
+                // Premium Content Section
+                Section("Premium Content & Help") {
+                    NavigationLink("Offline User Guide") {
+                        OfflineDocumentView(documentPath: OfflineDocumentation.userGuide)
+                    }
+                    NavigationLink("API Reference") {
+                        OfflineDocumentView(documentPath: OfflineDocumentation.apiReference)
+                    }
+                    NavigationLink("Accessibility Resources") {
+                        AccessibilityResourcesView()
+                    }
+                    NavigationLink("Language & Localization") {
+                        LocalizationSettingsView()
+                    }
+                }
+                
+                // Personalized Audio Content
+                Section("Personalized Audio") {
+                    NavigationLink("Create Custom Meditation") {
+                        PersonalizedAudioView(contentType: .meditation)
+                    }
+                    NavigationLink("Create Custom Sleep Story") {
+                        PersonalizedAudioView(contentType: .sleepStory)
+                    }
+                    NavigationLink("Create Custom Motivation") {
+                        PersonalizedAudioView(contentType: .motivation)
+                    }
+                }
             }
             .navigationTitle("Settings")
         }

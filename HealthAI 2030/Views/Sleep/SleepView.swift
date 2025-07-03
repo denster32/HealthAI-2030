@@ -50,6 +50,25 @@ struct SleepView: View {
                     
                     // Health data summary
                     HealthDataSection(healthKitManager: healthKitManager)
+                    
+                    // Premium sleep soundscape
+                    PremiumAudioPlayer(audioFile: PremiumAudio.sleepSoundscape)
+                        .frame(height: 50)
+                        .padding(.bottom, 8)
+                    // Premium animated avatar
+                    PremiumAvatars.coachAvatar
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 60, height: 60)
+                        .clipShape(Circle())
+                        .shadow(radius: 4)
+                        .padding(.bottom, 8)
+                    // Sleep tutorial video
+                    VideoPlayerView(videoName: InAppTutorials.onboardingVideo)
+                        .frame(height: 100)
+                        .cornerRadius(10)
+                        .shadow(radius: 3)
+                        .padding(.bottom, 8)
                 }
                 .padding()
             }
