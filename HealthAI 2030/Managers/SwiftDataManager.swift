@@ -15,6 +15,11 @@ public class SwiftDataManager {
                 SleepSessionEntry.self,
                 WorkoutEntry.self,
                 NutritionLogEntry.self,
+                SyncableHealthDataEntry.self,
+                SyncableSleepSessionEntry.self,
+                AnalyticsInsight.self,
+                MLModelUpdate.self,
+                ExportRequest.self,
             ])
             let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
             self.modelContainer = try ModelContainer(for: schema, configurations: [modelConfiguration])

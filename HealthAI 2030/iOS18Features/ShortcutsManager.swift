@@ -4,6 +4,7 @@ import IntentsUI
 import AppIntents
 import OSLog
 import Combine
+import LogWaterIntake
 
 // MARK: - Shortcuts Manager for iOS 18 Siri Integration
 
@@ -69,7 +70,7 @@ class ShortcutsManager {
             INShortcut(intent: GetHeartRateIntent()),
             INShortcut(intent: GetSleepQualityIntent()),
             INShortcut(intent: GetStepsIntent()),
-            INShortcut(intent: LogWaterIntakeIntent()),
+            INShortcut(intent: LogWaterIntake.LogWaterIntakeAppIntent()),
             INShortcut(intent: LogMoodIntent()),
             INShortcut(intent: LogWeightIntent())
         ])
@@ -132,7 +133,7 @@ class ShortcutsManager {
         await donateIntent(GetStepsIntent(), phrase: "How many steps have I taken today?")
         
         // Donate logging intents
-        await donateIntent(LogWaterIntakeIntent(), phrase: "Log a glass of water")
+        await donateIntent(LogWaterIntake.LogWaterIntakeAppIntent(amount: 250), phrase: "Log a glass of water")
         await donateIntent(LogMoodIntent(), phrase: "Log my mood")
         
         // Donate AI coaching intents
@@ -332,7 +333,7 @@ class ShortcutsManager {
             ),
             ShortcutSuggestion(
                 phrase: "Log a glass of water",
-                intent: LogWaterIntakeIntent(),
+                intent: LogWaterIntake.LogWaterIntakeAppIntent(amount: 250),
                 priority: .high,
                 context: "Hydration reminder"
             ),
@@ -445,7 +446,7 @@ class ShortcutsManager {
         case .startedSleepTracking:
             await donateIntent(StartSleepTrackingIntent(), phrase: "Start tracking my sleep")
         case .loggedWater:
-            await donateIntent(LogWaterIntakeIntent(), phrase: "Log water intake")
+            await donateIntent(LogWaterIntake.LogWaterIntakeAppIntent(amount: 250), phrase: "Log water intake")
         case .checkedHeartRate:
             await donateIntent(GetHeartRateIntent(), phrase: "Check my heart rate")
         case .startedMeditation:

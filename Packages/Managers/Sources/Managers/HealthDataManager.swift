@@ -852,29 +852,6 @@ class HealthDataManager {
     
     // MARK: - Data Logging
     
-    func logWaterIntake(amount: Double) {
-        guard isAuthorized else {
-            print("HealthDataManager: HealthKit not authorized for writing.")
-            return
-        }
-        
-        guard let waterType = HKQuantityType.quantityType(forIdentifier: .dietaryWater) else {
-            print("HealthDataManager: Dietary Water type not available.")
-            return
-        }
-        
-        let waterQuantity = HKQuantity(unit: HKUnit.literUnit(with: .milli), doubleValue: amount)
-        let waterSample = HKQuantitySample(type: waterType, quantity: waterQuantity, start: Date(), end: Date())
-        
-        healthStore.save(waterSample) { success, error in
-            if success {
-                print("HealthDataManager: Successfully logged \(amount) ml of water intake.")
-            } else if let error = error {
-                print("HealthDataManager: Failed to log water intake: \(error.localizedDescription)")
-            }
-        }
-    }
-    
     // MARK: - Apple Watch Integration
     
     func updateWatchHealthData(_ watchData: WatchHealthData) {

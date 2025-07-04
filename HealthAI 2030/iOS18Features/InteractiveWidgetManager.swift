@@ -4,6 +4,8 @@ import SwiftUI
 import Combine
 import OSLog
 import AppIntents
+import LogWaterIntake
+import StartMeditation
 
 // MARK: - Interactive Widget Manager for iOS 18
 
@@ -107,9 +109,9 @@ class InteractiveWidgetManager {
         AppIntentManager.shared.register(intent: ViewRecommendationsIntent.self)
         
         // Register quick action intents
-        AppIntentManager.shared.register(intent: LogWaterIntakeIntent.self)
+        AppIntentManager.shared.register(intent: LogWaterIntake.LogWaterIntakeAppIntent.self)
         AppIntentManager.shared.register(intent: LogMoodIntent.self)
-        AppIntentManager.shared.register(intent: StartMeditationIntent.self)
+        AppIntentManager.shared.register(intent: StartMeditation.StartMeditationAppIntent.self)
         
         // Register environment control intents
         AppIntentManager.shared.register(intent: AdjustTemperatureIntent.self)
@@ -444,8 +446,13 @@ class InteractiveWidgetManager {
     }
     
     private func logWaterIntake(amount: Double) async {
-        // This would integrate with HealthDataManager
-        logger.info("Logged water intake: \(amount) oz")
+        let logger = WaterIntakeLogger()
+        do {
+            try await logger.logWaterIntake(amountInMilliliters: amount)
+            self.logger.info("Logged water intake: \(amount) oz")
+        } catch {
+            self.logger.error("Failed to log water intake: \(error)")
+        }
     }
 }
 
@@ -648,14 +655,6 @@ struct ViewRecommendationsIntent: AppIntent {
     }
 }
 
-struct LogWaterIntakeIntent: AppIntent {
-    static var title: LocalizedStringResource = "Log Water Intake"
-    static var description = IntentDescription("Log your water intake")
-    
-    func perform() async throws -> some IntentResult {
-        return .result()
-    }
-}
 
 struct LogMoodIntent: AppIntent {
     static var title: LocalizedStringResource = "Log Mood"
@@ -666,14 +665,6 @@ struct LogMoodIntent: AppIntent {
     }
 }
 
-struct StartMeditationIntent: AppIntent {
-    static var title: LocalizedStringResource = "Start Meditation"
-    static var description = IntentDescription("Begin a meditation session")
-    
-    func perform() async throws -> some IntentResult {
-        return .result()
-    }
-}
 
 struct AdjustTemperatureIntent: AppIntent {
     static var title: LocalizedStringResource = "Adjust Temperature"

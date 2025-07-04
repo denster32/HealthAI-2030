@@ -1,6 +1,7 @@
 import AppIntents
 import HealthKit
 import SwiftUI
+import MentalHealth
 
 // MARK: - App Intents for HealthAI 2030
 
@@ -32,40 +33,6 @@ struct StartSleepTrackingAppIntent: AppIntent {
         sleepOptimizationManager.startSleepMonitoring()
 
         let result = "Sleep tracking started."
-        return .result(value: result)
-    }
-}
-
-/// An App Intent to log water intake.
-@available(iOS 18.0, *)
-struct LogWaterIntakeAppIntent: AppIntent {
-    static var title: LocalizedStringResource = "Log Water Intake"
-    static var description = IntentDescription("Logs a specified amount of water intake.")
-
-    @Parameter(title: "Amount", description: "The amount of water in milliliters.")
-    var amount: Double
-
-    @Dependency private var healthDataManager: HealthDataManager
-
-    func perform() async throws -> some IntentResult & ProvidesStringResult {
-        healthDataManager.logWaterIntake(amount: amount)
-
-        let result = "Logged \(Int(amount)) ml of water intake."
-        return .result(value: result)
-    }
-}
-
-/// An App Intent to get mental health insights.
-@available(iOS 18.0, *)
-struct GetMentalHealthInsightsAppIntent: AppIntent {
-    static var title: LocalizedStringResource = "Get Mental Health Insights"
-    static var description = IntentDescription("Gets the user's latest mental health insights.")
-
-    @Dependency private var mentalHealthManager: MentalHealthManager
-
-    func perform() async throws -> some IntentResult & ProvidesStringResult {
-        let insights = await mentalHealthManager.getLatestInsights()
-        let result = insights.isEmpty ? "No mental health insights available." : insights.joined(separator: "\n")
         return .result(value: result)
     }
 }
@@ -104,13 +71,6 @@ struct HealthAI2030Shortcuts: AppShortcutsProvider {
             ]
         )
         
-        AppShortcut(
-            intent: LogWaterIntakeAppIntent(),
-            phrases: [
-                "Log water intake in \(.applicationName)",
-                "I drank \(\.$amount) milliliters of water using \(.applicationName)"
-            ]
-        )
         
         AppShortcut(
             intent: GetMentalHealthInsightsAppIntent(),
