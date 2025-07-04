@@ -1,6 +1,10 @@
 import XCTest
 @testable import HealthAI_2030
 
+/// Unit tests for the audio generation and adaptive audio management engines.
+///
+/// - Covers pink noise, isochronic tones, volume adjustment, and adaptive audio logic.
+/// - TODO: Add tests for error handling, edge cases, and integration with device audio APIs.
 class AudioEngineTests: XCTestCase {
     func testPinkNoiseGeneration() {
         let engine = AudioGenerationEngine.shared
@@ -35,4 +39,5 @@ class AudioEngineTests: XCTestCase {
         adaptive.adjustVolumeForNoise(0.8)
         XCTAssertLessThanOrEqual(adaptive.currentVolume, 0.5)
     }
-} 
+    // TODO: Add tests for invalid input, state transitions, and audio session interruptions.
+}
