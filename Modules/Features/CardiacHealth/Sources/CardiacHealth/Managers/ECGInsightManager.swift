@@ -3,11 +3,11 @@ import Combine
 import CoreML
 import HealthKit
 
-class ECGInsightManager: ObservableObject {
-    static let shared = ECGInsightManager()
+open class ECGInsightManager: ObservableObject { // Changed to 'open'
+    public static let shared = ECGInsightManager()
     
     // MARK: - Published Properties
-    @Published var currentInsights: [ECGInsight] = []
+    @Published open var currentInsights: [ECGInsight] = [] // Changed to 'open'
     @Published var isAnalysisActive: Bool = false
     @Published var lastAnalysisTime: Date?
     @Published var analysisStatus: AnalysisStatus = .idle
@@ -27,7 +27,7 @@ class ECGInsightManager: ObservableObject {
     // MARK: - Data Processing
     private let ecgDataProcessor = ECGDataProcessor()
     
-    private init() {
+    public init() { // Made init public for mocking
         setupECGMonitoring()
         startPeriodicAnalysis()
     }
@@ -272,7 +272,7 @@ class ECGInsightManager: ObservableObject {
 enum AnalysisStatus: Int { case idle, active, analyzing, completed, permissionDenied }
 struct ECGInsight: Identifiable { let id = UUID(); let type: ECGInsightType; let severity: InsightSeverity; let message: String; let timestamp: Date }
 enum ECGInsightType { case beatMorphology, hrtTurbulence, qtDynamics, stSegment, afForecast }
-enum InsightSeverity: Int { case info = 0, warning = 1, critical = 2 }
+// Removed duplicate declaration of InsightSeverity
 struct ECGData {}
 struct ProcessedECGData {}
 class ECGDataProcessor {
@@ -288,4 +288,28 @@ class QTDynamicAnalyzer { func analyzeQTDynamics(ecgData: [ProcessedECGData], co
 class STSegmentAnalyzer { func analyzeSTSegments(ecgData: [ProcessedECGData], completion: @escaping (Result<ECGInsight, Error>) -> Void) { completion(.success(ECGInsight(type: .stSegment, severity: .info, message: "Normal ST Segment", timestamp: Date()))) } }
 class AFForecastModel { func predictAFRisk(features: [Double], completion: @escaping (Result<Double, Error>) -> Void) { completion(.success(Double.random(in: 0...1))) } }
 class AFFeatureExtractor { func extractFeatures(from: [ProcessedECGData]) -> [Double] { [Double.random(in: 0...1), Double.random(in: 0...1)] } }
-class HealthDataManager: ObservableObject { static let shared = HealthDataManager(); @Published var currentECGData: ECGData? = nil; func requestECGPermissions(_ completion: @escaping (Bool) -> Void) { completion(true) } }
+@available(iOS 15.0, macOS 12.0, *) // Added availability
+class HealthDataManager: ObservableObject {
+    static let shared = HealthDataManager()
+    @Published var currentECGData: ECGData? = nil
+    
+    private var rawSensorData: [SensorData] = [] // To store raw sensor data
+    private let maxRawSensorDataSize = 1000 // Limit to prevent memory leaks
+
+    func requestECGPermissions(_ completion: @escaping (Bool) -> Void) {
+        completion(true)
+    }
+
+    func addRawSensorData(_ data: SensorData) {
+        rawSensorData.append(data)
+        limitRawSensorData()
+    }
+
+    private func limitRawSensorData() {
+        if rawSensorData.count > maxRawSensorDataSize {
+            rawSensorData.removeFirst(rawSensorData.count - maxRawSensorDataSize)
+        }
+    }
+}
+
+struct SensorData {} // Placeholder for actual sensor data structure

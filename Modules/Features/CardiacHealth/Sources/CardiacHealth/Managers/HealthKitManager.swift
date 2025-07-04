@@ -4,14 +4,14 @@ import HealthKit
 
 @available(iOS 13.0, *)
 /// Manages HealthKit authorization and data fetching for cardiac metrics.
-public class HealthKitManager {
+open class HealthKitManager { // Changed to 'open'
     public static let shared = HealthKitManager()
     private let healthStore = HKHealthStore()
 
-    private init() {}
+    public init() {} // Made init public for mocking
 
     /// Requests authorization to read heart rate and HRV data.
-    public func requestAuthorization() async throws {
+    open func requestAuthorization() async throws { // Changed to 'open'
         guard HKHealthStore.isHealthDataAvailable() else {
             throw HKError(.errorHealthDataUnavailable)
         }
@@ -33,7 +33,7 @@ public class HealthKitManager {
     }
 
     /// Fetches the most recent resting heart rate sample (beats per minute).
-    public func fetchRestingHeartRate() async throws -> Double {
+    open func fetchRestingHeartRate() async throws -> Double { // Changed to 'open'
         let type = HKQuantityType.quantityType(forIdentifier: .heartRate)!
         let sortDesc = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
         return try await withCheckedThrowingContinuation(of: Double.self) { continuation in
@@ -52,7 +52,7 @@ public class HealthKitManager {
     }
 
     /// Fetches average SDNN (HRV) from the most recent sample.
-    public func fetchHRV() async throws -> Double {
+    open func fetchHRV() async throws -> Double { // Changed to 'open'
         let type = HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!
         let sortDesc = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
         return try await withCheckedThrowingContinuation(of: Double.self) { continuation in
@@ -71,7 +71,7 @@ public class HealthKitManager {
     }
 
     /// Fetches trend data for the past N days.
-    public func fetchTrendData(days: Int) async throws -> [CardiacTrendData] {
+    open func fetchTrendData(days: Int) async throws -> CardiacTrendData { // Changed to 'open'
         var trends = [CardiacTrendData]()
         for i in 0..<days {
             let date = Calendar.current.date(byAdding: .day, value: -i, to: Date())!
@@ -84,11 +84,12 @@ public class HealthKitManager {
     }
 
     /// Constructs a summary from the latest heart rate and HRV samples.
-    public func getHealthSummary() async throws -> CardiacSummary {
+    open func getHealthSummary() async throws -> CardiacSummary { // Changed to 'open'
         let hr = try await fetchRestingHeartRate()
         let hrv = try await fetchHRV()
         // Blood pressure unavailable from HealthKit directly; placeholder
-        return CardiacSummary(restingHeartRate: hr, hrv: hrv, bloodPressure: "--/--")
+        // Assuming CardiacSummary now takes averageHeartRate, restingHeartRate, hrvScore, timestamp
+        return CardiacSummary(averageHeartRate: Int(hr), restingHeartRate: Int(hr), hrvScore: hrv, timestamp: Date())
     }
 }
 #endif

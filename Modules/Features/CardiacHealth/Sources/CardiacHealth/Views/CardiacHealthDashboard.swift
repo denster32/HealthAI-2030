@@ -222,16 +222,6 @@ struct CardiacSummary {
     static let preview = CardiacSummary(restingHeartRate: 62, hrv: 58, bloodPressure: "120/78")
 }
 
-struct CardiacTrendData: Identifiable {
-    let id = UUID()
-    let date: Date
-    let restingHeartRate: Double
-    let hrv: Double
-    static let preview: [CardiacTrendData] = (0..<7).map {
-        CardiacTrendData(date: Calendar.current.date(byAdding: .day, value: -$0, to: Date())!, restingHeartRate: Double.random(in: 60...70), hrv: Double.random(in: 50...65))
-    }.reversed()
-}
-
 struct CardiacRiskAssessment {
     enum Level: String {
         case low = "Low"

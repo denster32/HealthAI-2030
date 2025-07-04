@@ -13,13 +13,11 @@ let package = Package(
             targets: ["SleepTracking"]),
     ],
     dependencies: [
-        .package(path: "../../../Packages/Managers"),
     ],
     targets: [
         .target(
             name: "SleepTracking",
             dependencies: [
-                "Managers",
             ]
         ),
         .testTarget(

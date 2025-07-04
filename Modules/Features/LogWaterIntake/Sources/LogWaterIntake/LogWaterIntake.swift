@@ -41,10 +41,9 @@ public struct LogWaterIntakeAppIntent: AppIntent {
         self.amount = amount
     }
 
-    public func perform() async throws -> some IntentResult & ProvidesStringResult {
+    public func perform() async throws -> some IntentResult {
         let logger = WaterIntakeLogger()
         try await logger.logWaterIntake(amountInMilliliters: amount)
-        let result = "Logged \(Int(amount)) ml of water intake."
-        return .result(value: result)
+        return .result()
     }
 }

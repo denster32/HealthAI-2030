@@ -789,7 +789,16 @@ struct AppConfiguration {
     static let supportsComplications = true
 
     // MARK: - App Group Identifier
-    static let appGroupIdentifier = "group.com.healthai2030.widgets"
+    /// The App Group Identifier used for sharing data between the main app and its extensions (e.g., widgets).
+    /// This value should ideally be managed securely, e.g., via Xcode build settings or a secrets manager,
+    /// and not hardcoded directly in source control for production environments.
+    /// For this exercise, it's loaded from Info.plist.
+    static let appGroupIdentifier: String = {
+        guard let identifier = Bundle.main.infoDictionary?["AppGroupIdentifier"] as? String else {
+            fatalError("AppGroupIdentifier not found in Info.plist. Please configure it in Xcode.")
+        }
+        return identifier
+    }()
 
     // MARK: - Privacy Permission Descriptions
     struct PrivacyDescriptions {

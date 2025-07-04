@@ -13,7 +13,6 @@ let package = Package(
     ],
     dependencies: [
         // Add any dependencies specific to Biofeedback here, e.g.,
-        // .package(path: "../../Managers"),
         // .package(path: "../../../HealthAI 2030")
     ],
     targets: [

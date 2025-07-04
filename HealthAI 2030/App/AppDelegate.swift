@@ -48,35 +48,51 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         guard let healthStore = healthStore else { return }
 
-        // Request authorization for required data types
-        var typesToRead: Set<HKObjectType> = []
+        let allHealthKitTypesToRead: Set<HKObjectType> = [
+            HKObjectType.quantityType(forIdentifier: .heartRate)!,
+            HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!,
+            HKObjectType.quantityType(forIdentifier: .oxygenSaturation)!,
+            HKObjectType.quantityType(forIdentifier: .bodyTemperature)!,
+            HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
+            HKObjectType.quantityType(forIdentifier: .stepCount)!,
+            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
+            HKObjectType.quantityType(forIdentifier: .basalEnergyBurned)!,
+            HKObjectType.quantityType(forIdentifier: .dietaryEnergyConsumed)!,
+            HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
+            HKObjectType.quantityType(forIdentifier: .flightsClimbed)!,
+            HKObjectType.quantityType(forIdentifier: .respiratoryRate)!,
+            HKObjectType.quantityType(forIdentifier: .restingHeartRate)!,
+            HKObjectType.quantityType(forIdentifier: .walkingHeartRateAverage)!,
+            HKObjectType.quantityType(forIdentifier: .vo2Max)!,
+            HKObjectType.quantityType(forIdentifier: .appleExerciseTime)!,
+            HKObjectType.quantityType(forIdentifier: .appleStandTime)!,
+            HKObjectType.quantityType(forIdentifier: .environmentalAudioExposure)!,
+            HKObjectType.quantityType(forIdentifier: .headphoneAudioExposure)!,
+            HKObjectType.quantityType(forIdentifier: .walkingAsymmetryPercentage)!,
+            HKObjectType.quantityType(forIdentifier: .walkingDoubleSupportPercentage)!,
+            HKObjectType.quantityType(forIdentifier: .walkingSpeed)!,
+            HKObjectType.quantityType(forIdentifier: .walkingStepLength)!,
+            HKObjectType.quantityType(forIdentifier: .sixMinuteWalkTestDistance)!,
+            HKObjectType.quantityType(forIdentifier: .appleWalkingSteadiness)!,
+            HKObjectType.categoryType(forIdentifier: .mindfulSession)!,
+            HKObjectType.workoutType()
+        ]
 
-        // Safely add HealthKit types
-        if let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate) {
-            typesToRead.insert(heartRateType)
-        }
-        if let hrvType = HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN) {
-            typesToRead.insert(hrvType)
-        }
-        if let oxygenType = HKObjectType.quantityType(forIdentifier: .oxygenSaturation) {
-            typesToRead.insert(oxygenType)
-        }
-        if let temperatureType = HKObjectType.quantityType(forIdentifier: .bodyTemperature) {
-            typesToRead.insert(temperatureType)
-        }
-        if let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) {
-            typesToRead.insert(sleepType)
-        }
-        if let stepType = HKObjectType.quantityType(forIdentifier: .stepCount) {
-            typesToRead.insert(stepType)
-        }
-        if let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) {
-            typesToRead.insert(energyType)
-        }
+        let allHealthKitTypesToWrite: Set<HKSampleType> = [
+            HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
+            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
+            HKObjectType.quantityType(forIdentifier: .dietaryEnergyConsumed)!,
+            HKObjectType.quantityType(forIdentifier: .stepCount)!,
+            HKObjectType.workoutType()
+        ]
 
-        healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, error in
+        healthStore.requestAuthorization(toShare: allHealthKitTypesToWrite, read: allHealthKitTypesToRead) { success, error in
             if let error = error {
-                print("HealthKit authorization error: \(error)")
+                print("HealthKit authorization error: \(error.localizedDescription)")
+            } else if success {
+                print("HealthKit authorization granted for all relevant types.")
+            } else {
+                print("HealthKit authorization denied.")
             }
         }
     }
@@ -109,11 +125,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Initialize core managers
         _ = SleepOptimizationManager.shared
         _ = HealthDataManager.shared
-        import Analytics
-
         _ = MLModelManager.shared
-                _ = PredictiveAnalyticsManager.shared
-                _ = EnvironmentManager.shared
+        _ = PredictiveAnalyticsManager.shared
+        _ = EnvironmentManager.shared
     }
 
     private func setupNotifications() {
@@ -127,6 +141,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     private func setupWidgets() {
         // Configure app group for data sharing
         sharedUserDefaults = UserDefaults(suiteName: AppConfiguration.appGroupIdentifier)
+
+        // Implement secure data sharing for widgets (e.g., using App Group with encryption)
+        // This is a placeholder for actual secure data handling.
+        // For example, you might encrypt data before writing to sharedUserDefaults,
+        // or use a secure enclave for sensitive keys.
+        print("Widget data sharing configured. Implement proper encryption and privacy controls.")
 
         // Reload all widget timelines to ensure they are up-to-date
         WidgetCenter.shared.reloadAllTimelines()

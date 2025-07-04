@@ -3,6 +3,7 @@ import Charts
 
 /// Mental Health Dashboard View for iOS 18+ mental health features
 /// Displays mindfulness sessions, mental state tracking, mood analysis, and insights
+@available(iOS 17.0, macOS 14.0, *)
 public struct MentalHealthDashboardView: View {
     @StateObject private var mentalHealthManager = MentalHealthManager.shared
     @State private var selectedTimeRange: TimeRange = .week
