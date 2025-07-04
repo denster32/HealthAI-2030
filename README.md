@@ -66,14 +66,35 @@ HealthAI 2030 is a forward-looking application designed to provide users with de
 
 ## 🛠️ Architecture
 
-The project is architected for scalability and maintainability, with a clear separation of concerns.
+The project follows a modular, platform-agnostic architecture with clear separation between:
 
-- **UI:** Built with SwiftUI for a modern, declarative user interface.
-- **State Management:** Follows MVVM-like patterns, with `Managers` serving as ViewModels or service layers.
-- **Modularity:** Code is organized into feature-based modules (e.g., `Analytics`, `ML`, `Biofeedback`).
-- **Data Persistence:** Utilizes Core Data (`.xcdatamodeld`) and CloudKit for synchronization.
-- **High-Performance Computing:** Leverages Metal for custom chart rendering and the Neural Engine for on-device ML.
-- **API Documentation:** [View DocC documentation](docs/architecture.png) (coming soon).
+### Platform Layers
+- iOS
+- macOS
+- tvOS
+- watchOS
+
+### Core Modules
+- **Shared Utilities:** Cross-platform utilities (PerformanceOptimizer, logging, etc.)
+- **Analytics:** Data processing and ML capabilities
+- **Security:** Encryption, authentication, privacy
+- **Data Models:** Core business objects and persistence
+
+### Feature Modules
+Each feature module (Biofeedback, CardiacHealth, etc.) contains:
+- Views
+- ViewModels
+- Managers
+- Models
+- Tests
+
+### Key Architectural Principles
+1. Platform layers can depend on Core modules
+2. Core modules must remain platform-agnostic
+3. Feature modules can depend on Core modules
+4. No circular dependencies allowed
+
+For detailed architecture diagrams and specifications, see [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ## 🚀 Getting Started
 ### Prerequisites
