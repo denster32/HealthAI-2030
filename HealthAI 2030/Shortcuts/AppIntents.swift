@@ -1,6 +1,7 @@
 import AppIntents
 import HealthKit
 import SwiftUI
+import MentalHealth
 
 // MARK: - App Intents for HealthAI 2030
 
@@ -36,22 +37,15 @@ struct StartSleepTrackingAppIntent: AppIntent {
     }
 }
 
-/// An App Intent to log water intake.
+/// An App Intent to get a daily health summary.
 @available(iOS 18.0, *)
-struct LogWaterIntakeAppIntent: AppIntent {
-    static var title: LocalizedStringResource = "Log Water Intake"
-    static var description = IntentDescription("Logs a specified amount of water intake.")
-
-    @Parameter(title: "Amount", description: "The amount of water in milliliters.")
-    var amount: Double
-
-    @Dependency private var healthDataManager: HealthDataManager
+struct GetDailyHealthSummaryAppIntent: AppIntent {
+    static var title: LocalizedStringResource = "Get Daily Health Summary"
+    static var description = IntentDescription("Gets a summary of the user's health data for the day.")
 
     func perform() async throws -> some IntentResult & ProvidesStringResult {
-        healthDataManager.logWaterIntake(amount: amount)
-
-        let result = "Logged \(Int(amount)) ml of water intake."
-        return .result(value: result)
+        let summary = DailyHealthSummaryProvider.getTodaysSummary()
+        return .result(value: summary)
     }
 }
 
@@ -77,11 +71,20 @@ struct HealthAI2030Shortcuts: AppShortcutsProvider {
             ]
         )
         
+        
         AppShortcut(
-            intent: LogWaterIntakeAppIntent(),
+            intent: GetMentalHealthInsightsAppIntent(),
             phrases: [
-                "Log water intake in \(.applicationName)",
-                "I drank \(\.$amount) milliliters of water using \(.applicationName)"
+                "What are my mental health insights in \(.applicationName)?",
+                "Get mental health insights using \(.applicationName)"
+            ]
+        )
+        
+        AppShortcut(
+            intent: GetDailyHealthSummaryAppIntent(),
+            phrases: [
+                "What's my daily health summary in \(.applicationName)?",
+                "Get my health summary for today using \(.applicationName)"
             ]
         )
     }

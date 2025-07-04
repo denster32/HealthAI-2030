@@ -1,21 +1,75 @@
 import SwiftUI
+import Analytics
 
 struct HealthAlertsView: View {
     @ObservedObject var analyticsManager = PredictiveAnalyticsManager.shared
+    @State private var selectedFilter: PriorityAlert.TriageRank? = nil
+
+    var filteredAlerts: [PredictiveAnalyticsManager.PrioritizedAlertWithExplanation] {
+        if let filter = selectedFilter {
+            return analyticsManager.activeAlerts.filter { $0.prioritizedAlert.triageRank == filter }
+        } else {
+            return analyticsManager.activeAlerts
+        }
+    }
 
     var body: some View {
         NavigationStack {
-            List(analyticsManager.activeAlerts) { alert in
-                EnhancedAlertCard(alert: alert)
-                    .padding(.vertical, 4)
+            if filteredAlerts.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "bell.slash")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary)
+                        .accessibilityHidden(true)
+                    Text("No Active Alerts")
+                        .font(.headline)
+                        .accessibilityLabel("No active health alerts")
+                    Text("Your health dashboard is all clear.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .accessibilityHint("There are currently no health alerts.")
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    ForEach(filteredAlerts) { alert in
+                        EnhancedAlertCard(alert: alert, onDismiss: {
+                            analyticsManager.dismissAlert(id: alert.id)
+                        })
+                        .padding(.vertical, 4)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            if alert.prioritizedAlert.triageRank != .critical {
+                                Button(role: .destructive) {
+                                    analyticsManager.dismissAlert(id: alert.id)
+                                } label: {
+                                    Label("Dismiss", systemImage: "xmark.bin")
+                                }
+                            }
+                        }
+                    }
+                }
             }
             .navigationTitle("Health Alerts")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button("All", action: { selectedFilter = nil })
+                        Divider()
+                        ForEach(PriorityAlert.TriageRank.allCases, id: \ .self) { rank in
+                            Button(rank.rawValue.capitalized, action: { selectedFilter = rank })
+                        }
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                    }
+                }
+            }
         }
     }
 }
 
 struct EnhancedAlertCard: View {
     let alert: PredictiveAnalyticsManager.PrioritizedAlertWithExplanation
+    var onDismiss: (() -> Void)? = nil
     @State private var showDetails = false
     @EnvironmentObject var analyticsManager: PredictiveAnalyticsManager
 
@@ -24,94 +78,48 @@ struct EnhancedAlertCard: View {
             HStack {
                 Image(systemName: iconForSeverity(alert.prioritizedAlert.triageRank))
                     .foregroundColor(colorForSeverity(alert.prioritizedAlert.triageRank))
+                    .accessibilityLabel("Severity icon")
                 Text(alert.explanation.title)
                     .font(.headline)
+                    .accessibilityLabel(alert.explanation.title)
                 Spacer()
                 SeverityBadge(rank: alert.prioritizedAlert.triageRank)
             }
+            .contentShape(Rectangle())
             .onTapGesture {
-                showDetails.toggle()
+                withAnimation(.spring()) {
+                    showDetails.toggle()
+                }
                 if alert.prioritizedAlert.triageRank == .critical {
                     UINotificationFeedbackGenerator().notificationOccurred(.error)
                 }
             }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint("Tap to view details")
 
             Text(alert.explanation.summary)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .accessibilityLabel(alert.explanation.summary)
 
-            if !alert.explanation.contributingFactors.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Contributing Factors:")
-                        .font(.caption)
-                        .bold()
-                    ForEach(alert.explanation.contributingFactors, id: \.self) { factor in
-                        Text("• \(factor)").font(.caption)
-                    }
-                }
-            }
-
-            if let confidence = alert.explanation.modelConfidence {
-                Text("Model Confidence: \(Int(confidence * 100))%")
-                    .font(.caption2)
-                    .foregroundColor(.blue)
-            }
-
-            let actions = ActionSuggester.shared.suggestActions(for: alert.prioritizedAlert)
-            if !actions.isEmpty {
-                HStack {
-                    ForEach(actions, id: \.title) { action in
-                        Button {
-                            if let link = action.deepLink {
-                                DeepLinkManager.shared.handle(deepLink: link)
-                            }
-                        } label: {
-                            Label(action.title, systemImage: iconForActionType(action.actionType))
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(colorForActionType(action.actionType))
-                        .accessibilityLabel(action.title)
-                        .accessibilityHint(action.description)
-                    }
-                }
-            }
-
-            // Dismiss button for non-critical alerts
-            if alert.prioritizedAlert.triageRank != .critical {
-                Button(role: .destructive) {
-                    // Remove alert from activeAlerts (requires binding or environment)
-                    if let idx = analyticsManager.activeAlerts.firstIndex(where: { $0.id == alert.id }) {
-                        analyticsManager.activeAlerts.remove(at: idx)
-                    }
-                } label: {
-                    Label("Dismiss", systemImage: "xmark.circle")
-                }
-                .buttonStyle(.bordered)
-                .padding(.top, 4)
+            if showDetails {
+                AlertDetailView(alert: alert)
+                    .transition(.asymmetric(insertion: .scale(scale: 0.9, anchor: .top).combined(with: .opacity), removal: .opacity))
             }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
-                .shadow(color: colorForSeverity(alert.prioritizedAlert.triageRank).opacity(0.2), radius: 4)
-        )
-        .transition(.move(edge: .top).combined(with: .opacity))
-        .sheet(isPresented: $showDetails) {
-            AlertDetailView(alert: alert)
-        }
+        .accessibilityElement(children: .combine)
     }
 
-    func iconForSeverity(_ rank: AlertPrioritizer.TriageRank) -> String {
+    private func iconForSeverity(_ rank: PriorityAlert.TriageRank) -> String {
         switch rank {
-        case .critical: return "exclamationmark.triangle.fill"
-        case .urgent: return "exclamationmark.circle.fill"
-        case .advisory: return "info.circle.fill"
-        case .informational: return "bell.fill"
+        case .critical: return "exclamationmark.octagon.fill"
+        case .urgent: return "exclamationmark.triangle.fill"
+        case .advisory: return "exclamationmark.shield.fill"
+        case .informational: return "info.circle.fill"
         }
     }
 
-    func colorForSeverity(_ rank: AlertPrioritizer.TriageRank) -> Color {
+    private func colorForSeverity(_ rank: PriorityAlert.TriageRank) -> Color {
         switch rank {
         case .critical: return .red
         case .urgent: return .orange
@@ -119,45 +127,21 @@ struct EnhancedAlertCard: View {
         case .informational: return .gray
         }
     }
-
-    func iconForActionType(_ type: ActionSuggester.ActionType) -> String {
-        switch type {
-        case .callEMS: return "phone.fill"
-        case .consultDoctor: return "stethoscope"
-        case .scheduleAppointment: return "calendar"
-        case .reviewData: return "doc.text.magnifyingglass"
-        case .adjustEnvironment: return "bed.double.fill"
-        case .openSettings: return "gearshape"
-        case .dismiss: return "xmark.circle"
-        }
-    }
-
-    func colorForActionType(_ type: ActionSuggester.ActionType) -> Color {
-        switch type {
-        case .callEMS: return .red
-        case .consultDoctor: return .orange
-        case .scheduleAppointment: return .yellow
-        case .reviewData: return .blue
-        case .adjustEnvironment: return .green
-        case .openSettings: return .gray
-        case .dismiss: return .secondary
-        }
-    }
 }
 
 struct SeverityBadge: View {
-    let rank: AlertPrioritizer.TriageRank
-
+    let rank: PriorityAlert.TriageRank
     var body: some View {
         Text(rank.rawValue.capitalized)
             .font(.caption2)
-            .padding(6)
-            .background(badgeColor)
-            .foregroundColor(.white)
-            .clipShape(Capsule())
+            .fontWeight(.semibold)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(colorForRank(rank).opacity(0.2))
+            .foregroundColor(colorForRank(rank))
+            .cornerRadius(4)
     }
-
-    var badgeColor: Color {
+    private func colorForRank(_ rank: PriorityAlert.TriageRank) -> Color {
         switch rank {
         case .critical: return .red
         case .urgent: return .orange
@@ -207,4 +191,4 @@ struct HealthAlertsView_Previews: PreviewProvider {
         HealthAlertsView()
             .environmentObject(PredictiveAnalyticsManager.shared)
     }
-} 
+}

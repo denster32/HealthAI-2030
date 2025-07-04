@@ -2,14 +2,21 @@ import SwiftUI
 import WatchKit
 import AVFoundation
 import CoreML
+import OSLog
+import SwiftData
 
+@available(watchOS 11.0, *)
 @main
 struct HealthAI2030WatchApp: App {
     
     // MARK: - Properties
-    @StateObject private var sessionManager = WatchSessionManager.shared
-    @StateObject private var connectivityManager = WatchConnectivityManager.shared
-    @StateObject private var hapticManager = WatchHapticManager.shared
+    @Environment(WatchSessionManager.self) private var sessionManager
+    @Environment(WatchConnectivityManager.self) private var connectivityManager
+    @Environment(WatchHapticManager.self) private var hapticManager
+    
+    // SwiftData model container for iOS 18
+    @ModelContainer(for: [WatchHealthRecord.self, SleepSession.self, WorkoutRecord.self])
+    var container
     
     // Integrate premium content and features
     let appIntegration = AppIntegration()

@@ -6,9 +6,11 @@ import os.log
 struct SleepCoachingView: View {
     @StateObject private var sleepManager = SleepManager.shared
     @StateObject private var healthKitManager = HealthKitManager.shared
+    import Analytics
+    
     @StateObject private var aiEngine = AISleepAnalysisEngine.shared
-    @StateObject private var analytics = SleepAnalyticsEngine.shared
-    @StateObject private var feedbackEngine = SleepFeedbackEngine.shared
+        @StateObject private var analytics = SleepAnalyticsEngine.shared
+        @StateObject private var feedbackEngine = SleepFeedbackEngine.shared
     
     @State private var selectedTab = 0
     @State private var showingInsights = false
@@ -133,8 +135,10 @@ struct TodayView: View {
 // MARK: - Sleep Score Card
 
 struct SleepScoreCard: View {
+    import Analytics
+    
     @StateObject private var sleepManager = SleepManager.shared
-    @StateObject private var analytics = SleepAnalyticsEngine.shared
+        @StateObject private var analytics = SleepAnalyticsEngine.shared
     
     var body: some View {
         VStack(spacing: 16) {
@@ -651,6 +655,8 @@ struct EnvironmentMetric: View {
 
 // MARK: - Insights View
 
+import Analytics
+
 struct InsightsView: View {
     @StateObject private var analytics = SleepAnalyticsEngine.shared
     @StateObject private var healthKitManager = HealthKitManager.shared
@@ -674,6 +680,8 @@ struct InsightsView: View {
         }
     }
 }
+
+import Analytics
 
 struct AIInsightsCard: View {
     @StateObject private var analytics = SleepAnalyticsEngine.shared

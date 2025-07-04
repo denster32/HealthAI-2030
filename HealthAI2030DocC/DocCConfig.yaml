@@ -1,0 +1,9 @@
+# DocC configuration for HealthAI 2030
+
+format-version: "1.0"
+docc-version: "1.0"
+
+reference:
+  - "HealthAI 2030"
+
+# For more options, see Apple's DocC documentation.

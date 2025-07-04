@@ -2,6 +2,8 @@ import SwiftUI
 
 struct SkillMarketplaceView: View {
     @ObservedObject var registry = HealthCopilotSkillRegistry.shared
+    @StateObject private var remoteProvider = RemoteSkillProvider()
+    @StateObject private var skillDownloader = SkillDownloader()
     @State private var skills: [HealthCopilotSkill] = []
     @State private var isRefreshing = false
     @State private var searchText: String = ""
@@ -15,6 +17,12 @@ struct SkillMarketplaceView: View {
             skill.manifest.displayName.lowercased().contains(lower) ||
             skill.manifest.description.lowercased().contains(lower) ||
             skill.manifest.capabilities.contains(where: { $0.lowercased().contains(lower) })
+        }
+    }
+    
+    var remoteSkills: [HealthCopilotSkillManifest] {
+        remoteProvider.manifests.filter { manifest in
+            !skills.contains(where: { $0.manifest.name == manifest.name })
         }
     }
     
@@ -48,6 +56,29 @@ struct SkillMarketplaceView: View {
                             }
                         }
                     }
+                    
+                    Section(header: Text("Discover New Skills")) {
+                        ForEach(remoteSkills, id: \.name) { manifest in
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(manifest.displayName).font(.headline)
+                                    Text(manifest.description).font(.subheadline).foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Button(action: { downloadAndInstall(manifest: manifest) }) {
+                                    Text("Install")
+                                }.buttonStyle(.borderedProminent)
+                                 .disabled(skillDownloader.isDownloading)
+                            }
+                        }
+                    }
+                    
+                    if skillDownloader.isDownloading {
+                        Section(header: Text("Downloading")) {
+                            ProgressView(value: skillDownloader.downloadProgress)
+                        }
+                    }
+
                     FederatedLearningSection()
                 }
                 .listStyle(InsetGroupedListStyle())
@@ -82,8 +113,33 @@ struct SkillMarketplaceView: View {
     
     private func refreshSkills() {
         skills = registry.allSkills()
+        remoteProvider.fetchManifests()
+    }
+    
+    private func downloadAndInstall(manifest: HealthCopilotSkillManifest) {
+        guard let url = URL(string: manifest.downloadURL) else { return }
+        
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent(manifest.name).appendingPathExtension("bundle")
+        
+        skillDownloader.downloadSkill(from: url, to: destination)
+            .receive(on: DispatchQueue.main)
+            .sink {
+                completion in
+                if case .failure(let error) = completion {
+                    installError = error.localizedDescription
+                }
+            } receiveValue: { url in
+                if HealthCopilotSkillLoader.shared.loadSkill(from: url) != nil {
+                    refreshSkills()
+                } else {
+                    installError = "Failed to load skill from bundle."
+                }
+            }
+            .store(in: &cancellables)
     }
 }
+
+private var cancellables = Set<AnyCancellable>()
 
 struct FederatedLearningSection: View {
     @State private var status: [String: Any] = [:]

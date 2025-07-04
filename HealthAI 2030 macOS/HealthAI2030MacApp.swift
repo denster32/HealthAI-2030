@@ -4,19 +4,26 @@ import Metal
 import MetalPerformanceShaders
 import ResearchKit
 import AVFoundation
+import SwiftData
+import OSLog
 
+@available(macOS 15.0, *)
 @main
 struct HealthAI2030MacApp: App {
     
     // MARK: - Properties
-    @StateObject private var healthDataManager = HealthDataManager.shared
-    @StateObject private var sleepOptimizationManager = SleepOptimizationManager.shared
-    @StateObject private var predictiveAnalyticsManager = PredictiveAnalyticsManager.shared
-    @StateObject private var environmentManager = EnvironmentManager.shared
-    @StateObject private var appleWatchManager = AppleWatchManager.shared
-    @StateObject private var macAnalyticsEngine = MacAnalyticsEngine.shared
-    @StateObject private var researchKitManager = ResearchKitManager.shared
-    @StateObject private var dataExportManager = DataExportManager.shared
+    @Environment(HealthDataManager.self) private var healthDataManager
+    @Environment(SleepOptimizationManager.self) private var sleepOptimizationManager
+    @Environment(PredictiveAnalyticsManager.self) private var predictiveAnalyticsManager
+    @Environment(EnvironmentManager.self) private var environmentManager
+    @Environment(AppleWatchManager.self) private var appleWatchManager
+    @Environment(MacAnalyticsEngine.self) private var macAnalyticsEngine
+    @Environment(ResearchKitManager.self) private var researchKitManager
+    @Environment(DataExportManager.self) private var dataExportManager
+    
+    // SwiftData model container
+    @ModelContainer(for: [HealthRecord.self, SleepRecord.self, EnvironmentalData.self])
+    var container
     
     // App state
     @State private var isAppActive = false

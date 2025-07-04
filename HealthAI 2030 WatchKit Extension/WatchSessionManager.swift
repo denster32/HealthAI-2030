@@ -2,8 +2,12 @@ import WatchKit
 import HealthKit
 import WatchConnectivity
 import Foundation
+import OSLog
+import Observation
 
-class WatchSessionManager: ObservableObject {
+@available(watchOS 11.0, *)
+@Observable
+class WatchSessionManager {
     static let shared = WatchSessionManager()
     
     // MARK: - Properties
@@ -11,14 +15,15 @@ class WatchSessionManager: ObservableObject {
     private var healthKitObservers: [HKObserverQuery] = []
     private var workoutSession: HKWorkoutSession?
     private var workoutBuilder: HKLiveWorkoutBuilder?
+    private let logger = Logger(subsystem: "com.healthai2030.watch", category: "session")
     
-    // Published properties for SwiftUI
-    @Published var currentHeartRate: Double = 0
-    @Published var currentHRV: Double = 0
-    @Published var currentSleepStage: SleepStage = .unknown
-    @Published var isMonitoring: Bool = false
-    @Published var isSleepSessionActive: Bool = false
-    @Published var sessionDuration: TimeInterval = 0
+    // Observable properties for SwiftUI
+    var currentHeartRate: Double = 0
+    var currentHRV: Double = 0
+    var currentSleepStage: SleepStage = .unknown
+    var isMonitoring: Bool = false
+    var isSleepSessionActive: Bool = false
+    var sessionDuration: TimeInterval = 0
     
     // Health data storage
     private var healthDataBuffer: [HealthDataPoint] = []

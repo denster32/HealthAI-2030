@@ -12,45 +12,45 @@ import WatchConnectivity
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
-    
+
     var window: UIWindow?
     var sharedUserDefaults: UserDefaults? // Add shared user defaults for app group
     var healthStore: HKHealthStore?
     var session: WCSession?
     var backgroundTaskScheduler: BackgroundTaskScheduler?
     var enhancedBackgroundManager: EnhancedSleepBackgroundManager?
-    
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        
+
         // Initialize HealthKit
         setupHealthKit()
-        
+
         // Initialize Watch Connectivity
         setupWatchConnectivity()
-        
+
         // Setup background tasks
         setupBackgroundTasks()
-        
+
         // Initialize core managers
         initializeManagers()
-        
+
         // Setup notifications
         setupNotifications()
-        
+
         // Setup widgets
         setupWidgets()
-        
+
         return true
     }
-    
+
     private func setupHealthKit() {
         healthStore = HKHealthStore()
-        
+
         guard let healthStore = healthStore else { return }
-        
+
         // Request authorization for required data types
         var typesToRead: Set<HKObjectType> = []
-        
+
         // Safely add HealthKit types
         if let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate) {
             typesToRead.insert(heartRateType)
@@ -73,14 +73,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) {
             typesToRead.insert(energyType)
         }
-        
+
         healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, error in
             if let error = error {
                 print("HealthKit authorization error: \(error)")
             }
         }
     }
-    
+
     private func setupWatchConnectivity() {
         #if canImport(WatchConnectivity)
         if WCSession.isSupported() {
@@ -90,30 +90,32 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         #endif
     }
-    
+
     private func setupBackgroundTasks() {
         // Legacy background task scheduler
         backgroundTaskScheduler = BackgroundTaskScheduler()
         backgroundTaskScheduler?.registerBackgroundTasks()
-        
+
         // Enhanced sleep background manager
         enhancedBackgroundManager = EnhancedSleepBackgroundManager.shared
-        
+
         // Enable background processing by default
         Task { @MainActor in
             enhancedBackgroundManager?.enableBackgroundProcessing()
         }
     }
-    
+
     private func initializeManagers() {
         // Initialize core managers
         _ = SleepOptimizationManager.shared
         _ = HealthDataManager.shared
+        import Analytics
+
         _ = MLModelManager.shared
-        _ = PredictiveAnalyticsManager.shared
-        _ = EnvironmentManager.shared
+                _ = PredictiveAnalyticsManager.shared
+                _ = EnvironmentManager.shared
     }
-    
+
     private func setupNotifications() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
             if let error = error {
@@ -121,26 +123,26 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         }
     }
-    
+
     private func setupWidgets() {
         // Configure app group for data sharing
-        sharedUserDefaults = UserDefaults(suiteName: "group.com.healthai2030.widgets")
-        
+        sharedUserDefaults = UserDefaults(suiteName: AppConfiguration.appGroupIdentifier)
+
         // Reload all widget timelines to ensure they are up-to-date
         WidgetCenter.shared.reloadAllTimelines()
         print("Widget bundle registered and timelines reloaded.")
     }
-    
+
     // MARK: - App Lifecycle for Background Tasks
-    
+
     func applicationDidEnterBackground(_ application: UIApplication) {
         print("App entered background - scheduling background tasks")
-        
+
         // Schedule background tasks when app goes to background
         Task { @MainActor in
             enhancedBackgroundManager?.scheduleOptimalBackgroundTasks()
         }
-        
+
         // Update user sleep time if sleep session is active
         if let sleepManager = SleepManager.shared as? SleepManager,
            sleepManager.isMonitoring {
@@ -149,36 +151,36 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         }
     }
-    
+
     func applicationWillEnterForeground(_ application: UIApplication) {
         print("App will enter foreground")
-        
+
         // Handle app entering foreground
         Task { @MainActor in
             enhancedBackgroundManager?.handleAppWillEnterForeground()
         }
     }
-    
+
     func applicationDidBecomeActive(_ application: UIApplication) {
         print("App became active")
-        
+
         // Handle app becoming active
         Task { @MainActor in
             enhancedBackgroundManager?.handleAppDidBecomeActive()
         }
-        
+
         // Reload widget timelines
         WidgetCenter.shared.reloadAllTimelines()
     }
-    
+
     func applicationWillResignActive(_ application: UIApplication) {
         print("App will resign active")
         // App is about to become inactive
     }
-    
+
     func applicationWillTerminate(_ application: UIApplication) {
         print("App will terminate")
-        
+
         // Save any pending data before termination
         Task { @MainActor in
             // Ensure all data is saved
@@ -198,11 +200,11 @@ extension AppDelegate: WCSessionDelegate {
             print("Watch connectivity activation error: \(error)")
         }
     }
-    
+
     func sessionDidBecomeInactive(_ session: WCSession) {
         print("Watch session became inactive")
     }
-    
+
     func sessionDidDeactivate(_ session: WCSession) {
         print("Watch session deactivated")
     }

@@ -6,9 +6,11 @@ import os.log
 @available(macOS 14.0, *)
 
 struct DashboardView: View {
+    import Analytics
+    
     @StateObject private var healthDataManager = HealthDataManager.shared
-    @StateObject private var predictiveAnalytics = PredictiveAnalyticsManager.shared
-    @StateObject private var sleepOptimizationManager = SleepOptimizationManager.shared
+        @StateObject private var predictiveAnalytics = PredictiveAnalyticsManager.shared
+        @StateObject private var sleepOptimizationManager = SleepOptimizationManager.shared
     @StateObject private var environmentManager = EnvironmentManager.shared
     @StateObject private var realTimeSyncManager = RealTimeSyncManager.shared
     @StateObject private var appleWatchManager = AppleWatchManager.shared
@@ -495,6 +497,8 @@ struct EnvironmentStatusCard: View {
 }
 
 struct PredictiveInsightsCard: View {
+    import Analytics
+    
     @ObservedObject private var predictiveAnalytics = PredictiveAnalyticsManager.shared
     
     var body: some View {
@@ -544,16 +548,27 @@ struct PredictiveInsightsCard: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         Spacer()
+                        Button("Why?", action: {
+                            showExplainabilityView = true
+                        })
+                        .buttonStyle(.borderedProminent)
                     }
                 }
             }
         }
+        .sheet(isPresented: $showExplainabilityView) {
+            ExplainabilityView(recommendation: "Tomorrow's forecast suggests focusing on recovery due to low musculoskeletal resilience.")
+        }
     }
+
+    @State private var showExplainabilityView = false
 }
 
 struct HealthAlertsCard: View {
+    import Analytics
+    
     @ObservedObject private var predictiveAnalytics = PredictiveAnalyticsManager.shared
-    @State private var showingAlertsDetail = false
+        @State private var showingAlertsDetail = false
     
     var body: some View {
         let alertCount = predictiveAnalytics.healthAlerts.count
@@ -864,8 +879,10 @@ struct ActivityItem: View {
 }
 
 struct HealthAlertsDetailView: View {
+    import Analytics
+    
     @ObservedObject private var predictiveAnalytics = PredictiveAnalyticsManager.shared
-    @Environment(\.dismiss) private var dismiss
+        @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         NavigationView {
@@ -919,25 +936,6 @@ struct HealthAlertsDetailView: View {
             return .yellow
         case .low:
             return .blue
-        }
-    }
-}
-
-// MARK: - Extensions
-
-extension SleepStageType {
-    var displayName: String {
-        switch self {
-        case .awake:
-            return "Awake"
-        case .lightSleep:
-            return "Light Sleep"
-        case .deepSleep:
-            return "Deep Sleep"
-        case .remSleep:
-            return "REM Sleep"
-        case .unknown:
-            return "Unknown"
         }
     }
 }
