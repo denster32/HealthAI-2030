@@ -8,19 +8,28 @@
 import SwiftUI
 import FamilyGroupView
 import ProactiveNudgeSettingsView
+import Charts
+import SwiftData
+import TipKit
 
+@available(iOS 18.0, *)
 struct ContentView: View {
     @State private var selectedTab: Int = 0
-    @ObservedObject var aiCoach = AIHealthCoach.shared
-    @ObservedObject var analytics = DeepHealthAnalytics.shared
-    @ObservedObject var biofeedback = BiofeedbackEngine.shared
-    @ObservedObject var copilotChat = CopilotSkillChatEngine.shared
+    
+    // iOS 18 Observable objects
+    @Environment(AIHealthCoach.self) private var aiCoach
+    @Environment(DeepHealthAnalytics.self) private var analytics
+    @Environment(BiofeedbackEngine.self) private var biofeedback
+    @Environment(CopilotSkillChatEngine.self) private var copilotChat
+    
     @State private var showAR = false
     @State private var showSmartHome = false
     @State private var copilotInput: String = ""
     @State private var isUsingCopilot: Bool = false
-    @StateObject private var familyGroupSkill = FamilyGroupHealthSkill()
-    @StateObject private var proactiveNudgeSkill = ProactiveNudgeSkill()
+    
+    // Environment objects for skills
+    @Environment(FamilyGroupHealthSkill.self) private var familyGroupSkill
+    @Environment(ProactiveNudgeSkill.self) private var proactiveNudgeSkill
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -202,6 +211,12 @@ struct ContentView: View {
                 .tabItem {
                     Label("Nudges", systemImage: "bell.badge")
                 }.tag(7)
+
+            // Environmental Health
+            EnvironmentalHealthView()
+                .tabItem {
+                    Label("Environment", systemImage: "leaf.fill")
+                }.tag(8)
         }
         .accentColor(.purple)
         .background(LinearGradient(gradient: Gradient(colors: [.white, .purple.opacity(0.1)]), startPoint: .top, endPoint: .bottom))

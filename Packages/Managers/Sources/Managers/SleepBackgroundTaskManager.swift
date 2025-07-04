@@ -177,34 +177,26 @@ class SleepBackgroundTaskManager: ObservableObject {
         guard sleepManager.isMonitoring else { return true }
         
         do {
-            // Collect current biometric data
-            guard let biometricData = healthKitManager.biometricData else { return false }
-            
-            // Create features for AI analysis
-            let features = SleepFeatures(
-                heartRate: biometricData.heartRate,
-                hrv: biometricData.hrv,
-                movement: biometricData.movement,
-                bloodOxygen: biometricData.oxygenSaturation,
-                temperature: biometricData.temperature,
-                breathingRate: biometricData.respiratoryRate,
-                timeOfNight: calculateTimeOfNight(),
-                previousStage: sleepManager.currentSleepStage
-            )
-            
-            // Run AI prediction
-            let prediction = await aiEngine.predictSleepStage(features)
-            
-            // Update sleep manager with new prediction
-            await updateSleepStageIfNeeded(prediction)
-            
-            // Run feedback engine cycle
-            if feedbackEngine.isActive {
-                // This will be handled by the feedback engine's own cycle
+            // Use CoreMLIntegrationManager’s latest buffered prediction
+            if let result = CoreMLIntegrationManager.shared.latestSleepPrediction {
+                // Map SleepPredictionResult to SleepStagePrediction
+                let mappedStage: SleepStage = {
+                    switch result.stage {
+                    case .awake: return .awake
+                    case .lightSleep: return .light
+                    case .deepSleep: return .deep
+                    case .remSleep: return .rem
+                    default: return .awake
+                    }
+                }()
+                let prediction = SleepStagePrediction(
+                    sleepStage: mappedStage,
+                    confidence: result.confidence,
+                    sleepQuality: result.quality,
+                    stageProbabilities: [:]
+                )
+                await updateSleepStageIfNeeded(prediction)
             }
-            
-            // Update analytics
-            let analysisResult = await analytics.performSleepAnalysis()
             
             backgroundProcessingStats.sleepAnalysisExecutions += 1
             return true

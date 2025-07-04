@@ -19,7 +19,9 @@ class CoreMLIntegrationManager: ObservableObject {
     @Published var modelLoadingStatus: [String: ModelLoadingStatus] = [:]
     @Published var predictionAccuracy: [String: Double] = [:]
     @Published var isModelInitialized = false
-    
+    @Published var latestSleepPrediction: SleepPredictionResult?
+    private var sensorDataBuffer: [SensorSample] = []
+
     private var cancellables = Set<AnyCancellable>()
     
     private let maxLoadRetries = 3
@@ -32,6 +34,7 @@ class CoreMLIntegrationManager: ObservableObject {
         mlModelManager = MLModelManager.shared
         
         setupModelMonitoring()
+        setupDataPipeline()
         initializeModels()
     }
     
@@ -53,6 +56,109 @@ class CoreMLIntegrationManager: ObservableObject {
             .store(in: &cancellables)
     }
     
+    /// Subscribes to HealthKit data streams and processes sensor samples
+    private func setupDataPipeline() {
+        let hk = HealthKitIntegrationManager.shared
+        // Heart rate samples
+        hk.heartRatePublisher
+            .sink { [weak self] samples in
+                let sensorSamples = samples.map { sample in
+                    SensorSample(type: .heartRate, value: sample.quantity.doubleValue(for: .count().unitDivided(by: .minute())), unit: "count/min", timestamp: sample.startDate)
+                }
+                self?.appendAndProcess(sensorSamples)
+            }
+            .store(in: &cancellables)
+        // HRV samples
+        hk.hrvPublisher
+            .sink { [weak self] samples in
+                let sensorSamples = samples.map { sample in
+                    SensorSample(type: .hrv, value: sample.quantity.doubleValue(for: .secondUnit(with: .milli)), unit: "ms", timestamp: sample.startDate)
+                }
+                self?.appendAndProcess(sensorSamples)
+            }
+            .store(in: &cancellables)
+        
+        // Oxygen saturation samples
+        hk.oxygenSaturationPublisher
+            .sink { [weak self] samples in
+                let sensorSamples = samples.map { sample in
+                    SensorSample(type: .oxygenSaturation, value: sample.quantity.doubleValue(for: .percent()), unit: "%", timestamp: sample.startDate)
+                }
+                self?.appendAndProcess(sensorSamples)
+            }
+            .store(in: &cancellables)
+            
+        // Motion samples (assuming a custom publisher for motion data)
+        hk.motionPublisher
+            .sink { [weak self] samples in
+                let sensorSamples = samples.map { sample in
+                    SensorSample(type: .motion, value: sample.value, unit: "g", timestamp: sample.timestamp)
+                }
+                self?.appendAndProcess(sensorSamples)
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Appends new samples to buffer and triggers prediction
+    private func appendAndProcess(_ samples: [SensorSample]) {
+        sensorDataBuffer.append(contentsOf: samples)
+        processBuffer()
+    }
+
+    /// Runs prediction on buffered sensor data and publishes result
+    private func processBuffer() {
+        guard !sensorDataBuffer.isEmpty else { return }
+        // Persist sensor samples for analytics and audit
+        CoreDataManager.shared.saveSensorSamples(sensorDataBuffer)
+        
+        // New: Predict using the SleepStageClassifier
+        predictWithSleepStageClassifier()
+        
+        sensorDataBuffer.removeAll()
+    }
+    
+    private func predictWithSleepStageClassifier() {
+        guard let model = sleepStageModel else {
+            os_log("SleepStageClassifier model is not loaded.", log: OSLog.default, type: .error)
+            return
+        }
+        
+        // Extract the latest values for each feature from the buffer
+        let heartRate = sensorDataBuffer.last(where: { $0.type == .heartRate })?.value ?? 0
+        let hrv = sensorDataBuffer.last(where: { $0.type == .hrv })?.value ?? 0
+        let spo2 = sensorDataBuffer.last(where: { $0.type == .oxygenSaturation })?.value ?? 0
+        let motion = sensorDataBuffer.last(where: { $0.type == .motion })?.value ?? 0
+        
+        do {
+            let input = SleepStageClassifierInput(heart_rate: heartRate, hrv: hrv, motion: motion, spo2: spo2)
+            let output = try model.prediction(input: input)
+            let stageIndex = output.sleep_stage
+            
+            let prediction = SleepPredictionResult(
+                timestamp: Date(),
+                prediction: mapStage(index: stageIndex),
+                confidence: output.sleep_stageProbability[stageIndex] ?? 0.0
+            )
+            
+            DispatchQueue.main.async {
+                self.latestSleepPrediction = prediction
+            }
+            
+        } catch {
+            os_log("Failed to make prediction with SleepStageClassifier: %@", log: OSLog.default, type: .error, error.localizedDescription)
+        }
+    }
+    
+    private func mapStage(index: Int64) -> SleepStage {
+        switch index {
+        case 0: return .awake
+        case 1: return .light
+        case 2: return .deep
+        case 3: return .rem
+        default: return .inBed
+        }
+    }
+
     private func initializeModels() {
         modelLoadingStatus["sleepStage"] = .loading
         modelLoadingStatus["healthPrediction"] = .loading

@@ -12,15 +12,21 @@ let package = Package(
             targets: ["HealthAI 2030"]
         ),
     ],
+    dependencies: [
+        .package(path: "Packages/Managers")
+    ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "HealthAI 2030"
+            name: "HealthAI 2030",
+            dependencies: [
+                .product(name: "Managers", package: "Managers")
+            ]
         ),
         .testTarget(
             name: "HealthAI 2030Tests",
             dependencies: ["HealthAI 2030"]
-        ),
+        )
     ]
 )

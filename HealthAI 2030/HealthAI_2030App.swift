@@ -18,8 +18,10 @@ import OSLog
 import ActivityKit
 import AVFoundation
 import CoreML
+import SwiftData
 
-@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, *)
+// iOS 18 only - no backward compatibility
+@available(iOS 18.0, macOS 15.0, watchOS 11.0, tvOS 18.0, *)
 
 @main
 struct HealthAI_2030App: App {

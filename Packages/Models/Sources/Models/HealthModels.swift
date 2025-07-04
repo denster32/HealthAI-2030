@@ -1,8 +1,41 @@
 import Foundation
 import HealthKit
+import SwiftData
 
-// MARK: - Core Health Models
+// MARK: - Core Health Models with SwiftData for iOS 18
 
+// SwiftData model for health records
+@Model
+class HealthRecord {
+    var id: UUID
+    var timestamp: Date
+    var heartRate: Double
+    var hrv: Double
+    var oxygenSaturation: Double
+    var bodyTemperature: Double
+    var stepCount: Int
+    var activeEnergyBurned: Double
+    var createdAt: Date
+    
+    // Relationships
+    @Relationship(deleteRule: .cascade) var sleepRecords: [SleepRecord]?
+    
+    init(id: UUID = UUID(), timestamp: Date, heartRate: Double, hrv: Double = 0, 
+         oxygenSaturation: Double = 0, bodyTemperature: Double = 0, 
+         steps: Int = 0, sleepHours: Double = 0, createdAt: Date = Date()) {
+        self.id = id
+        self.timestamp = timestamp
+        self.heartRate = heartRate
+        self.hrv = hrv
+        self.oxygenSaturation = oxygenSaturation
+        self.bodyTemperature = bodyTemperature
+        self.stepCount = steps
+        self.activeEnergyBurned = 0
+        self.createdAt = createdAt
+    }
+}
+
+// Codable struct for API and serialization
 struct HealthMetrics: Codable {
     let heartRate: Double
     let hrv: Double
@@ -12,17 +45,6 @@ struct HealthMetrics: Codable {
     let activeEnergyBurned: Double
     let timestamp: Date
 }
-
-// New struct for HealthDataSnapshot, used for Core Data and CloudKit sync
-struct HealthDataSnapshot: Codable {
-    let heartRate: Double
-    let hrv: Double
-    let oxygenSaturation: Double
-    let bodyTemperature: Double
-    let stepCount: Int
-    let activeEnergyBurned: Double
-    let sleepData: [SleepDataSnapshot] // Placeholder for sleep data
-    let timestamp: Date
 }
 
 // New struct for SleepDataSnapshot, used for Core Data and CloudKit sync
@@ -436,6 +458,138 @@ enum SleepStageType: String, CaseIterable, Hashable {
     case unknown = "unknown"
 }
 
+// MARK: - SwiftData Sleep Models
+
+@Model
+class SleepRecord {
+    var id: UUID
+    var startTime: Date
+    var endTime: Date
+    var deepSleepDuration: TimeInterval
+    var remSleepDuration: TimeInterval
+    var lightSleepDuration: TimeInterval
+    var awakeDuration: TimeInterval
+    var sleepQualityScore: Double
+    var respiratoryRate: Double?
+    var averageHeartRate: Double?
+    var minimumHeartRate: Double?
+    var oxygenSaturation: Double?
+    var environmentalData: EnvironmentalData?
+    var createdAt: Date
+    
+    // Back-reference to the health record
+    @Relationship(.inverse) var healthRecord: HealthRecord?
+    
+    init(id: UUID = UUID(), startTime: Date, endTime: Date,
+         deepSleepDuration: TimeInterval = 0, remSleepDuration: TimeInterval = 0,
+         lightSleepDuration: TimeInterval = 0, awakeDuration: TimeInterval = 0,
+         sleepQualityScore: Double = 0, respiratoryRate: Double? = nil,
+         averageHeartRate: Double? = nil, minimumHeartRate: Double? = nil,
+         oxygenSaturation: Double? = nil, environmentalData: EnvironmentalData? = nil,
+         createdAt: Date = Date()) {
+        self.id = id
+        self.startTime = startTime
+        self.endTime = endTime
+        self.deepSleepDuration = deepSleepDuration
+        self.remSleepDuration = remSleepDuration
+        self.lightSleepDuration = lightSleepDuration
+        self.awakeDuration = awakeDuration
+        self.sleepQualityScore = sleepQualityScore
+        self.respiratoryRate = respiratoryRate
+        self.averageHeartRate = averageHeartRate
+        self.minimumHeartRate = minimumHeartRate
+        self.oxygenSaturation = oxygenSaturation
+        self.environmentalData = environmentalData
+        self.createdAt = createdAt
+    }
+}
+
+@Model
+class EnvironmentalData {
+    var id: UUID
+    var temperature: Double?
+    var humidity: Double?
+    var noiseLevel: Double?
+    var lightLevel: Double?
+    var airQuality: Double?
+    
+    init(id: UUID = UUID(), temperature: Double? = nil, humidity: Double? = nil,
+         noiseLevel: Double? = nil, lightLevel: Double? = nil, airQuality: Double? = nil) {
+        self.id = id
+        self.temperature = temperature
+        self.humidity = humidity
+        self.noiseLevel = noiseLevel
+        self.lightLevel = lightLevel
+        self.airQuality = airQuality
+    }
+}
+
+// Model for Watch App
+@Model
+class WatchHealthRecord {
+    var id: UUID
+    var timestamp: Date
+    var heartRate: Double
+    var hrv: Double?
+    var oxygenSaturation: Double?
+    var stepCount: Int?
+    var activeEnergyBurned: Double?
+    var syncedWithPhone: Bool
+    
+    init(id: UUID = UUID(), timestamp: Date = Date(), heartRate: Double = 0,
+         hrv: Double? = nil, oxygenSaturation: Double? = nil, 
+         stepCount: Int? = nil, activeEnergyBurned: Double? = nil,
+         syncedWithPhone: Bool = false) {
+        self.id = id
+        self.timestamp = timestamp
+        self.heartRate = heartRate
+        self.hrv = hrv
+        self.oxygenSaturation = oxygenSaturation
+        self.stepCount = stepCount
+        self.activeEnergyBurned = activeEnergyBurned
+        self.syncedWithPhone = syncedWithPhone
+    }
+}
+
+@Model
+class WorkoutRecord {
+    var id: UUID
+    var startTime: Date
+    var endTime: Date?
+    var workoutType: Int // Using HKWorkoutActivityType raw value
+    var duration: TimeInterval?
+    var caloriesBurned: Double?
+    var distance: Double?
+    var heartRateSamples: [HeartRateSample]?
+    var completed: Bool
+    
+    init(id: UUID = UUID(), startTime: Date = Date(), endTime: Date? = nil,
+         workoutType: Int = 0, duration: TimeInterval? = nil,
+         caloriesBurned: Double? = nil, distance: Double? = nil,
+         heartRateSamples: [HeartRateSample]? = nil, completed: Bool = false) {
+        self.id = id
+        self.startTime = startTime
+        self.endTime = endTime
+        self.workoutType = workoutType
+        self.duration = duration
+        self.caloriesBurned = caloriesBurned
+        self.distance = distance
+        self.heartRateSamples = heartRateSamples
+        self.completed = completed
+    }
+}
+
+@Model
+class HeartRateSample {
+    var timestamp: Date
+    var value: Double
+    
+    init(timestamp: Date = Date(), value: Double = 0) {
+        self.timestamp = timestamp
+        self.value = value
+    }
+}
+
 // MARK: - Extensions for Codable Support
 
 extension SleepMetrics: Codable {}
@@ -471,4 +625,4 @@ extension UserProfile: Identifiable {}
 extension HealthInsight: Identifiable {}
 extension WorkoutSession: Identifiable {}
 extension SleepAnalysis: Identifiable {}
-extension SleepStage: Identifiable {} 
+extension SleepStage: Identifiable {}

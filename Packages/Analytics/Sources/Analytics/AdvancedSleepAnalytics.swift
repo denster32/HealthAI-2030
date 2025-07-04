@@ -2,19 +2,46 @@ import Foundation
 import HealthKit
 import CoreML
 import Combine
-import os.log
+import OSLog
+import SwiftData
+import ActivityKit
 
 /// Advanced sleep analytics system with comprehensive pattern analysis and personalized insights
+@available(iOS 18.0, *)
+@Observable
 @MainActor
-class AdvancedSleepAnalytics: ObservableObject {
+class AdvancedSleepAnalytics {
     static let shared = AdvancedSleepAnalytics()
     
-    // MARK: - Published Properties
+    // MARK: - Observable Properties
     
-    @Published var analyticsMetrics: AnalyticsMetrics = AnalyticsMetrics()
-    @Published var isAnalyzing: Bool = false
-    @Published var currentInsights: [SleepInsight] = []
-    @Published var sleepScore: Double = 0.0
+    var analyticsMetrics: AnalyticsMetrics = AnalyticsMetrics()
+    var isAnalyzing: Bool = false
+    var currentInsights: [SleepInsight] = []
+    var sleepScore: Double = 0.0
+    
+    // MARK: - Async Streams for iOS 18
+    var sleepAnalysisStream: AsyncStream<SleepAnalysis> {
+        AsyncStream { continuation in
+            Task {
+                for await analysis in generateSleepAnalyses() {
+                    continuation.yield(analysis)
+                }
+                continuation.finish()
+            }
+        }
+    }
+    
+    var sleepTrendsStream: AsyncStream<SleepTrends> {
+        AsyncStream { continuation in
+            Task {
+                for await trend in generateSleepTrends() {
+                    continuation.yield(trend)
+                }
+                continuation.finish()
+            }
+        }
+    }
     
     // MARK: - Private Properties
     

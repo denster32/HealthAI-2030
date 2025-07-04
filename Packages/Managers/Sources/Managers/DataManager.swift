@@ -16,14 +16,20 @@ class DataManager: ObservableObject {
     @Published var historicalAnalysisProgress: Double = 0.0
     @Published var historicalDataPoints = 0
     @Published var hasCompletedInitialAnalysis = false
+    @Published var digitalTwin: DigitalTwin?
+    private let analyticsCore = PreSymptomaticAnalyticsCore() // Initialize the analytics core
     
     private let healthStore = HKHealthStore()
     private var sleepDataHistory: [LabeledSleepData] = []
     private let maxDataPoints = 10000
+    private let digitalTwinFileName = "digitalTwin.json"
     
     private init() {
         // Check if initial analysis has been completed
         hasCompletedInitialAnalysis = UserDefaults.standard.bool(forKey: "hasCompletedInitialAnalysis")
+        
+        // Load the digital twin on initialization
+        loadDigitalTwin()
     }
     
     // MARK: - Initial Setup and Historical Analysis
@@ -1112,6 +1118,146 @@ class DataManager: ObservableObject {
         return max(0.0, min(1.0, qualityScore))
     }
     
+    // MARK: - Digital Twin Management
+    
+    private var digitalTwinStorageURL: URL? {
+        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            Logger.error("Could not find documents directory.", log: Logger.dataManager)
+            return nil
+        }
+        return documentsDirectory.appendingPathComponent(digitalTwinFileName)
+    }
+    
+    func saveDigitalTwin() {
+        guard let twin = digitalTwin, let url = digitalTwinStorageURL else { return }
+        
+        do {
+            let data = try JSONEncoder().encode(twin)
+            try data.write(to: url, options: .atomic)
+            Logger.info("Digital Twin saved successfully.", log: Logger.dataManager)
+        } catch {
+            Logger.error("Failed to save Digital Twin: \(error.localizedDescription)", log: Logger.dataManager)
+        }
+    }
+    
+    func loadDigitalTwin() {
+        guard let url = digitalTwinStorageURL, FileManager.default.fileExists(atPath: url.path) else { return }
+        
+        do {
+            let data = try Data(contentsOf: url)
+            let twin = try JSONDecoder().decode(DigitalTwin.self, from: data)
+            Task {
+                await MainActor.run {
+                    self.digitalTwin = twin
+                    Logger.info("Digital Twin loaded successfully.", log: Logger.dataManager)
+                }
+            }
+        } catch {
+            Logger.error("Failed to load Digital Twin: \(error.localizedDescription)", log: Logger.dataManager)
+        }
+    }
+    
+    func createOrUpdateDigitalTwin() async {
+        Logger.info("Starting to create or update Digital Twin...", log: Logger.dataManager)
+        
+        do {
+            // 1. Fetch Biometric Data
+            let endDate = Date()
+            let startDate = Calendar.current.date(byAdding: .day, value: -30, to: endDate) ?? endDate
+            let biometricSamples = try await fetchHistoricalBiometricData(from: startDate, to: endDate)
+            
+            let heartRates = biometricSamples.filter { $0.quantityType.identifier == HKQuantityTypeIdentifier.heartRate.rawValue }.map { $0.quantity.doubleValue(for: HKUnit(from: "count/min")) }
+            let hrvs = biometricSamples.filter { $0.quantityType.identifier == HKQuantityTypeIdentifier.heartRateVariabilitySDNN.rawValue }.map { $0.quantity.doubleValue(for: HKUnit(from: "ms")) }
+            let bloodOxygens = biometricSamples.filter { $0.quantityType.identifier == HKQuantityTypeIdentifier.oxygenSaturation.rawValue }.map { $0.quantity.doubleValue(for: HKUnit.percent()) * 100 }
+            
+            let biometricProfile = BiometricProfile(
+                heartRateVariability: hrvs,
+                restingHeartRate: heartRates,
+                bloodOxygenSaturation: bloodOxygens
+            )
+            
+            // 2. Fetch Lifestyle Data (using historical sleep data as a proxy for now)
+            let sleepSamples = try await fetchHistoricalSleepData(from: startDate, to: endDate)
+            let totalSleep = sleepSamples.reduce(0) { $0 + $1.endDate.timeIntervalSince($1.startDate) }
+            let averageSleep = sleepSamples.isEmpty ? 0 : totalSleep / Double(sleepSamples.count)
+            
+            let lifestyleProfile = LifestyleProfile(
+                averageSleepDuration: averageSleep,
+                weeklyExerciseMinutes: 150 // Placeholder
+            )
+            
+            // 3. Fetch Environmental Data (placeholders)
+            let environmentalProfile = EnvironmentalProfile(
+                airQualityIndex: 50, // Placeholder
+                pollenCount: 25 // Placeholder
+            )
+            
+            // 4. Assemble the Digital Twin
+            let newTwin = DigitalTwin(
+                biometricData: biometricProfile,
+                lifestyleData: lifestyleProfile,
+                environmentalContext: environmentalProfile
+            )
+            
+            // Analyze for pre-symptomatic indicators
+            let predictions = analyticsCore.analyzeForPreSymptomaticIndicators(for: newTwin)
+            
+            // 5. Update the published property and save
+            await MainActor.run {
+                self.digitalTwin = DigitalTwin( // Create a new DigitalTwin with predictions
+                    id: newTwin.id,
+                    lastUpdated: newTwin.lastUpdated,
+                    biometricData: newTwin.biometricData,
+                    genomicData: newTwin.genomicData,
+                    clinicalData: newTwin.clinicalData,
+                    lifestyleData: newTwin.lifestyleData,
+                    environmentalContext: newTwin.environmentalContext,
+                    healthPredictions: predictions
+                )
+            }
+            saveDigitalTwin()
+            
+            Logger.success("Digital Twin created/updated successfully.", log: Logger.dataManager)
+            
+        } catch {
+            Logger.error("Failed to create or update Digital Twin: \(error.localizedDescription)", log: Logger.dataManager)
+        }
+    }
+
+    func generateFusionExplanation() -> String? {
+        guard let twin = digitalTwin else { return nil }
+        
+        // Generate an explanation string based on the data fusion process and the current twin data
+        var explanation = "The Digital Twin is a fusion of multiple data sources, providing a holistic view of your health. Here's a breakdown:\n\n"
+        
+        explanation += "**Biometrics:**\n"
+        explanation += "- Heart Rate Variability (HRV): Averaged from your Apple Watch or other wearable devices.\n"
+        explanation += "- Resting Heart Rate: Calculated from your heart rate data during periods of rest.\n"
+        explanation += "- Blood Oxygen Saturation (SpO2): Measured by your wearable device.\n\n"
+        
+        explanation += "**Lifestyle:**\n"
+        explanation += "- Average Sleep Duration: Calculated from your sleep data.\n"
+        explanation += "- Weekly Exercise Minutes: Estimated based on your activity levels.\n\n"
+        
+        explanation += "**Environment:**\n"
+        explanation += "- Air Quality Index (AQI): Retrieved from external environmental data sources.\n"
+        explanation += "- Pollen Count: Obtained from local pollen monitoring stations.\n\n"
+        
+        if let genomicData = twin.genomicData {
+            explanation += "**Genomics (Optional):**\n"
+            explanation += "- Genetic Markers: Integrated from user-provided genomic data (e.g., 23andMe, AncestryDNA).\n\n"
+        }
+        
+        if let clinicalData = twin.clinicalData {
+            explanation += "**Clinical Data (Optional):**\n"
+            explanation += "- Lab Results & Medical History: Incorporated from user-provided electronic health records (EHRs).\n\n"
+        }
+        
+        explanation += "This fused data forms the basis of your Digital Twin, enabling personalized health insights, simulations, and predictions."
+        
+        return explanation
+    }
+
     // MARK: - Data Export
     func exportTrainingData() -> Data? {
         let exportData = TrainingDataExport(

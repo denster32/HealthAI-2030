@@ -1,17 +1,24 @@
 import SwiftUI
 import AVFoundation
 import CoreML
+import SwiftData
+import OSLog
 
+@available(tvOS 18.0, *)
 @main
 struct HealthAI2030TVApp: App {
     
     // MARK: - Properties
-    @StateObject private var healthDataManager = HealthDataManager.shared
-    @StateObject private var analyticsEngine = AnalyticsEngine.shared
-    @StateObject private var environmentManager = EnvironmentManager.shared
-    @StateObject private var performanceManager = PerformanceOptimizationManager.shared
-    @StateObject private var smartHomeManager = SmartHomeManager.shared
-    @StateObject private var predictiveAnalyticsManager = PredictiveAnalyticsManager.shared
+    @Environment(HealthDataManager.self) private var healthDataManager
+    @Environment(AnalyticsEngine.self) private var analyticsEngine
+    @Environment(EnvironmentManager.self) private var environmentManager
+    @Environment(PerformanceOptimizationManager.self) private var performanceManager
+    @Environment(SmartHomeManager.self) private var smartHomeManager
+    @Environment(PredictiveAnalyticsManager.self) private var predictiveAnalyticsManager
+    
+    // SwiftData model container for tvOS
+    @ModelContainer(for: [HealthRecord.self, SleepRecord.self])
+    var container
     
     // Integrate premium content and features
     let appIntegration = AppIntegration()
@@ -21,8 +28,6 @@ struct HealthAI2030TVApp: App {
     var body: some Scene {
         WindowGroup {
             TVOSContentView()
-                .environmentObject(healthDataManager)
-                .environmentObject(analyticsEngine)
                 .environmentObject(environmentManager)
                 .environmentObject(performanceManager)
                 .environmentObject(smartHomeManager)

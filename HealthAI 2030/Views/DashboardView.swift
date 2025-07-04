@@ -544,11 +544,20 @@ struct PredictiveInsightsCard: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         Spacer()
+                        Button("Why?", action: {
+                            showExplainabilityView = true
+                        })
+                        .buttonStyle(.borderedProminent)
                     }
                 }
             }
         }
+        .sheet(isPresented: $showExplainabilityView) {
+            ExplainabilityView(recommendation: "Tomorrow's forecast suggests focusing on recovery due to low musculoskeletal resilience.")
+        }
     }
+
+    @State private var showExplainabilityView = false
 }
 
 struct HealthAlertsCard: View {
@@ -919,25 +928,6 @@ struct HealthAlertsDetailView: View {
             return .yellow
         case .low:
             return .blue
-        }
-    }
-}
-
-// MARK: - Extensions
-
-extension SleepStageType {
-    var displayName: String {
-        switch self {
-        case .awake:
-            return "Awake"
-        case .lightSleep:
-            return "Light Sleep"
-        case .deepSleep:
-            return "Deep Sleep"
-        case .remSleep:
-            return "REM Sleep"
-        case .unknown:
-            return "Unknown"
         }
     }
 }

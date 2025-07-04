@@ -1131,4 +1131,4 @@ class BackgroundTaskManager {
             Logger.error("Could not schedule AI optimization task: \(error.localizedDescription)", log: Logger.backgroundTasks)
         }
     }
-} 
+}

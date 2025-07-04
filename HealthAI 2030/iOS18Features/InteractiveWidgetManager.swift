@@ -8,12 +8,13 @@ import AppIntents
 // MARK: - Interactive Widget Manager for iOS 18
 
 @available(iOS 18.0, *)
-class InteractiveWidgetManager: ObservableObject {
+@Observable
+class InteractiveWidgetManager {
     
-    // MARK: - Published Properties
-    @Published var availableWidgets: [WidgetConfiguration] = []
-    @Published var activeWidgets: [String: WidgetData] = [:]
-    @Published var widgetInteractions: [WidgetInteraction] = []
+    // MARK: - Observable Properties
+    var availableWidgets: [WidgetConfiguration] = []
+    var activeWidgets: [String: WidgetData] = [:]
+    var widgetInteractions: [WidgetInteraction] = []
     
     // MARK: - Private Properties
     private let logger = Logger(subsystem: "com.healthai2030.widgets", category: "interactive")

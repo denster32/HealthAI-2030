@@ -8,12 +8,13 @@ import Combine
 // MARK: - Shortcuts Manager for iOS 18 Siri Integration
 
 @available(iOS 18.0, *)
-class ShortcutsManager: ObservableObject {
+@Observable
+class ShortcutsManager {
     
-    // MARK: - Published Properties
-    @Published var donatedShortcuts: [DonatedShortcut] = []
-    @Published var frequentlyUsedShortcuts: [String] = []
-    @Published var shortcutSuggestions: [ShortcutSuggestion] = []
+    // MARK: - Observable Properties
+    var donatedShortcuts: [DonatedShortcut] = []
+    var frequentlyUsedShortcuts: [String] = []
+    var shortcutSuggestions: [ShortcutSuggestion] = []
     
     // MARK: - Private Properties
     private let logger = Logger(subsystem: "com.healthai2030.shortcuts", category: "manager")

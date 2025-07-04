@@ -9,16 +9,16 @@ import os.log
 
 // MARK: - AI-Driven Health Coach
 
-class AIHealthCoach: ObservableObject {
+actor AIHealthCoach: ObservableObject {
     static let shared = AIHealthCoach()
     
     // MARK: - Published Properties
-    @Published var currentCoachingSession: CoachingSession?
-    @Published var activeInterventions: [HealthIntervention] = []
-    @Published var coachingInsights: [CoachingInsight] = []
-    @Published var userProgressMetrics: UserProgressMetrics?
-    @Published var coachingRecommendations: [CoachingRecommendation] = []
-    @Published var conversationHistory: [CoachingInteraction] = []
+    @MainActor @Published var currentCoachingSession: CoachingSession?
+    @MainActor @Published var activeInterventions: [HealthIntervention] = []
+    @MainActor @Published var coachingInsights: [CoachingInsight] = []
+    @MainActor @Published var userProgressMetrics: UserProgressMetrics?
+    @MainActor @Published var coachingRecommendations: [CoachingRecommendation] = []
+    @MainActor @Published var conversationHistory: [CoachingInteraction] = []
     
     // MARK: - Core AI Components
     private let conversationalAI = ConversationalAIEngine()
@@ -42,6 +42,7 @@ class AIHealthCoach: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     private init() {
+        // No changes needed in init
         setupAICoachingPipeline()
         loadCoachingModels()
     }
@@ -1273,7 +1274,6 @@ struct PersonalizedCoachingStrategy {
 struct AdaptedCoachingStrategy {
     let originalStrategy: PersonalizedCoachingStrategy
     let adaptations: [StrategyAdaptation]
-    let reasoning: String
     let expectedImprovements: [ExpectedImprovement]
     
     func toPersonalizedStrategy() -> PersonalizedCoachingStrategy {

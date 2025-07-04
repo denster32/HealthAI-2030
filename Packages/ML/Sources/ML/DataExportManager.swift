@@ -1,6 +1,8 @@
 import Foundation
 import Combine
+import MacAnalytics // Import MacAnalytics
 
+@available(macOS 10.15, iOS 13.0, *) // Add availability annotations
 final class ExportManager: ObservableObject {
     static let shared = ExportManager()
 
@@ -12,7 +14,7 @@ final class ExportManager: ObservableObject {
     private init() {}
 
     /// Export selected metrics and anomalies for the given date range.
-    func exportData(dateRange: ClosedRange<Date>, metrics: [String], format: ExportFormat) {
+    func exportData(dateRange: ClosedRange<Date>, metrics: [String], format: MacAnalytics.ReportFormat) { // Change ExportFormat to MacAnalytics.ReportFormat
         isExporting = true
         exportProgress = 0.0
         Task {
@@ -27,14 +29,8 @@ final class ExportManager: ObservableObject {
                 let anomalies = try await engine.fetchAnomalies(for: DateInterval(start: dateRange.lowerBound, end: dateRange.upperBound))
                 DispatchQueue.main.async { exportProgress = 0.66 }
 
-                // 3. Build CSV or FHIR content
-                let fileURL: URL
-                switch format {
-                case .csv:
-                    fileURL = try generateCSV(trend: trend, anomalies: anomalies, metrics: metrics)
-                case .fhir:
-                    fileURL = try generateFHIR(trend: trend, anomalies: anomalies)
-                }
+                // 3. Generate report using MacAnalyticsEngine
+                let fileURL = try await engine.generateReports(format: format, for: DateInterval(start: dateRange.lowerBound, end: dateRange.upperBound)) // Use generateReports
 
                 DispatchQueue.main.async {
                     self.lastExportURL = fileURL

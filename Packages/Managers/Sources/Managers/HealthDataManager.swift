@@ -3,26 +3,28 @@ import HealthKit
 import CoreMotion
 import Combine
 import CoreML
-import os.log
+import OSLog
+import SwiftData
 @_exported import class HealthAI_2030.HealthData
 
-@available(iOS 17.0, *)
-@available(macOS 14.0, *)
-
-class HealthDataManager: ObservableObject {
+// iOS 18 only with no backward compatibility
+@available(iOS 18.0, *)
+@Observable
+class HealthDataManager {
     static let shared = HealthDataManager()
     
     private let healthStore = HKHealthStore()
     private let motionManager = CMMotionManager() // Initialize CoreMotion Manager
     private var cancellables = Set<AnyCancellable>()
+    private let logger = Logger(subsystem: "com.healthai2030.health", category: "dataManager")
     
-    // Published properties for SwiftUI
-    @Published var currentHeartRate: Double = 0
-    @Published var currentHRV: Double = 0
-    @Published var currentOxygenSaturation: Double = 0
-    @Published var currentBodyTemperature: Double = 0
-    @Published var sleepData: [HKCategorySample] = []
-    @Published var stepCount: Int = 0
+    // Observable properties for SwiftUI
+    var currentHeartRate: Double = 0
+    var currentHRV: Double = 0
+    var currentOxygenSaturation: Double = 0
+    var currentBodyTemperature: Double = 0
+    var sleepData: [HKCategorySample] = []
+    var stepCount: Int = 0
     @Published var activeEnergyBurned: Double = 0
     @Published var rawSensorData: [SensorSample] = [] // Property for raw sensor data
     @Published var latestAccelerometerData: CMAccelerometerData? // New property for accelerometer data

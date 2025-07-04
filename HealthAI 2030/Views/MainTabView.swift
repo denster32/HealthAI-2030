@@ -1,7 +1,4 @@
 import SwiftUI
-// import MentalHealthDashboardView // Module not found
-// import AdvancedCardiacDashboardView // Module not found
-// import RespiratoryHealthDashboardView // Module not found
 
 @available(iOS 17.0, *)
 @available(macOS 14.0, *)
@@ -85,11 +82,16 @@ struct MainTabView: View {
                     Image(systemName: "brain")
                     Text("Intelligence")
                 }
-            
             SettingsView()
                 .tabItem {
                     Image(systemName: "gear")
                     Text("Settings")
+                }
+            
+            DigitalTwinView()
+                .tabItem {
+                    Image(systemName: "star.fill")
+                    Text("Digital Twin")
                 }
         }
     }

@@ -1,6 +1,7 @@
 import CoreML
 import Foundation
 import os.log
+import Models // Import the Models package
 
 class SleepStageTransformer {
     private var coreMLModel: MLModel?
@@ -38,7 +39,7 @@ class SleepStageTransformer {
         }
     }
     
-    func predictSleepStage(from features: SleepFeatures) -> SleepStageType {
+    func predictSleepStage(from features: SleepFeatures) -> SleepStage { // Changed SleepStageType to SleepStage
         if isModelLoaded, let model = coreMLModel {
             return predictWithCoreML(features: features, model: model)
         } else {
@@ -51,25 +52,30 @@ class SleepStageTransformer {
             return "unknown"
         }
         
+        // Map array elements to SleepFeatures properties based on DataModels.swift
         let sleepFeatures = SleepFeatures(
-            rmssd: features[0],
-            sdnn: features[1],
-            heartRateAverage: features[2],
-            heartRateVariability: features[3],
-            spo2Average: features[4],
-            spo2Variability: features[5],
-            activityCount: features[6],
-            sleepWakeDetection: features[7],
-            wristTemperatureAverage: features[8],
-            wristTemperatureGradient: features[9],
-            timestamp: Date()
+            heartRate: features[2], // heartRateAverage
+            heartRateVariability: features[3], // heartRateVariability
+            movement: features[6], // activityCount
+            respiratoryRate: 0.0, // Not directly available in the array, assuming 0 or needs to be added
+            oxygenSaturation: features[4], // spo2Average
+            temperature: features[8], // wristTemperatureAverage
+            timeOfDay: getTimeOfNight(), // Calculated separately
+            previousStage: .unknown, // Needs to be determined or passed
+            heartRateMin: 0.0, heartRateMax: 0.0, heartRateStdDev: 0.0, // Placeholder
+            hrvMin: 0.0, hrvMax: 0.0, hrvStdDev: 0.0, // Placeholder
+            bloodOxygenMin: 0.0, bloodOxygenMax: 0.0, bloodOxygenStdDev: 0.0, // Placeholder
+            previousStageDuration: 0.0, // Placeholder
+            heartRateChangeRate: 0.0, // Placeholder
+            hrvChangeRate: 0.0, // Placeholder
+            bloodOxygenChangeRate: 0.0 // Placeholder
         )
         
         let stageType = predictSleepStage(from: sleepFeatures)
         return stageType.rawValue
     }
     
-    func predictSleepStageWithConfidence(from features: SleepFeatures) -> (stage: SleepStageType, confidence: Double) {
+    func predictSleepStageWithConfidence(from features: SleepFeatures) -> (stage: SleepStage, confidence: Double) { // Changed SleepStageType to SleepStage
         if isModelLoaded, let model = coreMLModel {
             do {
                 let input = try createMLInput(from: features)
@@ -86,7 +92,7 @@ class SleepStageTransformer {
         }
     }
     
-    private func predictWithCoreML(features: SleepFeatures, model: MLModel) -> SleepStageType {
+    private func predictWithCoreML(features: SleepFeatures, model: MLModel) -> SleepStage { // Changed SleepStageType to SleepStage
         do {
             let input = try createMLInput(from: features)
             let prediction = try model.prediction(from: input)
@@ -99,11 +105,11 @@ class SleepStageTransformer {
     
     private func createMLInput(from features: SleepFeatures) throws -> MLFeatureProvider {
         // Normalize values to prevent extreme inputs
-        let normalizedHeartRate = max(40.0, min(features.heartRateAverage, 180.0))
-        let normalizedHRV = max(0.0, min(features.rmssd, 100.0))
-        let normalizedMovement = max(0.0, min(features.activityCount / 100.0, 1.0))
-        let normalizedOxygen = max(80.0, min(features.spo2Average, 100.0))
-        let normalizedTemp = max(35.0, min(features.wristTemperatureAverage, 40.0))
+        let normalizedHeartRate = max(40.0, min(features.heartRate, 180.0)) // Changed to features.heartRate
+        let normalizedHRV = max(0.0, min(features.heartRateVariability, 100.0)) // Changed to features.heartRateVariability
+        let normalizedMovement = max(0.0, min(features.movement / 100.0, 1.0)) // Changed to features.movement
+        let normalizedOxygen = max(80.0, min(features.oxygenSaturation, 100.0)) // Changed to features.oxygenSaturation
+        let normalizedTemp = max(35.0, min(features.temperature, 40.0)) // Changed to features.temperature
         
         let inputDictionary: [String: MLFeatureValue] = [
             "heartRate": MLFeatureValue(double: normalizedHeartRate),
@@ -111,9 +117,9 @@ class SleepStageTransformer {
             "movement": MLFeatureValue(double: normalizedMovement),
             "bloodOxygen": MLFeatureValue(double: normalizedOxygen),
             "temperature": MLFeatureValue(double: normalizedTemp),
-            "breathingRate": MLFeatureValue(double: 14.0),
-            "timeOfNight": MLFeatureValue(double: getTimeOfNight()),
-            "previousStage": MLFeatureValue(double: 1.0)
+            "breathingRate": MLFeatureValue(double: features.respiratoryRate), // Added respiratoryRate
+            "timeOfNight": MLFeatureValue(double: features.timeOfDay), // Changed to features.timeOfDay
+            "previousStage": MLFeatureValue(double: Double(features.previousStage.rawValue)) // Changed to features.previousStage
         ]
         
         do {
@@ -124,7 +130,7 @@ class SleepStageTransformer {
         }
     }
     
-    private func extractSleepStage(from prediction: MLFeatureProvider) -> SleepStageType {
+    private func extractSleepStage(from prediction: MLFeatureProvider) -> SleepStage { // Changed SleepStageType to SleepStage
         let awakeProb = prediction.featureValue(for: "awakeProbability")?.doubleValue ?? 0.0
         let lightProb = prediction.featureValue(for: "lightProbability")?.doubleValue ?? 0.0
         let deepProb = prediction.featureValue(for: "deepProbability")?.doubleValue ?? 0.0
@@ -135,10 +141,10 @@ class SleepStageTransformer {
         
         switch maxIndex {
         case 0: return .awake
-        case 1: return .lightSleep
-        case 2: return .deepSleep
-        case 3: return .remSleep
-        default: return .lightSleep
+        case 1: return .light
+        case 2: return .deep
+        case 3: return .rem
+        default: return .light
         }
     }
     
@@ -151,46 +157,46 @@ class SleepStageTransformer {
         return max(awakeProb, lightProb, deepProb, remProb)
     }
     
-    private func predictWithFallback(features: SleepFeatures) -> SleepStageType {
+    private func predictWithFallback(features: SleepFeatures) -> SleepStage { // Changed SleepStageType to SleepStage
         // Calculate scores for each sleep stage based on physiological markers
-        var scores: [SleepStageType: Double] = [
+        var scores: [SleepStage: Double] = [ // Changed SleepStageType to SleepStage
             .awake: 0.0,
-            .lightSleep: 0.0,
-            .deepSleep: 0.0,
-            .remSleep: 0.0
+            .light: 0.0, // Changed .lightSleep to .light
+            .deep: 0.0, // Changed .deepSleep to .deep
+            .rem: 0.0 // Changed .remSleep to .rem
         ]
         
         // Activity score - high activity suggests awake state
-        let activityScore = min(1.0, features.activityCount / 100.0)
+        let activityScore = min(1.0, features.movement / 100.0) // Changed features.activityCount to features.movement
         scores[.awake]! += activityScore * 2.0
-        scores[.lightSleep]! += (1.0 - activityScore) * 0.5
-        scores[.deepSleep]! += (1.0 - activityScore) * 1.5
-        scores[.remSleep]! += (1.0 - activityScore) * 1.0
+        scores[.light]! += (1.0 - activityScore) * 0.5 // Changed .lightSleep to .light
+        scores[.deep]! += (1.0 - activityScore) * 1.5 // Changed .deepSleep to .deep
+        scores[.rem]! += (1.0 - activityScore) * 1.0 // Changed .remSleep to .rem
         
         // Heart rate score
-        let normalizedHR = (features.heartRateAverage - 40.0) / 40.0 // Normalize between 40-80 bpm
+        let normalizedHR = (features.heartRate - 40.0) / 40.0 // Changed features.heartRateAverage to features.heartRate
         scores[.awake]! += normalizedHR * 1.5
-        scores[.lightSleep]! += (1.0 - abs(normalizedHR - 0.5)) * 1.0
-        scores[.deepSleep]! += (1.0 - normalizedHR) * 2.0
-        scores[.remSleep]! += (normalizedHR > 0.4 && normalizedHR < 0.7) ? 1.5 : 0.0
+        scores[.light]! += (1.0 - abs(normalizedHR - 0.5)) * 1.0 // Changed .lightSleep to .light
+        scores[.deep]! += (1.0 - normalizedHR) * 2.0 // Changed .deepSleep to .deep
+        scores[.rem]! += (normalizedHR > 0.4 && normalizedHR < 0.7) ? 1.5 : 0.0 // Changed .remSleep to .rem
         
         // HRV score - high HRV often indicates REM sleep
-        let normalizedHRV = min(1.0, features.rmssd / 80.0)
+        let normalizedHRV = min(1.0, features.heartRateVariability / 80.0) // Changed features.rmssd to features.heartRateVariability
         scores[.awake]! += normalizedHRV * 0.5
-        scores[.lightSleep]! += normalizedHRV * 0.7
-        scores[.deepSleep]! += (1.0 - normalizedHRV) * 1.0
-        scores[.remSleep]! += normalizedHRV * 2.0
+        scores[.light]! += normalizedHRV * 0.7 // Changed .lightSleep to .light
+        scores[.deep]! += (1.0 - normalizedHRV) * 1.0 // Changed .deepSleep to .deep
+        scores[.rem]! += normalizedHRV * 2.0 // Changed .remSleep to .rem
         
         // Temperature gradient - stable temperature often indicates deep sleep
-        let tempStability = 1.0 - min(1.0, abs(features.wristTemperatureGradient) * 10.0)
-        scores[.deepSleep]! += tempStability * 1.0
+        let tempStability = 1.0 - min(1.0, abs(features.temperature) * 10.0) // Changed features.wristTemperatureGradient to features.temperature (assuming gradient is derived from temp)
+        scores[.deep]! += tempStability * 1.0 // Changed .deepSleep to .deep
         
         // Time of night factor - deep sleep more common in first half, REM in second half
-        let timeOfNight = getTimeOfNight() / 8.0 // Normalize to 0-1 over 8 hour night
+        let timeOfNight = features.timeOfDay / 8.0 // Normalize to 0-1 over 8 hour night // Changed getTimeOfNight() to features.timeOfDay
         if timeOfNight < 0.3 {
-            scores[.deepSleep]! += 1.0
+            scores[.deep]! += 1.0 // Changed .deepSleep to .deep
         } else if timeOfNight > 0.6 {
-            scores[.remSleep]! += 1.0
+            scores[.rem]! += 1.0 // Changed .remSleep to .rem
         }
         
         // Find the sleep stage with the highest score
@@ -230,18 +236,19 @@ class SleepStageTransformer {
     }
 }
 
-struct ModelInfo {
-    let name: String
-    let version: String
-    let description: String
-}
+// Removed duplicate ModelInfo struct definition
+// struct ModelInfo {
+//     let name: String
+//     let version: String
+//     let description: String
+// }
 
 class BasePredictionEngine {
     private let sleepStageTransformer = SleepStageTransformer()
     private var lastPredictionTime = Date()
     private let minPredictionInterval: TimeInterval = 30.0
     
-    func predictSleepStage(from features: SleepFeatures) -> (stage: SleepStageType, confidence: Double, quality: Double) {
+    func predictSleepStage(from features: SleepFeatures) -> (stage: SleepStage, confidence: Double, quality: Double) { // Changed SleepStageType to SleepStage
         let now = Date()
         guard now.timeIntervalSince(lastPredictionTime) >= minPredictionInterval else {
             return (.unknown, 0.0, 0.0)
@@ -256,10 +263,10 @@ class BasePredictionEngine {
     }
     
     private func calculateSleepQuality(from features: SleepFeatures) -> Double {
-        let heartRateScore = normalizeScore(features.heartRateAverage, optimal: 60, range: 30)
-        let movementScore = max(0, 1 - features.activityCount / 100.0)
-        let hrvScore = min(1, features.rmssd / 50.0)
-        let oxygenScore = max(0, (features.spo2Average - 90) / 10)
+        let heartRateScore = normalizeScore(features.heartRate, optimal: 60, range: 30) // Changed features.heartRateAverage to features.heartRate
+        let movementScore = max(0, 1 - features.movement / 100.0) // Changed features.activityCount to features.movement
+        let hrvScore = min(1, features.heartRateVariability / 50.0) // Changed features.rmssd to features.heartRateVariability
+        let oxygenScore = max(0, (features.oxygenSaturation - 90) / 10) // Changed features.spo2Average to features.oxygenSaturation
         
         return (heartRateScore * 0.3 + movementScore * 0.3 + hrvScore * 0.2 + oxygenScore * 0.2)
     }
