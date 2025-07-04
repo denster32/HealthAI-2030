@@ -24,6 +24,11 @@ struct PluginSubmissionView: View {
                 }
             }
 
+            Section(header: Text("Code (Optional)")) {
+                TextEditor(text: .constant("// Paste your plugin Swift code here"))
+                    .frame(height: 200)
+            }
+
             Section {
                 Button("Submit Plugin") {
                     submitPlugin()

@@ -164,18 +164,28 @@ class SleepCloudKitManager: ObservableObject {
     
     /// Configures iCloud sync for sleep data.
     func configureCloudSync() {
-        // TODO: Implement iCloud sync configuration
+        // Enable Cloud Sync via existing method
+        Task {
+            await enableCloudSync()
+        }
     }
 
     /// Initiates a full sync of all sleep data to iCloud.
     func syncAllDataToCloud() async {
-        // TODO: Implement full data sync to iCloud
+        // Perform a sync and handle any errors
+        do {
+            await syncSleepData()
+        } catch {
+            handleSyncError(error)
+        }
     }
 
     /// Handles sync errors and updates sync status.
     /// - Parameter error: The error encountered during sync.
     func handleSyncError(_ error: Error) {
-        // TODO: Implement error handling and status update
+        Logger.error("Sync error: \(error.localizedDescription)", log: Logger.cloudSync)
+        syncStatus = .error(CloudSyncError.syncFailed(error))
+        syncError = CloudSyncError.syncFailed(error)
     }
     
     // MARK: - Sleep Sessions Sync

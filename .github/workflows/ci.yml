@@ -23,6 +23,15 @@ jobs:
         run: swiftlint
       - name: Format
         run: swiftformat .
+
+      # SPM modules build and test
+      - name: Resolve SPM dependencies
+        run: swift package resolve
+      - name: Build SPM packages
+        run: swift build --configuration debug
+      - name: Test SPM packages
+        run: swift test --enable-code-coverage
+
       - name: Build
         run: xcodebuild -scheme "HealthAI 2030" -destination 'platform=iOS Simulator,name=iPhone 15' build
       - name: Test
@@ -31,4 +40,23 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./Build/ProfileData/*.xcresult
+          files: ./Build/ProfileData/*.xcresult, .build/debug/codecov/coverage.json
+
+  docker-build-test-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Docker image
+        run: docker build -t healthai2030:ci .
+      - name: Run Swift build in Docker
+        run: docker run --rm healthai2030:ci swift build -c release
+      - name: Run Swift tests in Docker
+        run: docker run --rm healthai2030:ci swift test -c release
+      - name: Trivy scan (security)
+        uses: aquasecurity/trivy-action@v0.16.0
+        with:
+          image-ref: 'healthai2030:ci'
+      # Add steps to push to registry if needed

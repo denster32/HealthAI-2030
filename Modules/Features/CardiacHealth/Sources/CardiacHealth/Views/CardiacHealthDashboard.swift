@@ -176,7 +176,37 @@ final class CardiacHealthDashboardViewModel: ObservableObject {
     @Published var recommendations: [CardiacRecommendation] = CardiacRecommendation.preview
     
     func fetchAllData() {
-        // TODO: Implement real data fetching from HealthKit, analytics, etc.
+        Task {
+            do {
+                // Request HealthKit authorization
+                try await HealthKitManager.shared.requestAuthorization()
+
+                // Fetch real summary and trend data
+                let fetchedSummary = try await HealthKitManager.shared.getHealthSummary()
+                let fetchedTrend = try await HealthKitManager.shared.fetchTrendData(days: 7)
+
+                // Simple risk assessment based on HRV
+                let riskLevel: CardiacRiskAssessment.Level = fetchedSummary.hrv < 50 ? .high : (fetchedSummary.hrv < 60 ? .moderate : .low)
+                let fetchedRisk = CardiacRiskAssessment(level: riskLevel, summary: "Based on your HRV, level is \(riskLevel.rawValue)")
+
+                // Recommendations based on risk
+                let fetchedRecs: [CardiacRecommendation] = riskLevel == .high ? [
+                    .init(title: "Consult Doctor", detail: "Your HRV suggests you check your cardiac health."),
+                    .init(title: "Reduce Stress", detail: "Try breathing exercises or meditation.")
+                ] : CardiacRecommendation.preview
+
+                // Update published props on main thread
+                DispatchQueue.main.async {
+                    self.summary = fetchedSummary
+                    self.trendData = fetchedTrend
+                    self.riskAssessment = fetchedRisk
+                    self.recommendations = fetchedRecs
+                }
+            } catch {
+                // On error, log and keep preview data
+                print("HealthKit fetch failed: \(error)")
+            }
+        }
     }
     
     static var preview: CardiacHealthDashboardViewModel {
