@@ -1,31 +1,68 @@
+import ActivityKit
+import BackgroundTasks
 import Foundation
-import Combine
-import CoreData
+// import Combine // No longer needed
+// import CoreData // No longer needed
 import HealthKit
-import Managers // Import the Managers package
-import MetricKit // Import MetricKit for iOS 18
+import Managers
+import MetricKit
+import Observation // Import Observation for @Observable
+enum AnalyticsEngineError: Error, LocalizedError {
+    case dataLoadingFailed(String)
+    case analysisFailed(String)
+    case predictionFailed(String)
+    case recommendationGenerationFailed(String)
+    case environmentalDataFetchFailed(String)
+    case backgroundTaskSchedulingFailed(String)
+    case liveActivityError(String)
+    case invalidInput(String)
+    case unknownError(String)
 
-@available(iOS 17.0, *)
-@available(macOS 14.0, *)
+    var errorDescription: String? {
+        switch self {
+        case .dataLoadingFailed(let message):
+            return "Data loading failed: \(message)"
+        case .analysisFailed(let message):
+            return "Analysis failed: \(message)"
+        case .predictionFailed(let message):
+            return "Prediction failed: \(message)"
+        case .recommendationGenerationFailed(let message):
+            return "Recommendation generation failed: \(message)"
+        case .environmentalDataFetchFailed(let message):
+            return "Environmental data fetch failed: \(message)"
+        case .backgroundTaskSchedulingFailed(let message):
+            return "Background task scheduling failed: \(message)"
+        case .liveActivityError(let message):
+            return "Live Activity error: \(message)"
+        case .invalidInput(let message):
+            return "Invalid input: \(message)"
+        case .unknownError(let message):
+            return "An unknown error occurred: \(message)"
+        }
+    }
+}
 
-class AnalyticsEngine: ObservableObject {
+@available(iOS 18.0, macOS 15.0, *)
+@Observable
+@MainActor
+class AnalyticsEngine {
     static let shared = AnalyticsEngine()
     
-    // MARK: - Published Properties
-    @Published var physioForecast: PhysioForecast?
-    @Published var healthAnalytics: HealthAnalytics?
-    @Published var performanceMetrics: OverallPerformanceMetrics?
-    @Published var trendAnalysis: TrendAnalysis?
-    @Published var correlationInsights: [CorrelationInsight] = []
-    @Published var predictionAccuracy: PredictionAccuracy?
-    @Published var personalizedRecommendations: [AnalyticsRecommendation] = []
-    @Published var environmentalImpactForecast: EnvironmentalImpactForecast? // New: Environmental Impact Forecast
-    
+    // MARK: - Public Properties
+    var physioForecast: PhysioForecast?
+    var healthAnalytics: HealthAnalytics?
+    var performanceMetrics: OverallPerformanceMetrics?
+    var trendAnalysis: TrendAnalysis?
+    var correlationInsights: [CorrelationInsight] = []
+    var predictionAccuracy: PredictionAccuracy?
+    var personalizedRecommendations: [AnalyticsRecommendation] = []
+    var environmentalImpactForecast: EnvironmentalImpactForecast?
+
     // MARK: - Private Properties
     // MARK: - Dependencies
     internal var healthPredictionEngine: HealthPredictionEngine
     internal var advancedSleepAnalyzer: AdvancedSleepAnalyzer
-    internal var coreDataManager: CoreDataManager
+    internal var swiftDataManager: SwiftDataManager // Modern SwiftData
     internal var environmentalDataManager: EnvironmentalDataManager
     
     internal let dataProcessor: HealthDataProcessor
@@ -35,9 +72,8 @@ class AnalyticsEngine: ObservableObject {
     internal let insightGenerator: InsightGenerator
     internal let reportGenerator: ReportGenerator
     
-    private var cancellables = Set<AnyCancellable>()
-    private var analyticsTimer: Timer?
-    
+    private var analysisTask: Task<Void, Never>? // Task for periodic analysis
+
     // Analytics configuration
     private let updateInterval: TimeInterval = 300 // 5 minutes
     private let forecastHorizon: TimeInterval = 48 * 3600 // 48 hours
@@ -45,7 +81,7 @@ class AnalyticsEngine: ObservableObject {
     
     internal init(healthPredictionEngine: HealthPredictionEngine = .shared,
                   advancedSleepAnalyzer: AdvancedSleepAnalyzer = .shared,
-                  coreDataManager: CoreDataManager = .shared,
+                  swiftDataManager: SwiftDataManager = SwiftDataManager(),
                   environmentalDataManager: EnvironmentalDataManager = EnvironmentalDataManager(),
                   dataProcessor: HealthDataProcessor = HealthDataProcessor(),
                   trendAnalyzer: TrendAnalyzer = TrendAnalyzer(),
@@ -56,7 +92,7 @@ class AnalyticsEngine: ObservableObject {
         
         self.healthPredictionEngine = healthPredictionEngine
         self.advancedSleepAnalyzer = advancedSleepAnalyzer
-        self.coreDataManager = coreDataManager
+        self.swiftDataManager = swiftDataManager
         self.environmentalDataManager = environmentalDataManager
         self.dataProcessor = dataProcessor
         self.trendAnalyzer = trendAnalyzer
@@ -69,16 +105,23 @@ class AnalyticsEngine: ObservableObject {
         startPeriodicAnalysis()
     }
     
+    deinit {
+        analysisTask?.cancel()
+        // mxSignpost(.end, log: OSLog.pointsOfInterest, name: "AnalyticsEngine")
+    }
+
     // MARK: - Setup
     
     private func setupAnalyticsEngine() {
+        // mxSignpost(.begin, log: OSLog.pointsOfInterest, name: "AnalyticsEngine")
+        
         // Setup async streams for iOS 18
         Task {
             await setupAsyncDataStreams()
         }
         
         // Register for metric reports
-        // metrics.add(self) // Commented out as 'metrics' is not defined in this context
+        MetricManager.shared.add(self)
         
         // Register background tasks for iOS 18
         registerBackgroundTasks()
@@ -91,33 +134,45 @@ class AnalyticsEngine: ObservableObject {
     }
     
     private func setupAsyncDataStreams() async {
-        // Use Swift concurrency pattern instead of Combine
-        for await predictions in healthPredictionEngine.predictionsStream {
-            await processHealthPredictions(predictions)
+        // Use Swift concurrency pattern
+        Task {
+            for await predictions in healthPredictionEngine.predictionsStream {
+                await processHealthPredictions(predictions)
+            }
         }
         
-        for await sleepAnalysis in advancedSleepAnalyzer.sleepAnalysisStream {
-            await processSleepAnalysis(sleepAnalysis)
+        Task {
+            for await sleepAnalysis in advancedSleepAnalyzer.sleepAnalysisStream {
+                await processSleepAnalysis(sleepAnalysis)
+            }
         }
         
-        for await trends in advancedSleepAnalyzer.sleepTrendsStream {
-            await processSleepTrends(trends)
+        Task {
+            for await trends in advancedSleepAnalyzer.sleepTrendsStream {
+                await processSleepTrends(trends)
+            }
         }
     }
     
-    private func startPeriodicAnalysis() { // Renamed from startAsyncAnalysis to match original
-        analyticsTimer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { [weak self] _ in
-            Task {
-                await self?.performComprehensiveAnalysis()
+    private func startPeriodicAnalysis() {
+        analysisTask?.cancel()
+        analysisTask = Task {
+            while !Task.isCancelled {
+                await performComprehensiveAnalysis()
+                do {
+                    try await Task.sleep(for: .seconds(updateInterval))
+                } catch {
+                    // logger.error("Analysis task sleep cancelled: \(error)")
+                    break
+                }
             }
         }
     }
 
     // MARK: - Main Analytics Processing
     
-    internal func performComprehensiveAnalysis() async { // Made internal for testing
-        // iOS 18 async/await pattern
-        // logger.debug("Starting comprehensive analysis") // Commented out as 'logger' is not defined
+    internal func performComprehensiveAnalysis() async {
+        // logger.debug("Starting comprehensive analysis")
         
         // Use structured concurrency to run analytics in parallel
         async let physioForecastTask = generatePhysioForecast()
@@ -126,151 +181,170 @@ class AnalyticsEngine: ObservableObject {
         async let trendAnalysisTask = generateTrendAnalysis()
         async let correlationInsightsTask = generateCorrelationInsights()
         async let predictionAccuracyTask = evaluatePredictionAccuracy()
-        async let recommendationsTask = generatePersonalizedRecommendations() // Corrected method name
+        async let recommendationsTask = generatePersonalizedRecommendations()
         async let environmentalImpactTask = generateEnvironmentalImpactForecast()
         
-        // Await all results
-        await (physioForecast, healthAnalytics, performanceMetrics, trendAnalysis,
-               correlationInsights, predictionAccuracy, personalizedRecommendations,
-               environmentalImpactForecast) =
-              (physioForecastTask, healthAnalyticsTask, performanceMetricsTask,
-               trendAnalysisTask, correlationInsightsTask, predictionAccuracyTask,
-               recommendationsTask, environmentalImpactTask)
+        // Await all results and update properties on the MainActor
+        let (physio, health, performance, trends, insights, accuracy, recommendations, environmental) = await (
+            physioForecastTask, healthAnalyticsTask, performanceMetricsTask,
+            trendAnalysisTask, correlationInsightsTask, predictionAccuracyTask,
+            recommendationsTask, environmentalImpactTask
+        )
+        
+        self.physioForecast = physio
+        self.healthAnalytics = health
+        self.performanceMetrics = performance
+        self.trendAnalysis = trends
+        self.correlationInsights = insights
+        self.predictionAccuracy = accuracy
+        self.personalizedRecommendations = recommendations
+        self.environmentalImpactForecast = environmental
         
         // Update Live Activity with latest data
         await updateHealthLiveActivity()
         
-        // logger.debug("Comprehensive analysis completed") // Commented out as 'logger' is not defined
+        // logger.debug("Comprehensive analysis completed")
     }
             
     // MARK: - PhysioForecast Generation
     
-    internal func generatePhysioForecast() -> PhysioForecast? { // Made internal for testing
-        let historicalData = loadHistoricalHealthData()
-        let currentPredictions = healthPredictionEngine.currentPredictions
-        
-        guard let predictions = currentPredictions else { return nil } // Return nil if no predictions
-        
-        // Generate advanced physiological forecasting
-        let forecast = forecastingEngine.generateAdvancedForecast(
-            historicalData: historicalData,
-            environmentalData: loadEnvironmentData(), // Pass environmental data
-            currentPredictions: predictions,
-            forecastHorizon: forecastHorizon
-        )
-        
-        DispatchQueue.main.async {
-            self.physioForecast = forecast
+    internal func generatePhysioForecast() async -> PhysioForecast? {
+        do {
+            let historicalData = await loadHistoricalHealthData()
+            guard let predictions = healthPredictionEngine.currentPredictions else {
+                throw AnalyticsEngineError.predictionFailed("No current predictions available.")
+            }
+            
+            let environmentalData = await loadEnvironmentData()
+            
+            // Generate advanced physiological forecasting
+            let forecast = forecastingEngine.generateAdvancedForecast(
+                historicalData: historicalData,
+                environmentalData: environmentalData,
+                currentPredictions: predictions,
+                forecastHorizon: forecastHorizon
+            )
+            
+            return forecast
+        } catch {
+            print("Error generating physio forecast: \(error.localizedDescription)")
+            return nil
         }
-        return forecast // Return the generated forecast
     }
     
     // MARK: - Health Analytics
     
-    internal func generateHealthAnalytics() -> HealthAnalytics? { // Made internal for testing
-        let healthData = loadHealthDataForAnalysis()
-        let trendAnalysis = trendAnalyzer.analyzeTrends(
-            data: healthData,
-            window: trendAnalysisWindow
-        )
-        
-        let healthAnalytics = HealthAnalytics(
-            overallHealthScore: calculateOverallHealthScore(healthData),
-            vitalsAnalysis: analyzeVitals(healthData),
-            sleepAnalysis: analyzeSleepPatterns(healthData),
-            activityAnalysis: analyzeActivityPatterns(healthData),
-            stressAnalysis: analyzeStressPatterns(healthData),
-            recoveryAnalysis: analyzeRecoveryPatterns(healthData),
-            nutritionAnalysis: analyzeNutritionPatterns(healthData),
-            environmentalAnalysis: analyzeEnvironmentalImpact(healthData),
-            trendSummary: trendAnalysis,
-            lastUpdated: Date()
-        )
-        
-        DispatchQueue.main.async {
-            self.healthAnalytics = healthAnalytics
-            self.trendAnalysis = trendAnalysis
+    internal func generateHealthAnalytics() async -> HealthAnalytics? {
+        do {
+            let healthData = await loadHealthDataForAnalysis()
+            let trendAnalysisResult = trendAnalyzer.analyzeTrends(
+                data: healthData,
+                window: trendAnalysisWindow
+            )
+            
+            let healthAnalyticsResult = HealthAnalytics(
+                overallHealthScore: calculateOverallHealthScore(healthData),
+                vitalsAnalysis: analyzeVitals(healthData),
+                sleepAnalysis: analyzeSleepPatterns(healthData),
+                activityAnalysis: analyzeActivityPatterns(healthData),
+                stressAnalysis: analyzeStressPatterns(healthData),
+                recoveryAnalysis: analyzeRecoveryPatterns(healthData),
+                nutritionAnalysis: analyzeNutritionPatterns(healthData),
+                environmentalAnalysis: analyzeEnvironmentalImpact(healthData),
+                trendSummary: trendAnalysisResult,
+                lastUpdated: Date()
+            )
+            
+            self.trendAnalysis = trendAnalysisResult
+            return healthAnalyticsResult
+        } catch {
+            print("Error generating health analytics: \(error.localizedDescription)")
+            return nil
         }
-        return healthAnalytics // Return the generated analytics
     }
     
     // MARK: - Performance Metrics
     
-    internal func generatePerformanceMetrics() -> OverallPerformanceMetrics? { // Made internal for testing
-        let recentData = loadRecentPerformanceData()
-        
-        let metrics = OverallPerformanceMetrics( // Changed to OverallPerformanceMetrics
-            cognitivePerformance: calculateCognitiveMetrics(recentData),
-            physicalPerformance: calculatePhysicalMetrics(recentData),
-            sleepPerformance: calculateSleepMetrics(recentData),
-            recoveryPerformance: calculateRecoveryMetrics(recentData),
-            consistencyScores: calculateConsistencyScores(recentData),
-            improvementAreas: identifyImprovementAreas(recentData),
-            achievements: identifyAchievements(recentData),
-            lastCalculated: Date()
-        )
-        
-        DispatchQueue.main.async {
-            self.performanceMetrics = metrics
+    internal func generatePerformanceMetrics() async -> OverallPerformanceMetrics? {
+        do {
+            let recentData = await loadRecentPerformanceData()
+            
+            let metrics = OverallPerformanceMetrics(
+                cognitivePerformance: calculateCognitiveMetrics(recentData),
+                physicalPerformance: calculatePhysicalMetrics(recentData),
+                sleepPerformance: calculateSleepMetrics(recentData),
+                recoveryPerformance: calculateRecoveryMetrics(recentData),
+                consistencyScores: calculateConsistencyScores(recentData),
+                improvementAreas: identifyImprovementAreas(recentData),
+                achievements: identifyAchievements(recentData),
+                lastCalculated: Date()
+            )
+            
+            return metrics
+        } catch {
+            print("Error generating performance metrics: \(error.localizedDescription)")
+            return nil
         }
-        return metrics // Return the generated metrics
     }
     
     // MARK: - Correlation Analysis
     
-    internal func generateCorrelationInsights() -> [CorrelationInsight] { // Made internal for testing
-        let correlationData = loadCorrelationAnalysisData()
-        let insights = correlationEngine.analyzeCorrelations(correlationData)
-        
-        DispatchQueue.main.async {
-            self.correlationInsights = insights
+    internal func generateCorrelationInsights() async -> [CorrelationInsight] {
+        do {
+            let correlationData = await loadCorrelationAnalysisData()
+            let insights = correlationEngine.analyzeCorrelations(correlationData)
+            return insights
+        } catch {
+            print("Error generating correlation insights: \(error.localizedDescription)")
+            return []
         }
-        return insights // Return the generated insights
     }
     
     // MARK: - Prediction Accuracy Validation
     
-    internal func evaluatePredictionAccuracy() -> PredictionAccuracy? { // Made internal for testing
-        let historicalPredictions = loadHistoricalPredictions()
-        let actualOutcomes = loadActualOutcomes()
-        
-        let accuracy = PredictionAccuracy(
-            overallAccuracy: calculateOverallAccuracy(historicalPredictions, actualOutcomes),
-            energyPredictionAccuracy: calculateEnergyAccuracy(historicalPredictions, actualOutcomes),
-            moodPredictionAccuracy: calculateMoodAccuracy(historicalPredictions, actualOutcomes),
-            sleepPredictionAccuracy: calculateSleepAccuracy(historicalPredictions, actualOutcomes),
-            cognitiveAccuracy: calculateCognitiveAccuracy(historicalPredictions, actualOutcomes),
-            modelConfidence: calculateModelConfidence(),
-            lastValidated: Date()
-        )
-        
-        DispatchQueue.main.async {
-            self.predictionAccuracy = accuracy
+    internal func evaluatePredictionAccuracy() async -> PredictionAccuracy? {
+        do {
+            let historicalPredictions = await loadHistoricalPredictions()
+            let actualOutcomes = await loadActualOutcomes()
+            
+            let accuracy = PredictionAccuracy(
+                overallAccuracy: calculateOverallAccuracy(historicalPredictions, actualOutcomes),
+                energyPredictionAccuracy: calculateEnergyAccuracy(historicalPredictions, actualOutcomes),
+                moodPredictionAccuracy: calculateMoodAccuracy(historicalPredictions, actualOutcomes),
+                sleepPredictionAccuracy: calculateSleepAccuracy(historicalPredictions, actualOutcomes),
+                cognitiveAccuracy: calculateCognitiveAccuracy(historicalPredictions, actualOutcomes),
+                modelConfidence: calculateModelConfidence(),
+                lastValidated: Date()
+            )
+            
+            return accuracy
+        } catch {
+            print("Error evaluating prediction accuracy: \(error.localizedDescription)")
+            return nil
         }
-        return accuracy // Return the generated accuracy
     }
     
     // MARK: - Personalized Recommendations
     
-    internal func generatePersonalizedRecommendations() -> [AnalyticsRecommendation] { // Made internal for testing
-        let userProfile = createUserProfile()
-        let recommendations = insightGenerator.generateRecommendations(
-            profile: userProfile,
-            analytics: healthAnalytics,
-            trends: trendAnalysis,
-            correlations: correlationInsights
-        )
-        
-        DispatchQueue.main.async {
-            self.personalizedRecommendations = recommendations
+    internal func generatePersonalizedRecommendations() async -> [AnalyticsRecommendation] {
+        do {
+            let userProfile = await createUserProfile()
+            let recommendations = insightGenerator.generateRecommendations(
+                profile: userProfile,
+                analytics: self.healthAnalytics,
+                trends: self.trendAnalysis,
+                correlations: self.correlationInsights
+            )
+            return recommendations
+        } catch {
+            print("Error generating personalized recommendations: \(error.localizedDescription)")
+            return []
         }
-        return recommendations // Return the generated recommendations
     }
 
     // MARK: - Environmental Impact Forecast
-    private func generateEnvironmentalImpactForecast() -> EnvironmentalImpactForecast? {
+    private func generateEnvironmentalImpactForecast() async -> EnvironmentalImpactForecast? {
         // Placeholder for generating environmental impact forecast
-        // This would typically involve calling a forecasting model or API
         let forecast = EnvironmentalImpactForecast(
             overallImpactScore: 0.75,
             airQualityForecast: "Moderate",
@@ -279,104 +353,85 @@ class AnalyticsEngine: ObservableObject {
             recommendations: ["Stay hydrated", "Monitor air quality"],
             forecastDate: Date()
         )
-        DispatchQueue.main.async {
-            self.environmentalImpactForecast = forecast
-        }
         return forecast
     }
     
     // MARK: - Data Loading Methods
     
-    private func loadHistoricalHealthData() -> [HealthDataSnapshot] {
-        return coreDataManager.fetchHealthSnapshots(limit: 1000)
+    private func loadHistoricalHealthData() async throws -> [HealthDataEntry] {
+        do {
+            return await swiftDataManager.fetchHealthDataEntries(limit: 1000)
+        } catch {
+            throw AnalyticsEngineError.dataLoadingFailed("Failed to fetch historical health data.")
+        }
     }
     
-    private func loadHealthDataForAnalysis() -> HealthAnalysisData {
-        let snapshots = coreDataManager.fetchHealthSnapshots(limit: 30) // Fetch recent snapshots for analysis
-        let sleepSessions = coreDataManager.fetchSleepSessions(limit: 30)
-        let workouts = coreDataManager.fetchWorkouts(limit: 30)
-        let nutritionData = coreDataManager.fetchNutritionData(limit: 30)
-        let environmentData = loadEnvironmentData()
-        
-        return HealthAnalysisData(
-            healthSnapshots: snapshots,
-            sleepSessions: sleepSessions,
-            workouts: workouts,
-            nutritionData: nutritionData,
-            environmentData: environmentData,
-            timeRange: DateInterval(start: Date().addingTimeInterval(-30 * 24 * 3600), end: Date())
-        )
+    private func loadHealthDataForAnalysis() async throws -> HealthAnalysisData {
+        do {
+            async let snapshots = swiftDataManager.fetchHealthDataEntries(limit: 30)
+            async let sleepSessions = swiftDataManager.fetchSleepSessionEntries(limit: 30)
+            async let workouts = swiftDataManager.fetchWorkoutEntries(limit: 30)
+            async let nutritionData = swiftDataManager.fetchNutritionLogEntries(limit: 30)
+            async let environmentData = loadEnvironmentData()
+            
+            let (s, sl, w, n, e) = await (snapshots, sleepSessions, workouts, nutritionData, environmentData)
+            
+            return HealthAnalysisData(
+                healthSnapshots: s,
+                sleepSessions: sl,
+                workouts: w,
+                nutritionData: n,
+                environmentData: e,
+                timeRange: DateInterval(start: Date().addingTimeInterval(-30 * 24 * 3600), end: Date())
+            )
+        } catch {
+            throw AnalyticsEngineError.dataLoadingFailed("Failed to load data for analysis.")
+        }
     }
     
-    private func loadRecentPerformanceData() -> PerformanceAnalysisData {
-        let recentSnapshots = Array(loadHistoricalHealthData().prefix(168)) // Last week
-        let recentSleep = Array(coreDataManager.fetchSleepSessions(limit: 14).prefix(7)) // Last week
-        
-        return PerformanceAnalysisData(
-            healthSnapshots: recentSnapshots,
-            sleepSessions: recentSleep,
-            analysisWindow: 7
-        )
+    private func loadRecentPerformanceData() async throws -> PerformanceAnalysisData {
+        do {
+            async let recentSnapshots = swiftDataManager.fetchHealthDataEntries(limit: 168)
+            async let recentSleep = swiftDataManager.fetchSleepSessionEntries(limit: 14)
+            let (s, sl) = await (recentSnapshots, recentSleep)
+            return PerformanceAnalysisData(
+                healthSnapshots: Array(s.prefix(168)),
+                sleepSessions: Array(sl.prefix(7)),
+                analysisWindow: 7
+            )
+        } catch {
+            throw AnalyticsEngineError.dataLoadingFailed("Failed to load recent performance data.")
+        }
     }
     
-    private func loadCorrelationAnalysisData() -> CorrelationAnalysisData {
-        let healthData = loadHistoricalHealthData()
-        let sleepData = coreDataManager.fetchSleepSessions(limit: 50)
-        let environmentData = loadEnvironmentData()
-        
-        return CorrelationAnalysisData(
-            healthSnapshots: healthData,
-            sleepSessions: sleepData,
-            environmentData: environmentData,
-            correlationWindow: 30
-        )
+    private func loadCorrelationAnalysisData() async throws -> CorrelationAnalysisData {
+        do {
+            async let healthData = swiftDataManager.fetchHealthDataEntries(limit: 90)
+            async let sleepData = swiftDataManager.fetchSleepSessionEntries(limit: 90)
+            async let environmentData = loadEnvironmentData()
+            let (h, s, e) = await (healthData, sleepData, environmentData)
+            return CorrelationAnalysisData(
+                healthSnapshots: h,
+                sleepSessions: s,
+                environmentData: e,
+                correlationWindow: 30
+            )
+        } catch {
+            throw AnalyticsEngineError.dataLoadingFailed("Failed to load correlation analysis data.")
+        }
     }
     
-    private func loadEnvironmentData() -> [EnvironmentSnapshot] {
-        // Use EnvironmentalDataManager to fetch real environmental data
-        // For now, we'll fetch mock data for a generic location and current date.
-        // In a real app, this would be based on user's current location or preferred location.
-        let mockLocation = "40.7128,-74.0060" // New York City coordinates
-        let currentDate = Date()
-        
-        var fetchedData: [EnvironmentSnapshot] = []
-        let semaphore = DispatchSemaphore(value: 0) // For synchronous-like behavior in async context
-        
-        environmentalDataManager.fetchEnvironmentalData(for: mockLocation, on: currentDate)
-            .sink(receiveCompletion: { completion in
-                switch completion {
-                case .finished:
-                    break
-                case .failure(let error):
-                    print("Error fetching environmental data: \(error.localizedDescription)")
-                }
-                semaphore.signal()
-            }, receiveValue: { data in
-                // Convert EnvironmentalData to EnvironmentSnapshot
-                let snapshot = EnvironmentSnapshot(
-                    temperature: data.temperatureCelsius ?? 0.0,
-                    airQuality: Double(data.airQualityIndex ?? 0),
-                    noiseLevel: 0.0, // EnvironmentalData doesn't have noiseLevel, assuming 0 for now
-                    timestamp: data.timestamp
-                )
-                fetchedData.append(snapshot)
-            })
-            .store(in: &cancellables) // Store the cancellable to keep the subscription alive
-        
-        _ = semaphore.wait(timeout: .now() + 5.0) // Wait for the data to be fetched (with a timeout)
-        
-        return fetchedData
+    private func loadHistoricalPredictions() async throws -> [HistoricalPrediction] {
+        // TODO: Migrate to SwiftData if needed
+        return []
     }
     
-    private func loadHistoricalPredictions() -> [HistoricalPrediction] {
-        return coreDataManager.fetchHistoricalPredictions(limit: 100)
+    private func loadActualOutcomes() async throws -> [ActualOutcome] {
+        // TODO: Migrate to SwiftData if needed
+        return []
     }
     
-    private func loadActualOutcomes() -> [ActualOutcome] {
-        return coreDataManager.fetchActualOutcomes(limit: 100)
-    }
-    
-    // MARK: - Analysis Methods
+    // MARK: - Analysis Methods (unchanged, assuming they are pure functions)
     
     private func calculateOverallHealthScore(_ data: HealthAnalysisData) -> Double {
         let snapshots = data.healthSnapshots
@@ -643,8 +698,8 @@ class AnalyticsEngine: ObservableObject {
         return .stable
     }
     
-    private func createUserProfile() -> UserProfile {
-        let healthData = loadHistoricalHealthData()
+    private func createUserProfile() async -> UserProfile {
+        let healthData = await loadHistoricalHealthData()
         let recentData = Array(healthData.prefix(30)) // Last 30 days
         
         return UserProfile(
@@ -1395,9 +1450,10 @@ struct SleepAnalysisResult: Codable {
 }
 
 // Placeholder for CoreDataManager (if not already defined elsewhere)
+// CoreDataManager is now deprecated. Use SwiftDataManager instead.
 class CoreDataManager {
     static let shared = CoreDataManager()
-    func fetchHealthSnapshots(limit: Int) -> [HealthDataSnapshot] {
+    func fetchHealthSnapshots(limit: Int) async -> [HealthDataSnapshot] {
         // Mock data
         return (0..<limit).map { i in
             HealthDataSnapshot(
@@ -1413,12 +1469,11 @@ class CoreDataManager {
                 stressFactors: ["Work", "Family"].shuffled().prefix(Int.random(in: 0...2)).map { $0 },
                 nutritionScore: Double.random(in: 0.5...1.0),
                 heartRate: Double.random(in: 50...80),
-                temperature: Double.random(in: 36.0...37.5),
                 oxygen: Double.random(in: 95...100)
             )
         }
     }
-    func fetchSleepSessions(limit: Int) -> [SleepSession] {
+    func fetchSleepSessions(limit: Int) async -> [SleepSession] {
         // Mock data
         return (0..<limit).map { i in
             SleepSession(
@@ -1430,7 +1485,7 @@ class CoreDataManager {
             )
         }
     }
-    func fetchWorkouts(limit: Int) -> [Workout] {
+    func fetchWorkouts(limit: Int) async -> [Workout] {
         // Mock data
         return (0..<limit).map { i in
             Workout(
@@ -1440,7 +1495,7 @@ class CoreDataManager {
             )
         }
     }
-    func fetchNutritionData(limit: Int) -> [NutritionData] {
+    func fetchNutritionData(limit: Int) async -> [NutritionData] {
         // Mock data
         return (0..<limit).map { i in
             NutritionData(
@@ -1453,7 +1508,7 @@ class CoreDataManager {
             )
         }
     }
-    func fetchHistoricalPredictions(limit: Int) -> [HistoricalPrediction] {
+    func fetchHistoricalPredictions(limit: Int) async -> [HistoricalPrediction] {
         // Mock data
         return (0..<limit).map { i in
             HistoricalPrediction(
@@ -1465,7 +1520,7 @@ class CoreDataManager {
             )
         }
     }
-    func fetchActualOutcomes(limit: Int) -> [ActualOutcome] {
+    func fetchActualOutcomes(limit: Int) async -> [ActualOutcome] {
         // Mock data
         return (0..<limit).map { i in
             ActualOutcome(
@@ -1481,15 +1536,13 @@ class CoreDataManager {
 
 // Placeholder for EnvironmentalDataManager (if not already defined elsewhere)
 class EnvironmentalDataManager {
-    func fetchEnvironmentalData(for location: String, on date: Date) -> AnyPublisher<EnvironmentalData, Error> {
+    func fetchEnvironmentalData(for location: String, on date: Date) async throws -> EnvironmentalData {
         // Mock data
-        return Just(EnvironmentalData(
+        return EnvironmentalData(
             temperatureCelsius: Double.random(in: 10...30),
             airQualityIndex: Int.random(in: 20...80),
             timestamp: date
-        ))
-        .setFailureType(to: Error.self)
-        .eraseToAnyPublisher()
+        )
     }
 }
 
