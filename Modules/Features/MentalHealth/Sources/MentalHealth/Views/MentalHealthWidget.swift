@@ -32,28 +32,26 @@ struct MentalHealthTimelineProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<MentalHealthEntry>) -> Void) {
         let currentDate = Date()
         guard let refreshDate = Calendar.current.date(byAdding: .minute, value: 15, to: currentDate) else {
-            // Fallback to 15 minutes from now if calendar operation fails
             let fallbackDate = currentDate.addingTimeInterval(15 * 60)
-            let entry = MentalHealthEntry(
-                date: currentDate,
-                score: MentalHealthManager.shared.mentalHealthScore,
-                stressLevel: MentalHealthManager.shared.stressLevel,
-                mindfulnessMinutes: Int(MentalHealthManager.shared.mindfulnessSessions.reduce(0) { $0 + $1.duration } / 60)
-            )
+            let entry = makeEntry()
             let timeline = Timeline(entries: [entry], policy: .after(fallbackDate))
             completion(timeline)
             return
         }
-        
-        let entry = MentalHealthEntry(
-            date: currentDate,
-            score: MentalHealthManager.shared.mentalHealthScore,
-            stressLevel: MentalHealthManager.shared.stressLevel,
-            mindfulnessMinutes: Int(MentalHealthManager.shared.mindfulnessSessions.reduce(0) { $0 + $1.duration } / 60)
-        )
-        
+        let entry = makeEntry()
         let timeline = Timeline(entries: [entry], policy: .after(refreshDate))
         completion(timeline)
+    }
+    
+    private func makeEntry() -> MentalHealthEntry {
+        if #available(macOS 14.0, *) {
+            let score = MentalHealthManager.shared.mentalHealthScore
+            let stress = MentalHealthManager.shared.stressLevel
+            let minutes = Int(MentalHealthManager.shared.mindfulnessSessions.reduce(0) { $0 + $1.duration } / 60)
+            return MentalHealthEntry(date: Date(), score: score, stressLevel: stress, mindfulnessMinutes: minutes)
+        } else {
+            return MentalHealthEntry(date: Date(), score: 0.0, stressLevel: .low, mindfulnessMinutes: 0)
+        }
     }
 }
 

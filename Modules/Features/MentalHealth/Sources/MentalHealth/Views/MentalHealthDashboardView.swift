@@ -5,7 +5,13 @@ import Charts
 /// Displays mindfulness sessions, mental state tracking, mood analysis, and insights
 @available(iOS 17.0, macOS 14.0, *)
 public struct MentalHealthDashboardView: View {
-    @StateObject private var mentalHealthManager = MentalHealthManager.shared
+    @StateObject private var mentalHealthManager: MentalHealthManager? = {
+        if #available(macOS 14.0, *) {
+            return MentalHealthManager.shared
+        } else {
+            return nil
+        }
+    }()
     @State private var selectedTimeRange: TimeRange = .week
     @State private var showingMindfulnessSession = false
     @State private var showingMoodEntry = false
@@ -32,27 +38,34 @@ public struct MentalHealthDashboardView: View {
         NavigationView {
             ScrollView {
                 LazyVStack(spacing: 20) {
-                    // Mental Health Score Card
-                    MentalHealthScoreCard()
-                    
-                    // Mindfulness Sessions Card
-                    MindfulnessSessionsCard()
-                    
-                    // Mental State Tracking Card
-                    MentalStateTrackingCard()
-                    
-                    // Mood Analysis Card
-                    MoodAnalysisCard()
-                    
-                    // Stress & Anxiety Card
-                    StressAnxietyCard()
-                    
-                    // Insights & Recommendations Card
-                    InsightsRecommendationsCard()
+                    if let manager = mentalHealthManager {
+                        // Mental Health Score Card
+                        MentalHealthScoreCard(mentalHealthManager: manager)
+                        
+                        // Mindfulness Sessions Card
+                        MindfulnessSessionsCard(mentalHealthManager: manager)
+                        
+                        // Mental State Tracking Card
+                        MentalStateTrackingCard(mentalHealthManager: manager)
+                        
+                        // Mood Analysis Card
+                        MoodAnalysisCard(mentalHealthManager: manager)
+                        
+                        // Stress & Anxiety Card
+                        StressAnxietyCard(mentalHealthManager: manager)
+                        
+                        // Insights & Recommendations Card
+                        InsightsRecommendationsCard(mentalHealthManager: manager)
+                    } else {
+                        Text("Mental Health features require macOS 14+")
+                            .foregroundColor(.secondary)
+                    }
                 }
                 .padding()
             }
             .navigationTitle("Mental Health")
+            // Remove .navigationBarTitleDisplayMode and .toolbar for macOS
+            #if !os(macOS)
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -82,6 +95,7 @@ public struct MentalHealthDashboardView: View {
                     .frame(width: 200)
                 }
             }
+            #endif
         }
         .sheet(isPresented: $showingMindfulnessSession) {
             MindfulnessSessionView()
@@ -101,7 +115,11 @@ public struct MentalHealthDashboardView: View {
 // MARK: - Mental Health Score Card
 
 struct MentalHealthScoreCard: View {
-    @StateObject private var mentalHealthManager = MentalHealthManager.shared
+    @StateObject private var mentalHealthManager: MentalHealthManager
+    
+    init(mentalHealthManager: MentalHealthManager) {
+        _mentalHealthManager = StateObject(wrappedValue: mentalHealthManager)
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -206,7 +224,11 @@ struct MentalHealthScoreCard: View {
 // MARK: - Mindfulness Sessions Card
 
 struct MindfulnessSessionsCard: View {
-    @StateObject private var mentalHealthManager = MentalHealthManager.shared
+    @StateObject private var mentalHealthManager: MentalHealthManager
+    
+    init(mentalHealthManager: MentalHealthManager) {
+        _mentalHealthManager = StateObject(wrappedValue: mentalHealthManager)
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -341,7 +363,11 @@ struct MindfulnessSessionRow: View {
 // MARK: - Mental State Tracking Card
 
 struct MentalStateTrackingCard: View {
-    @StateObject private var mentalHealthManager = MentalHealthManager.shared
+    @StateObject private var mentalHealthManager: MentalHealthManager
+    
+    init(mentalHealthManager: MentalHealthManager) {
+        _mentalHealthManager = StateObject(wrappedValue: mentalHealthManager)
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -461,7 +487,11 @@ struct MentalStateTrackingCard: View {
 // MARK: - Mood Analysis Card
 
 struct MoodAnalysisCard: View {
-    @StateObject private var mentalHealthManager = MentalHealthManager.shared
+    @StateObject private var mentalHealthManager: MentalHealthManager
+    
+    init(mentalHealthManager: MentalHealthManager) {
+        _mentalHealthManager = StateObject(wrappedValue: mentalHealthManager)
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -570,7 +600,11 @@ struct MoodAnalysisCard: View {
 // MARK: - Stress & Anxiety Card
 
 struct StressAnxietyCard: View {
-    @StateObject private var mentalHealthManager = MentalHealthManager.shared
+    @StateObject private var mentalHealthManager: MentalHealthManager
+    
+    init(mentalHealthManager: MentalHealthManager) {
+        _mentalHealthManager = StateObject(wrappedValue: mentalHealthManager)
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -786,8 +820,12 @@ struct StressAnxietyCard: View {
 // MARK: - Insights & Recommendations Card
 
 struct InsightsRecommendationsCard: View {
-    @StateObject private var mentalHealthManager = MentalHealthManager.shared
+    @StateObject private var mentalHealthManager: MentalHealthManager
     @State private var selectedInsight: MentalHealthInsight?
+    
+    init(mentalHealthManager: MentalHealthManager) {
+        _mentalHealthManager = StateObject(wrappedValue: mentalHealthManager)
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {

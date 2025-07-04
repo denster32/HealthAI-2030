@@ -6,6 +6,7 @@ import UserNotifications
 
 /// Cardiac Emergency Handler
 /// Specialized emergency response system for cardiac events using ECG analysis and real-time monitoring
+@available(iOS 18.0, macOS 15.0, *)
 class CardiacEmergencyHandler: ObservableObject {
     
     // MARK: - Published Properties

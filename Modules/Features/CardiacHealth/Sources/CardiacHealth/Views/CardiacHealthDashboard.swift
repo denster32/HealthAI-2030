@@ -1,8 +1,9 @@
 import SwiftUI
 import HealthKit
 import Charts
+import Foundation
 
-/// A beautiful, interactive dashboard for visualizing cardiac health metrics and trends.
+@available(iOS 18.0, macOS 15.0, *)
 struct CardiacHealthDashboard: View {
     @ObservedObject var viewModel: CardiacHealthDashboardViewModel
     
@@ -20,7 +21,9 @@ struct CardiacHealthDashboard: View {
             }
             .navigationTitle("Cardiac Health Dashboard")
         }
-        .onAppear { viewModel.fetchAllData() }
+        .task {
+            await viewModel.fetchAllData()
+        }
     }
     
     private var headerSection: some View {
@@ -29,9 +32,9 @@ struct CardiacHealthDashboard: View {
                 .foregroundColor(.red)
                 .font(.largeTitle)
             VStack(alignment: .leading) {
-                Text("Welcome, \(viewModel.userName)")
+                Text("Cardiac Health Overview")
                     .font(.headline)
-                Text("Your latest cardiac health overview")
+                Text("Latest summary below")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -40,7 +43,13 @@ struct CardiacHealthDashboard: View {
     }
     
     private var summarySection: some View {
-        CardiacSummaryView(summary: viewModel.summary)
+        Group {
+            if let summary = viewModel.summary {
+                CardiacSummaryView(summary: summary)
+            } else {
+                Text("No summary available")
+            }
+        }
     }
     
     private var trendChartsSection: some View {
@@ -48,15 +57,15 @@ struct CardiacHealthDashboard: View {
             Text("Trends")
                 .font(.title2)
                 .bold()
-            CardiacTrendChart(data: viewModel.trendData)
+            CardiacTrendChart(data: viewModel.trendData.map { CardiacTrendData(date: $0.timestamp, restingHeartRate: Double($0.value), hrv: 0) })
         }
     }
     
     private var riskSection: some View {
         if let risk = viewModel.riskAssessment {
-            CardiacRiskView(risk: risk)
+            AnyView(Text(risk))
         } else {
-            EmptyView()
+            AnyView(EmptyView())
         }
     }
     
@@ -65,8 +74,8 @@ struct CardiacHealthDashboard: View {
             Text("Personalized Recommendations")
                 .font(.title3)
                 .bold()
-            ForEach(viewModel.recommendations, id: \ .id) { rec in
-                RecommendationCardView(recommendation: rec)
+            ForEach(viewModel.recommendations, id: \.self) { rec in
+                Text(rec)
             }
         }
     }
@@ -74,32 +83,38 @@ struct CardiacHealthDashboard: View {
 
 // MARK: - Preview
 
-#Preview {
-    CardiacHealthDashboard(viewModel: .preview)
+#if DEBUG
+@available(iOS 18.0, macOS 15.0, *)
+struct CardiacHealthDashboard_Previews: PreviewProvider {
+    static var previews: some View {
+        let mockVM = MockCardiacHealthDashboardViewModel()
+        CardiacHealthDashboard(viewModel: mockVM)
+    }
 }
+#endif
 
-// MARK: - Supporting Views & ViewModel Stubs
+// MARK: - Supporting Views
 
 struct CardiacSummaryView: View {
     let summary: CardiacSummary
     var body: some View {
         HStack(spacing: 32) {
             VStack {
-                Text("\(summary.restingHeartRate, specifier: "%.0f")")
+                Text("\(summary.restingHeartRate)")
                     .font(.title)
                     .bold()
                 Text("Resting HR")
                     .font(.caption)
             }
             VStack {
-                Text("\(summary.hrv, specifier: "%.0f")")
+                Text("\(summary.hrvScore, specifier: "%.0f")")
                     .font(.title)
                     .bold()
                 Text("HRV")
                     .font(.caption)
             }
             VStack {
-                Text("\(summary.bloodPressure) mmHg")
+                Text("- mmHg") // Placeholder, as blood pressure is not in CardiacSummary
                     .font(.title3)
                     .bold()
                 Text("Blood Pressure")
@@ -107,7 +122,7 @@ struct CardiacSummaryView: View {
             }
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(Color.gray.opacity(0.15))
         .cornerRadius(12)
     }
 }
@@ -134,119 +149,18 @@ struct CardiacTrendChart: View {
     }
 }
 
-struct CardiacRiskView: View {
-    let risk: CardiacRiskAssessment
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Risk Level: \(risk.level.rawValue)")
-                .font(.headline)
-                .foregroundColor(risk.level.color)
-            Text(risk.summary)
-                .font(.body)
-        }
-        .padding()
-        .background(risk.level.color.opacity(0.1))
-        .cornerRadius(10)
+// MARK: - Mock ViewModel for Preview
+
+@available(iOS 18.0, macOS 15.0, *)
+class MockCardiacHealthDashboardViewModel: CardiacHealthDashboardViewModel {
+    init() {
+        super.init(healthKitManager: /* pass a real or dummy manager if required */ DummyHealthKitManager(), ecgInsightManager: DummyECGInsightManager())
+        self.summary = CardiacSummary(averageHeartRate: 70, restingHeartRate: 65, hrvScore: 55, timestamp: Date())
+        self.trendData = (0..<7).map { i in HeartRateMeasurement(value: 65 + i, timestamp: Calendar.current.date(byAdding: .day, value: -i, to: Date())!) }
+        self.riskAssessment = "Risk Level: Moderate"
+        self.recommendations = ["Exercise regularly", "Monitor blood pressure"]
     }
 }
 
-struct RecommendationCardView: View {
-    let recommendation: CardiacRecommendation
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(recommendation.title)
-                .font(.headline)
-            Text(recommendation.detail)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .padding()
-        .background(Color(.systemBlue).opacity(0.08))
-        .cornerRadius(8)
-    }
-}
-
-// MARK: - ViewModel & Model Stubs for Preview/Scaffolding
-
-final class CardiacHealthDashboardViewModel: ObservableObject {
-    @Published var userName: String = "Alex"
-    @Published var summary: CardiacSummary = .preview
-    @Published var trendData: [CardiacTrendData] = CardiacTrendData.preview
-    @Published var riskAssessment: CardiacRiskAssessment? = .preview
-    @Published var recommendations: [CardiacRecommendation] = CardiacRecommendation.preview
-    
-    func fetchAllData() {
-        Task {
-            do {
-                // Request HealthKit authorization
-                try await HealthKitManager.shared.requestAuthorization()
-
-                // Fetch real summary and trend data
-                let fetchedSummary = try await HealthKitManager.shared.getHealthSummary()
-                let fetchedTrend = try await HealthKitManager.shared.fetchTrendData(days: 7)
-
-                // Simple risk assessment based on HRV
-                let riskLevel: CardiacRiskAssessment.Level = fetchedSummary.hrv < 50 ? .high : (fetchedSummary.hrv < 60 ? .moderate : .low)
-                let fetchedRisk = CardiacRiskAssessment(level: riskLevel, summary: "Based on your HRV, level is \(riskLevel.rawValue)")
-
-                // Recommendations based on risk
-                let fetchedRecs: [CardiacRecommendation] = riskLevel == .high ? [
-                    .init(title: "Consult Doctor", detail: "Your HRV suggests you check your cardiac health."),
-                    .init(title: "Reduce Stress", detail: "Try breathing exercises or meditation.")
-                ] : CardiacRecommendation.preview
-
-                // Update published props on main thread
-                DispatchQueue.main.async {
-                    self.summary = fetchedSummary
-                    self.trendData = fetchedTrend
-                    self.riskAssessment = fetchedRisk
-                    self.recommendations = fetchedRecs
-                }
-            } catch {
-                // On error, log and keep preview data
-                print("HealthKit fetch failed: \(error)")
-            }
-        }
-    }
-    
-    static var preview: CardiacHealthDashboardViewModel {
-        let vm = CardiacHealthDashboardViewModel()
-        return vm
-    }
-}
-
-struct CardiacSummary {
-    let restingHeartRate: Double
-    let hrv: Double
-    let bloodPressure: String
-    static let preview = CardiacSummary(restingHeartRate: 62, hrv: 58, bloodPressure: "120/78")
-}
-
-struct CardiacRiskAssessment {
-    enum Level: String {
-        case low = "Low"
-        case moderate = "Moderate"
-        case high = "High"
-        var color: Color {
-            switch self {
-            case .low: return .green
-            case .moderate: return .yellow
-            case .high: return .red
-            }
-        }
-    }
-    let level: Level
-    let summary: String
-    static let preview = CardiacRiskAssessment(level: .moderate, summary: "Your HRV is slightly below average. Consider stress reduction techniques.")
-}
-
-struct CardiacRecommendation: Identifiable {
-    let id = UUID()
-    let title: String
-    let detail: String
-    static let preview: [CardiacRecommendation] = [
-        .init(title: "Increase Daily Activity", detail: "Aim for at least 30 minutes of moderate exercise."),
-        .init(title: "Practice Mindfulness", detail: "Try a 5-minute breathing exercise to reduce stress."),
-        .init(title: "Monitor Blood Pressure", detail: "Check your blood pressure weekly and log results.")
-    ]
-}
+class DummyHealthKitManager {}
+class DummyECGInsightManager {}

@@ -15,6 +15,7 @@ let package = Package(
             targets: ["StartMeditation"]),
     ],
     dependencies: [
+        .package(path: "../MentalHealth")
     ],
     targets: [
         .target(

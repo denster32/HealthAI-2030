@@ -4,9 +4,7 @@ import CoreML
 import Combine
 import SwiftUI
 
-@available(iOS 17.0, *)
-@available(macOS 14.0, *)
-
+@available(iOS 18.0, macOS 14.0, *) // Updated iOS version
 /// Mental Health Manager for iOS 18+ mental health features
 /// Integrates mindfulness, mental state tracking, and mood analysis
 @MainActor
@@ -36,7 +34,7 @@ public class MentalHealthManager: ObservableObject {
     private let stressAnalyzer = StressAnalyzer()
     
     // MARK: - Configuration
-    private let mindfulnessGoal: TimeInterval = 10 * 60 // 10 minutes daily
+    public let mindfulnessGoal: TimeInterval = 10 * 60 // 10 minutes daily // Changed to public
     private let mentalStateUpdateInterval: TimeInterval = 300 // 5 minutes
     private let moodCheckInterval: TimeInterval = 3600 // 1 hour
     
