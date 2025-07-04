@@ -1,3 +1,0 @@
---swiftversion 5.9
---exclude Packages,Pods,build,.build
---disable redundantSelf,sortedImports

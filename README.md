@@ -1,159 +1,181 @@
-# HealthAI 2030: Advanced Features Overview
-
-## AI/ML
-
-- Sleep stage classification with CoreML and fallback
-- Explainable AI for recommendations
-- Federated learning (planned)
-- On-device inference
-
-## Security & Compliance
-
-- End-to-end encryption
-- Cloud secrets management
-- Audit logging and anonymization
-- HIPAA controls
-
-## Ecosystem Integration
-
-- WidgetKit, Shortcuts, Apple Watch, Apple TV, macOS
-- Community plugin system
-
-## Performance & Reliability
-
-- Metal-powered visualizations
-- Automated backup and HA
-
-## UX & Accessibility
-
-- Full accessibility support
-- Multi-language localization
-- Data privacy dashboard
-
-## DevOps
-
-- CI/CD, IaC, security scanning, observability
-
----
-
-This project is designed to be a model for modern, secure, and intelligent health applications.
-
 # HealthAI 2030
 
-[![CI](https://github.com/<your-org-or-username>/HealthAI-2030/actions/workflows/ci.yml/badge.svg)](https://github.com/<your-org-or-username>/HealthAI-2030/actions)
-[![codecov](https://codecov.io/gh/<your-org-or-username>/HealthAI-2030/branch/main/graph/badge.svg)](https://codecov.io/gh/<your-org-or-username>/HealthAI-2030)
+[![Build Status](https://github.com/<owner>/<repo>/actions/workflows/build.yml/badge.svg)](https://github.com/<owner>/<repo>/actions)
+[![Coverage Status](https://coveralls.io/repos/github/<owner>/<repo>/badge.svg?branch=main)](https://coveralls.io/github/<owner>/<repo>?branch=main)
 
-**A multi-platform health and wellness application for iOS, watchOS, tvOS, and macOS.**
+**A next-generation, cross-platform health application leveraging the latest Apple technologies (iOS 18+, macOS 15+, watchOS 11+, tvOS 18+). HealthAI 2030 provides deep, actionable health insights, advanced analytics, and seamless device integration.**
 
-HealthAI 2030 is a forward-looking application designed to provide users with deep, actionable health insights by leveraging cutting-edge technologies. It integrates advanced analytics, machine learning, augmented reality, and smart home automation to create a holistic and personalized health companion.
+---
 
 ## ✨ Features
 
-- **Advanced Health Analytics:** Deep analysis of sleep, cardiac, respiratory, and mental health data. [Learn more → Sleep Stage Classification Model](docs/SleepStageClassifier.md)
-- **AI Health Coach:** Personalized recommendations and proactive nudges powered by machine learning.
-- **Multi-Platform Experience:** Seamless integration across iPhone, Apple Watch, Apple TV, and Mac.
-- **AR Health Visualizer:** Augmented Reality visualizations of health data.
-- **Smart Home Integration:** Optimizes the user's environment (e.g., lighting, temperature) for better sleep and wellness.
-- **Biofeedback & Meditation:** Guided exercises for stress reduction and mental clarity.
-- **Federated Learning:** Privacy-preserving distributed machine learning.
-- **Extensible AI:** A "Copilot" skill system allows for easy expansion of AI capabilities.
-- **Skill Marketplace:** Discover and enable new Copilot skills in-app.
-- **User Customization:** Script your own automations and analytics pipelines.
-- **WidgetKit & Shortcuts:** Widgets and Siri Shortcuts for quick actions and insights.
-- **Third-Party API Support:** Integrate with Google Fit, Fitbit, and more.
-- **Explainable AI:** Transparent, user-facing explanations for recommendations.
-- **Data Privacy Dashboard:** Full control and transparency over your health data.
+- Advanced health analytics (sleep, cardiac, respiratory, mental health)
+- AI Health Coach and explainable recommendations
+- Multi-platform: iPhone, Apple Watch, Apple TV, Mac
+- AR Health Visualizer
+- Smart Home integration (lighting, temperature, automation)
+- Biofeedback & meditation
+- Federated learning and privacy-preserving ML
+- Extensible Copilot skill/plugin system
+- WidgetKit & Shortcuts
+- Full accessibility and localization support
+- Modular Swift Package architecture
 
-## 🛠️ Architecture
+## 🚀 Installation
 
-The project follows a modular, platform-agnostic architecture with clear separation between:
+1. **Requirements:**
+   - Xcode 16+
+   - Swift 5.10+
+   - iOS 18+, macOS 15+, watchOS 11+, tvOS 18+
 
-### Platform Layers
-- iOS
-- macOS
-- tvOS
-- watchOS
+2. **Clone the repository:**
 
-### Core Modules
-- **Shared Utilities:** Cross-platform utilities (PerformanceOptimizer, logging, etc.)
-- **Analytics:** Data processing and ML capabilities
-- **Security:** Encryption, authentication, privacy
-- **Data Models:** Core business objects and persistence
+   ```sh
+   git clone <repo-url>
+   ```
 
-### Feature Modules
-Each feature module (Biofeedback, CardiacHealth, etc.) contains:
-- Views
-- ViewModels
-- Managers
-- Models
-- Tests
+3. **Open the project:**
+   - Open `HealthAI 2030.xcodeproj` in Xcode.
 
-### Key Architectural Principles
-1. Platform layers can depend on Core modules
-2. Core modules must remain platform-agnostic
-3. Feature modules can depend on Core modules
-4. No circular dependencies allowed
+4. **Resolve dependencies:**
+   - All dependencies are managed via Swift Package Manager (SPM). Xcode will auto-resolve them.
 
-For detailed architecture diagrams and specifications, see [ARCHITECTURE.md](ARCHITECTURE.md)
+5. **Build and run:**
+   - Select the desired scheme and target device, then build and run.
 
-## 🚀 Getting Started
-### Prerequisites
+## 📱 Usage
 
-- macOS with the latest version of Xcode.
-- Swift Package Manager for dependency management.
-- An Apple Developer account for certain capabilities (e.g., HealthKit).
+- Launch the app on your device or simulator.
+- Explore features such as health analytics, environment control, smart home integration, and more.
+- For advanced features, see in-app documentation and `/docs/`.
 
-### Build & Run
+## 🧪 Testing
 
-1.  Clone the repository: `git clone <your-repo-url>`
-2.  Open `HealthAI 2030.xcodeproj` in Xcode.
-3.  Select the desired target (e.g., `HealthAI 2030` for iOS) and a simulator or device.
-4.  Click the **Run** button (or `Cmd+R`).
-
-## 🧪 Running Tests
-
-The project includes unit, performance, and UI tests. To run them:
-1.  Open the Test Navigator in Xcode (`Cmd+6`).
-2.  Click the **Play** button next to a test suite (e.g., `HealthAI 2030Tests` or `HealthAI 2030UITests`) to run all tests.
-3.  You can also run individual test files or functions.
-4.  Snapshot/UI and property-based tests are included for robust quality.
-
-## 📂 Project Structure
-
-The project is organized into the following main directories:
-
-- `HealthAI 2030/`: The main application target containing shared code.
-- `HealthAI 2030 WatchKit App/`: watchOS application target.
-- `HealthAI 2030 macOS/`: macOS application target.
-- `HealthAI 2030 tvOS/`: tvOS application target.
-- `Packages/`: Modular Swift packages for Analytics, ML, Audio, etc.
-- `Scripts/`: Helper scripts for build phases, linting, and maintenance.
-- `Tests/`: A collection of non-Xcode-target tests.
-- `docs/`: Architecture diagrams and API documentation.
-
-## 🗺️ Roadmap
-
-See [ROADMAP.md](ROADMAP.md) for the full roadmap and progress.
-
-- [ ] Skill Marketplace UI
-- [ ] User scripting for automations
-- [ ] WidgetKit and Shortcuts integration
-- [ ] Third-party health API support
-- [ ] Explainable AI for recommendations
-- [ ] Data privacy dashboard
-- [ ] Community plugin submission
+- Unit tests: Run via Xcode’s Test navigator (`⌘U`).
+- UI tests: Available for main user flows.
+- Test targets: `HealthAI 2030Tests`, `HealthAI 2030UITests`, and module-specific tests.
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. We welcome issues, feature requests, and pull requests!
+- Fork the repository and create a feature branch.
+- Follow Swift naming conventions and Apple’s Human Interface Guidelines.
+- Use SwiftUI and MVVM for new features.
+- Write unit and UI tests for new code.
+- Submit a pull request with a clear description.
+
+## 🏗️ Architecture
+
+- Built with SwiftUI and MVVM (or @Observable for iOS 18+)
+- Modularized via Swift Packages (SPM)
+- Managers serve as ViewModels/service layers
+- Core Data/SwiftData for persistence
+- Metal for high-performance visualizations
+- Full accessibility and localization support
+
+## 📂 Project Structure
+
+- `HealthAI 2030/`: Main app target
+- `HealthAI 2030 macOS/`, `tvOS/`, `WatchKit App/`: Platform-specific targets
+- `Modules/`: Feature-based Swift packages
+- `Scripts/`: Build, lint, and maintenance scripts
+- `Tests/`: Unit and UI tests
+- `docs/`: Architecture and API documentation
+
+## 🗂️ Project Folder & File Organization
+
+This project follows Apple’s recommended Xcode organization for clarity, scalability, and maintainability. All files are grouped by feature and function, not by type, to ensure a logical and future-proof structure.
+
+### Main Structure
+
+```text
+HealthAI-2030/
+├── Features/           # Feature modules (e.g., Sleep, SmartHome, Meditation)
+│   └── <Feature>/     # Each feature contains its Views, ViewModels, Services, etc.
+├── Models/            # Data models
+├── Views/             # Shared SwiftUI views
+├── ViewModels/        # Shared view models
+├── Services/          # Network, data, and logic services
+├── Helpers/           # Utility classes and helpers
+├── Extensions/        # Swift extensions (e.g., String+Validation.swift)
+├── UIComponents/      # Reusable UI components
+├── Resources/         # Assets.xcassets, fonts, and localization
+│   ├── Assets.xcassets/
+│   │   ├── icons/
+│   │   ├── images/
+│   │   └── colors/
+│   └── Localization/
+│       ├── en.lproj/
+│       ├── fr.lproj/
+│       └── ...
+├── Scripts/           # Build, lint, and maintenance scripts
+├── Tests/             # Unit and UI tests
+├── docs/              # Architecture and API documentation
+└── ...
+```
+
+
+### Rationale for Each Group
+
+- **Features/**: All files for a feature (Views, ViewModels, Services) are grouped together for modularity and scalability.
+- **Models/**: Contains all data models used across the app.
+- **Views/**: Shared SwiftUI views not tied to a single feature.
+- **ViewModels/**: Shared view models for UI logic.
+- **Services/**: Network, data, and business logic services.
+- **Helpers/**: Utility classes and functions.
+- **Extensions/**: Swift extensions for types and UI.
+- **UIComponents/**: Reusable UI elements (buttons, cards, etc.).
+- **Resources/**: All assets, images, fonts, and localization files.
+- **Scripts/**: Automation and maintenance scripts.
+- **Tests/**: All test targets and files.
+- **docs/**: Project documentation.
+
+
+### Naming Conventions
+
+- **Classes/Files**: PascalCase (e.g., `UserProfileView.swift`)
+- **Variables/Methods**: camelCase (e.g., `fetchData()`)
+- **Folders**: PascalCase or clear, descriptive names (e.g., `ViewModels`, `Helpers`)
+- **Assets**: Lowercase with underscores (e.g., `user_avatar.png`)
+- **Localization**: Use standard Apple `.lproj` folders (e.g., `en.lproj`)
+
+
+### Contributor Checklist
+
+- [ ] Group all files for a feature in `Features/<Feature>/`.
+- [ ] Use PascalCase for files/classes, camelCase for variables/methods.
+- [ ] Avoid spaces and special characters in names.
+- [ ] Organize assets in `Assets.xcassets` by type (icons, images, colors).
+- [ ] Place all localization files in `Resources/Localization/` with language subfolders.
+- [ ] Add or update documentation for any new folder/group.
+- [ ] Remove or merge empty/legacy folders during refactoring.
+- [ ] Review and update the `README.md` when the structure changes.
+- [ ] Use Xcode groups to match the folder structure on disk.
+
+---
+
+## 🛡️ Accessibility & Apple Guidelines
+
+- Uses standard SwiftUI components and supports Dark Mode
+- Full accessibility support (VoiceOver, Dynamic Type)
+- Modular, scalable architecture
+- All dependencies managed via SPM
+- Ready for App Store/TestFlight deployment
+
+## 🌍 Localization & Resources
+
+- All language-specific resources in `Localization/`
+- High-res and AR/VR assets in `Resources/`
+- Accessibility resources in `Accessibility/`
+
+## 🗺️ Roadmap & Known Issues
+
+- See `ROADMAP.md` for planned features and improvements
+- Known issues are tracked in GitHub Issues
 
 ## 📄 License
 
-This project is licensed under the MIT License.
-
-## 🧩 Community Plugins
-
-Want to extend HealthAI 2030? See [How to Add a Copilot Skill](docs/adding-copilot-skill.md) and contribute your own plugin!
+This project is licensed under the MIT License. See `LICENSE` for details.
 
 ---
-*This README was generated by an AI assistant.*
+
+For more details, see the `/docs/` folder and in-app help.

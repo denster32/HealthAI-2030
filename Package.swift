@@ -1,78 +1,55 @@
-// swift-tools-version:5.7
-// Version 1.0.0
+// swift-tools-version: 5.9
 import PackageDescription
 
 let package = Package(
-    name: "HealthAI 2030",
-    defaultLocalization: "en",
-    // Minimum supported platform for all modules
+    name: "HealthAI2030",
     platforms: [
-        .iOS(.v15),
-        .macOS(.v13)
+        .iOS(.v17),
+        .macOS(.v14),
+        .watchOS(.v10),
+        .tvOS(.v17)
     ],
     products: [
-        // Main library product for HealthAI 2030
         .library(
-            name: "HealthAI 2030",
-            targets: ["HealthAI 2030"]
+            name: "HealthAI2030",
+            targets: ["HealthAI2030"]
         ),
     ],
-    dependencies: [
-        // .package(path: "Packages/Managers"), // Removed, no longer exists
-        .package(path: "Modules/Features/LogWaterIntake"),
-        .package(path: "Modules/Features/StartMeditation"),
-        .package(path: "Modules/Features/SleepTracking"),
-        .package(path: "Modules/Features/CardiacHealth"),
-        .package(path: "Modules/Features/MentalHealth"),
-        .package(path: "Modules/Features/SmartHome"),
-        // .package(path: "Modules/Features/Biofeedback"), // Commented out if empty
-        .package(path: "Modules/Kit/Analytics"),
-    ],
+    dependencies: [],
     targets: [
+        // Main app target
         .target(
-            name: "HealthAI 2030",
+            name: "HealthAI2030",
             dependencies: [
-                // .product(name: "Managers", package: "Managers"),
-                .product(name: "LogWaterIntake", package: "LogWaterIntake"),
-                .product(name: "StartMeditation", package: "StartMeditation"),
-                .product(name: "SleepTracking", package: "SleepTracking"),
-                .product(name: "CardiacHealth", package: "CardiacHealth"),
-                .product(name: "MentalHealth", package: "MentalHealth"),
-                .product(name: "SmartHome", package: "SmartHome"),
-                // .product(name: "Biofeedback", package: "Biofeedback"),
-                .product(name: "Analytics", package: "Analytics")
+                .product(name: "SwiftData", package: "swift-data"),
+                "SleepTracking"
             ],
-            path: "HealthAI 2030/App", // Only include main app source directory
-            exclude: [
-                "../Documentation",
-                "../ML",
-                "../CopilotSkills",
-                "../Resources",
-                "../Assets.xcassets",
-                "../Localization",
-                "../Metal4",
-                "../Views",
-                "../Managers",
-                "../Models",
-                "../Security",
-                "../Shortcuts",
-                "../UserScripting",
-                "../WatchKit Extension",
-                "../AppleTV",
-                "../macOS",
-                "../iOS18Features",
-                "../iOS26Dependencies.swift",
-                "../HealthAI2030.xcdatamodeld",
-                "../HealthAI2030_iOS.entitlements",
-                "../ImplementationPlan.md",
-                "../LICENSE",
-                "../Task_Completion_Checklist.md"
-            ]
+            path: "Source",
+            exclude: ["Info.plist"],
+            sources: ["App", "Shared"]
         ),
+        
+        // Sleep Tracking module
+        .target(
+            name: "SleepTracking",
+            dependencies: [
+                .product(name: "SwiftData", package: "swift-data"),
+                .product(name: "OSLog", package: "swift-log")
+            ],
+            path: "Modules/Features/SleepTracking/Sources"
+        ),
+        
+        // Tests
         .testTarget(
-            name: "HealthAI 2030Tests",
-            dependencies: ["HealthAI 2030"],
-            path: "HealthAI 2030Tests"
+            name: "SleepTrackingTests",
+            dependencies: ["SleepTracking"],
+            path: "Modules/Features/SleepTracking/Tests"
         ),
+        
+        .testTarget(
+            name: "HealthAI2030Tests",
+            dependencies: ["HealthAI2030"],
+            path: "Tests"
+        )
     ]
 )
