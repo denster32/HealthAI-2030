@@ -3,9 +3,8 @@ import MetricKit
 import OSLog
 
 @available(iOS 18.0, *)
-@MainActor
 public class MetricManager: NSObject, MXMetricManagerSubscriber {
-    public static let shared = MetricManager()
+    @MainActor public static let shared = MetricManager()
     private let logger = Logger(subsystem: "com.HealthAI2030.Analytics", category: "MetricManager")
 
     private override init() {
@@ -26,7 +25,7 @@ public class MetricManager: NSObject, MXMetricManagerSubscriber {
 
     // MARK: - MXMetricManagerSubscriber
 
-    public func didReceive(_ payloads: [MXMetricPayload]) {
+    nonisolated public func didReceive(_ payloads: [MXMetricPayload]) {
         for payload in payloads {
             // Process CPU metrics
             if let cpuMetrics = payload.cpuMetrics {
@@ -39,19 +38,19 @@ public class MetricManager: NSObject, MXMetricManagerSubscriber {
             }
             
             // Process Display metrics
-            if let displayMetrics = payload.displayMetrics {
-                 logger.debug("Display Metrics: Average pixel luminance \(displayMetrics.averagePixelLuminance.averageValue.value)")
+            if payload.displayMetrics != nil {
+                logger.debug("Display Metrics: Available")
             }
 
             // Log other relevant metrics
             // For example, application launch time
-            if let appLaunchMetrics = payload.applicationLaunchMetrics {
-                logger.debug("App Launch Time: \(appLaunchMetrics.histogrammedTimeToFirstDraw.histogramNumValues) launches, median \(appLaunchMetrics.histogrammedTimeToFirstDraw.median.value)s")
+            if payload.applicationLaunchMetrics != nil {
+                logger.debug("App Launch Time: Available")
             }
         }
     }
 
-    public func didReceive(_ payloads: [MXDiagnosticPayload]) {
+    nonisolated public func didReceive(_ payloads: [MXDiagnosticPayload]) {
         for payload in payloads {
             // Process crash diagnostics
             if let crashDiagnostics = payload.crashDiagnostics {

@@ -34,9 +34,41 @@ public struct SleepFeatureExtractor {
     /// - Parameter data: The raw sleep data points.
     /// - Returns: An array of extracted features.
     public static func extractFeatures(from data: [SleepDataPoint]) -> [Double] {
-        // TODO: Implement feature extraction logic
-        // Example: return data.map { $0.value }
-        return []
+        guard !data.isEmpty else { return [] }
+
+        // Heart Rate values
+        let hrValues = data.filter { $0.type == "heartRate" }.map { $0.value }
+        // RMSSD & SDNN calculation based on HR to RR intervals
+        let rrIntervals = hrValues.map { 60.0 / $0 }
+        let diffs = zip(rrIntervals, rrIntervals.dropFirst()).map { $1 - $0 }
+        let rmssd = sqrt(diffs.map { $0 * $0 }.reduce(0, +) / Double(max(diffs.count, 1)))
+        let sdnn = {
+            guard !rrIntervals.isEmpty else { return 0.0 }
+            let mean = rrIntervals.reduce(0, +) / Double(rrIntervals.count)
+            let varSum = rrIntervals.map { pow($0 - mean, 2) }.reduce(0, +) / Double(rrIntervals.count)
+            return sqrt(varSum)
+        }()
+
+        // Averages and variabilities
+        func avg(_ arr: [Double]) -> Double { arr.isEmpty ? 0.0 : arr.reduce(0, +) / Double(arr.count) }
+        func stddev(_ arr: [Double]) -> Double { guard !arr.isEmpty else { return 0.0 }; let m = avg(arr); return sqrt(arr.map { pow($0 - m, 2) }.reduce(0, +) / Double(arr.count)) }
+
+        let hrAvg = avg(hrValues)
+        let hrVar = stddev(hrValues)
+
+        let spo2Values = data.filter { $0.type == "oxygenSaturation" }.map { $0.value }
+        let spo2Avg = avg(spo2Values)
+        let spo2Var = stddev(spo2Values)
+
+        let tempValues = data.filter { $0.type == "bodyTemperature" }.map { $0.value }
+        let tempAvg = avg(tempValues)
+        let tempGradient = (tempValues.last ?? 0.0) - (tempValues.first ?? 0.0)
+
+        let accelValues = data.filter { $0.type == "accelerometer" }.map { $0.value }
+        let activityCount = accelValues.reduce(0, +)
+        let sleepWake = activityCount > 5.0 ? 1.0 : 0.0
+
+        return [rmssd, sdnn, hrAvg, hrVar, spo2Avg, spo2Var, activityCount, sleepWake, tempAvg, tempGradient]
     }
 }
 

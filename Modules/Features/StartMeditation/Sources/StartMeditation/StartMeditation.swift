@@ -1,13 +1,14 @@
 import Foundation
 import AppIntents
-import Managers
+import MentalHealth // Add this import to resolve MentalHealthManager and MindfulnessType
 
 // MARK: - Core Meditation Logic
 
+@available(iOS 17.0, macOS 14.0, *)
 public class MeditationManager {
     private let mentalHealthManager: MentalHealthManager
 
-    public init(mentalHealthManager: MentalHealthManager = .shared) {
+    public init(mentalHealthManager: MentalHealthManager = MentalHealthManager.shared) {
         self.mentalHealthManager = mentalHealthManager
     }
 
@@ -46,7 +47,7 @@ public struct StartMeditationAppIntent: AppIntent {
         self.duration = duration
     }
 
-    public func perform() async throws -> some IntentResult & ProvidesStringResult {
+    public func perform() async throws -> IntentResult {
         let meditationManager = MeditationManager()
         let durationInSeconds = duration * 60
         await meditationManager.startMeditation(type: MeditationType(from: type), duration: durationInSeconds)

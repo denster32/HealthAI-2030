@@ -2,6 +2,10 @@
 //  iOS26Dependencies.swift
 //  HealthAI 2030
 //
+//  WARNING: This file is deprecated and should be removed before production deployment.
+//  It is a placeholder for future iOS 26+ features and should not be included in release builds.
+//  Remove all references to iOS26DependencyManager throughout the codebase.
+//
 //  iOS 18 Dependency Management and Compatibility Layer
 
 import Foundation
@@ -40,8 +44,7 @@ import MapKit
 import PhotosUI
 import LinkPresentation
 
-@available(iOS 17.0, *)
-@available(macOS 14.0, *)
+@available(iOS 18.0, macOS 15.0, *)
 class iOS26DependencyManager {
     static let shared = iOS26DependencyManager()
     
@@ -50,7 +53,7 @@ class iOS26DependencyManager {
     // MARK: - Framework Availability Checks
     
     var isCreateMLAvailable: Bool {
-        if #available(iOS 17.0, *) {
+        if #available(iOS 18.0, *) {
             return true
         }
         return false
@@ -71,7 +74,7 @@ class iOS26DependencyManager {
     }
     
     var isTipKitAvailable: Bool {
-        if #available(iOS 17.0, *) {
+        if #available(iOS 18.0, *) {
             return true
         }
         return false
@@ -85,7 +88,7 @@ class iOS26DependencyManager {
     }
     
     var isMetalPerformanceShadersAvailable: Bool {
-        if #available(iOS 17.0, *) {
+        if #available(iOS 18.0, *) {
             return true
         }
         return false
@@ -94,21 +97,21 @@ class iOS26DependencyManager {
     // MARK: - iOS 18 Specific Features
     
     var isAdvancedMLOptimizationAvailable: Bool {
-        if #available(iOS 17.0, *) {
+        if #available(iOS 18.0, *) {
             return true
         }
         return false
     }
     
     var isEnhancedHealthKitAvailable: Bool {
-        if #available(iOS 17.0, *) {
+        if #available(iOS 18.0, *) {
             return true
         }
         return false
     }
     
     var isSwiftDataAvailable: Bool {
-        if #available(iOS 17.0, *) {
+        if #available(iOS 18.0, *) {
             return true
         }
         return false
@@ -278,7 +281,7 @@ extension iOS26DependencyManager {
 
 // MARK: - Framework Version Compatibility
 
-@available(iOS 17.0, *)
+@available(iOS 18.0, macOS 15.0, *)
 extension iOS26DependencyManager {
     
     /// Configure iOS 18 specific optimizations

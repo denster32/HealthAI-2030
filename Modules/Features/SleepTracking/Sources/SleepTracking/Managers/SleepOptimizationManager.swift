@@ -3,7 +3,9 @@ import HealthKit
 import Combine
 import CoreML
 import AVFoundation
+#if canImport(UIKit)
 import UIKit
+#endif
 
 class SleepOptimizationManager: ObservableObject {
     static let shared = SleepOptimizationManager()

@@ -15,12 +15,12 @@ let package = Package(
             targets: ["StartMeditation"]),
     ],
     dependencies: [
-        .package(path: "../../../Packages/Managers")
+        .package(path: "../MentalHealth")
     ],
     targets: [
         .target(
             name: "StartMeditation",
-            dependencies: ["Managers"]),
+            dependencies: ["MentalHealth"]),
         .testTarget(
             name: "StartMeditationTests",
             dependencies: ["StartMeditation"]),

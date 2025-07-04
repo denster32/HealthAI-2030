@@ -1,0 +1,14 @@
+# values.yaml for HealthAI 2030 Helm chart
+replicaCount: 2
+image:
+  repository: healthai2030
+  tag: latest
+  pullPolicy: IfNotPresent
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 8080
+env:
+  DATABASE_URL: "postgres://admin:changeMe123!@db-host:5432/healthai2030"
+  API_KEY: "your-api-key-here"
+  SECRET_KEY: "your-secret-key-here"

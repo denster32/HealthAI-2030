@@ -1,0 +1,27 @@
+# Example GitHub Actions workflow for Terraform
+
+name: Terraform
+
+on:
+  push:
+    paths:
+      - 'infra/terraform/**'
+    branches: [ main ]
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+      - name: Terraform Init
+        run: terraform -chdir=infra/terraform init
+      - name: Terraform Validate
+        run: terraform -chdir=infra/terraform validate
+      - name: Terraform Plan
+        run: terraform -chdir=infra/terraform plan
+      # Uncomment below to enable apply (requires secrets configuration)
+      # - name: Terraform Apply
+      #   run: terraform -chdir=infra/terraform apply -auto-approve

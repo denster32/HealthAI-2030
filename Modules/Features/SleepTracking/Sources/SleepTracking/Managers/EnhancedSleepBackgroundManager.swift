@@ -5,7 +5,10 @@ import HealthKit
 import CoreData
 import CloudKit
 import os.log
+
+#if canImport(UIKit)
 import UIKit
+#endif
 
 /// Enhanced Sleep Background Manager - Production-ready background automation
 @MainActor
@@ -1237,9 +1240,6 @@ struct HealthAnomaly {
 
 enum HealthAnomalyType: String {
     case heartRate = "heartRate"
-    case oxygenSaturation = "oxygenSaturation"
-    case hrv = "hrv"
-    case respiratoryRate = "respiratoryRate"
     case temperature = "temperature"
 }
 

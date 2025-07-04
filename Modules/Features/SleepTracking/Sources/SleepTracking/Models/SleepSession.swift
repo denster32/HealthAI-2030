@@ -23,7 +23,7 @@ public struct SleepSession {
     /// The mode of sleep tracking used (see AppConfiguration).
     public let trackingMode: AppConfiguration.SleepTrackingMode
 
-    public init(startTime: Date, endTime: Date, duration: TimeInterval, deepSleepPercentage: Double, remSleepPercentage: Double, lightSleepPercentage: Double, awakePercentage: Double, trackingMode: AppConfiguration.SleepTrackingMode) {
+    public init(startTime: Date, endTime: Date, duration: TimeInterval, deepSleepPercentage: Double, remSleepPercentage: Double, lightSleepPercentage: Double, awakePercentage: Double, trackingMode: AppConfiguration.SleepTrackingMode, interruptions: Int? = nil, deviceSource: String? = nil, userNotes: String? = nil) {
         self.startTime = startTime
         self.endTime = endTime
         self.duration = duration
@@ -32,6 +32,25 @@ public struct SleepSession {
         self.lightSleepPercentage = lightSleepPercentage
         self.awakePercentage = awakePercentage
         self.trackingMode = trackingMode
+        self.interruptions = interruptions
+        self.deviceSource = deviceSource
+        self.userNotes = userNotes
+    }
+
+    // New optional metadata
+    public let interruptions: Int?
+    public let deviceSource: String?
+    public let userNotes: String?
+
+    /// Wake After Sleep Onset duration in seconds (WASO)
+    public var wasoDuration: TimeInterval {
+        return duration * (awakePercentage / 100.0)
+    }
+
+    /// Sleep efficiency ratio (0.0-1.0)
+    public var sleepEfficiency: Double {
+        guard duration > 0 else { return 0.0 }
+        return 1.0 - (wasoDuration / duration)
     }
     // TODO: Add properties for interruptions, device source, and user notes.
     // TODO: Add computed properties for sleep efficiency, WASO, etc.

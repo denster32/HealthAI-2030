@@ -1,91 +1,67 @@
 # Sleep Stage Classification Model
 
-## Model Overview
+This document describes the sleep stage classification ML model and related feature extraction.
 
-- **Name:** SleepStageClassifier
-- **Type:** Classification (RandomForest → CoreML)
-- **Purpose:** Predicts the user's current sleep stage based on physiological signals.
 
-## Inputs
+## Feature Extraction
 
-| Feature       | Type    | Description                     |
-| ------------- | ------- | ------------------------------- |
-| heart_rate    | Double  | Current heart rate (beats/min)  |
-| hrv           | Double  | Heart rate variability (ms)     |
-| motion        | Double  | Motion intensity (0.0–1.0)      |
-| spo2          | Double  | Blood oxygen saturation (%)     |
+- The `SleepFeatureExtractor` now provides a simple static method:
 
-## Output
+  ```swift
+  let features: [Double] = SleepFeatureExtractor.extractFeatures(from: sensorDataPoints)
+  ```
 
-| Name         | Type   | Description                                          |
-| ------------ | ------ | ---------------------------------------------------- |
-| sleep_stage  | Int64  | Predicted sleep stage index                         |
+- Each `SleepDataPoint` contains a `timestamp`, `value` (Double), and `type` (e.g., `"heartRate"`, `"accelerometer"`, `"bodyTemperature"`, `"hrv"`, `"oxygenSaturation"`).
 
-### Sleep Stage Indices
+- For advanced usage, use the `SleepFeatureExtractorImpl` to get a full `SleepFeatures` struct with:
 
-- 0: Awake
-- 1: Light Sleep
-- 2: Deep Sleep
-- 3: REM Sleep
+  - RMSSD and SDNN (HRV metrics)
+  - Heart rate average and variability
+  - Oxygen saturation average and variability
+  - Accelerometer activity count and sleep/wake detection
+  - Wrist temperature average and gradient
+  - `SleepFeatures.timestamp` contains the feature window's end time
 
-## Performance Metrics (Simulated Data)
 
-| Metric             | Value       |
-| ------------------ | ----------- |
-| Accuracy           | ~0.85       |
-| Precision (avg.)   | ~0.84       |
-| Recall (avg.)      | ~0.85       |
-| F1 Score (avg.)    | ~0.85       |
+## Model Input
 
-## Integration
+1. Call the feature extractor to get your feature vector.
+2. Pass the vector into your CoreML sleep stage classifier.
 
-1. Add `SleepStageClassifier.mlmodel` to your Xcode project under the `ml` folder.
-2. Xcode auto-generates a Swift wrapper class `SleepStageClassifier`.
-3. Load the model:
 
-   ```swift
-   let config = MLModelConfiguration()
-   let model = try SleepStageClassifier(configuration: config)
-   ```
+## SleepSession Model Updates
 
-4. Prepare input:
+- `SleepSession` now includes optional metadata:
+  
+  - `interruptions`: Int? (number of awakenings)
+  - `deviceSource`: String?
+  - `userNotes`: String?
 
-   ```swift
-   let input = SleepStageClassifierInput(
-       heart_rate: 65.0,
-       hrv: 50.0,
-       motion: 0.1,
-       spo2: 97.0
-   )
-   ```
+- Computed properties:
+  
+  - `wasoDuration`: TimeInterval (Wake After Sleep Onset)
+  - `sleepEfficiency`: Double (ratio of sleep time to total time)
 
-5. Perform prediction:
 
-   ```swift
-   let output = try model.prediction(input: input)
-   let stageIndex = output.sleep_stage
-   ```
+## Usage Example
 
-6. Map index to `SleepStageType`:
+```swift
+let sessions: [SleepSession] = // fetched from HealthKit or Core Data
+sessions.forEach { session in
+    print("Sleep efficiency: \(session.sleepEfficiency * 100)%")
+}
 
-   ```swift
-   switch stageIndex {
-   case 0: return .awake
-   case 1: return .lightSleep
-   case 2: return .deepSleep
-   case 3: return .remSleep
-   default: return .unknown
-   }
-   ```
+let dataPoints: [SleepDataPoint] = // raw sensor data
+let featureVector = SleepFeatureExtractor.extractFeatures(from: dataPoints)
+let modelOutput = try mySleepModel.prediction(input: featureVector)
+```
 
-## Retraining & Validation
 
-- Use the Jupyter notebook `ml/SleepStageClassification.ipynb` to regenerate the model:
+## Testing
 
-   ```bash
-   pip install -r ml/requirements.txt
-   jupyter notebook ml/SleepStageClassification.ipynb
-   ```
+- Unit tests for feature extraction and session calculations are located in `Modules/Features/SleepTracking/Tests/SleepTrackingTests`.
+- See `SleepFeatureExtractorTests` and `SleepSessionTests` for coverage examples.
+
 
 ## References
 

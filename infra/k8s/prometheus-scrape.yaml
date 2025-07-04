@@ -1,0 +1,5 @@
+# Example Prometheus scrape config for HealthAI 2030
+scrape_configs:
+  - job_name: 'healthai2030'
+    static_configs:
+      - targets: ['healthai2030-service:8080']

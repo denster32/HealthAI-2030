@@ -1,0 +1,21 @@
+# Example GitHub Actions workflow for Helm
+
+name: Helm Deploy
+
+on:
+  push:
+    paths:
+      - 'infra/helm/**'
+    branches: [ main ]
+
+jobs:
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+      - name: Helm Lint
+        run: helm lint infra/helm
+      # Add steps for Helm package, push, and deploy as needed

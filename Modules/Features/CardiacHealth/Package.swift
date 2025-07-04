@@ -1,19 +1,18 @@
-// swift-tools-version:5.3
+// swift-tools-version:5.9
 import PackageDescription
 
 let package = Package(
     name: "CardiacHealth",
     platforms: [
-        .iOS(.v14),
-        .watchOS(.v7)
+        .iOS(.v18),
+        .macOS(.v15)
     ],
     products: [
         .library(
             name: "CardiacHealth",
             targets: ["CardiacHealth"]),
     ],
-    dependencies: [
-    ],
+    dependencies: [],
     targets: [
         .target(
             name: "CardiacHealth",

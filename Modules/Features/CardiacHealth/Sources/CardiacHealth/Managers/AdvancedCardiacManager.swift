@@ -1,11 +1,27 @@
 import Foundation
+#if os(macOS)
+import AppKit
+#endif
+
+#if canImport(HealthKit)
 import HealthKit
+#endif
+
+#if canImport(CoreML)
 import CoreML
+#endif
+
+#if canImport(Combine)
 import Combine
+#endif
+
+#if canImport(SwiftUI)
 import SwiftUI
+#endif
 
 /// Advanced Cardiac Manager for iOS 18+ cardiac health features
 /// Integrates atrial fibrillation detection, cardio fitness tracking, and advanced cardiac analytics
+@available(macOS 13.0, *)
 @MainActor
 class AdvancedCardiacManager: ObservableObject {
     static let shared = AdvancedCardiacManager()
@@ -33,18 +49,23 @@ class AdvancedCardiacManager: ObservableObject {
     @Published var cardiacTrends: [CardiacTrend] = []
     
     // MARK: - Private Properties
+#if !os(macOS)
     private let healthStore = HKHealthStore()
+#endif
     private var cancellables = Set<AnyCancellable>()
     private let cardiacAnalyzer = CardiacAnalyzer()
     private let afibDetector = AFibDetector()
     private let fitnessAnalyzer = FitnessAnalyzer()
     
     // MARK: - Configuration
+#if !os(macOS)
     private let cardiacUpdateInterval: TimeInterval = 60 // 1 minute
     private let afibAnalysisInterval: TimeInterval = 300 // 5 minutes
     private let fitnessAnalysisInterval: TimeInterval = 3600 // 1 hour
+#endif
     
     // MARK: - iOS 18+ HealthKit Types
+#if !os(macOS)
     private let advancedCardiacTypes: Set<HKObjectType> = {
         var types = Set<HKObjectType>()
         if let afib = HKObjectType.quantityType(forIdentifier: .atrialFibrillationBurden) { types.insert(afib) }
@@ -58,6 +79,7 @@ class AdvancedCardiacManager: ObservableObject {
         if let low = HKObjectType.categoryType(forIdentifier: .lowHeartRateEvent) { types.insert(low) }
         return types
     }()
+#endif
     
     private init() {
         setupAdvancedCardiacManager()

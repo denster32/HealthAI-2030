@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  healthai2030:
+    build: .
+    image: healthai2030:latest
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    # Add volumes or other services as needed

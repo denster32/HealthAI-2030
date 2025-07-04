@@ -3,7 +3,13 @@ import Foundation
 import HomeKit
 #endif
 
+// Minimal HealthData struct for compilation
+struct HealthData {
+    var isPreparingForSleep: Bool = false
+}
+
 /// SmartHomeIntegration: Control environment based on health data
+@MainActor
 class SmartHomeIntegration: NSObject {
     static let shared = SmartHomeIntegration()
     #if canImport(HomeKit)

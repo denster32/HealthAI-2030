@@ -1,0 +1,9 @@
+apiVersion: v2
+name: healthai2030
+version: 0.1.0
+description: A Helm chart for HealthAI 2030
+
+templates:
+  - deployment.yaml
+  - service.yaml
+# Add values.yaml and other templates as needed

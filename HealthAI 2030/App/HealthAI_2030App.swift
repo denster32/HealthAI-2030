@@ -24,6 +24,8 @@ struct HealthAI_2030App: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.scenePhase) private var scenePhase
 
+    private let dependencyManager = iOS26DependencyManager.shared
+
     // Managers as StateObjects to ensure they are initialized and retained throughout the app's lifecycle
     @StateObject private var healthDataManager = HealthDataManager.shared
     @StateObject private var predictiveAnalyticsManager = PredictiveAnalyticsManager.shared
@@ -217,6 +219,20 @@ struct HealthAI_2030App: App {
                 Logger.appLifecycle.info("App moved to background")
                 // Schedule background tasks
                 BGTaskScheduler.shared.submit(BGAppRefreshTaskRequest(identifier: "com.healthai2030.apprefresh"))
+            }
+        }
+        .onAppear {
+            dependencyManager.configureOptionalFeatures()
+            dependencyManager.configureIOS26Optimizations()
+            let verificationResult = dependencyManager.verifyRequiredDependencies()
+            if !verificationResult.allDependenciesAvailable {
+                Logger.appLifecycle.critical("Missing critical dependencies: \(verificationResult.missingDependencies.joined(separator: ", "))")
+                // TODO: Present a user-facing alert or guide to resolve missing dependencies
+            } else if verificationResult.hasWarnings {
+                Logger.appLifecycle.warning("App started with warnings: \(verificationResult.warnings.joined(separator: ", "))")
+                // TODO: Log warnings to analytics or present subtle in-app notifications
+            } else {
+                Logger.appLifecycle.info("All dependencies available and iOS 18 ready.")
             }
         }
     }
