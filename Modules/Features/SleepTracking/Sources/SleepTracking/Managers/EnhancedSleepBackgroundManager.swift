@@ -674,7 +674,7 @@ class EnhancedSleepBackgroundManager: ObservableObject {
         let hour = calendar.component(.hour, from: now)
         let minute = calendar.component(.minute, from: now)
         
-        // Get user's preferred wake time (this would come from settings)
+        // Get user's preferred wake time (this should come from settings)
         let preferredWakeHour = 7 // This should be configurable
         let wakeWindow = 30 // 30 minute window
         
@@ -1050,6 +1050,30 @@ class EnhancedSleepBackgroundManager: ObservableObject {
         )
         
         return await executeTaskWithOptimization(identifier: taskType.rawValue, context: context)
+    }
+    
+    /// Registers all enhanced background tasks with the system.
+    func registerEnhancedBackgroundTasks() {
+        // TODO: Implement registration with BGTaskScheduler for enhanced tasks
+    }
+
+    /// Schedules enhanced background tasks for sleep monitoring and optimization.
+    func scheduleEnhancedBackgroundTasks() {
+        // TODO: Implement scheduling logic for enhanced background tasks
+    }
+
+    /// Handles the expiration of an enhanced background task.
+    /// - Parameter identifier: The identifier of the expired task.
+    func handleEnhancedTaskExpiration(identifier: String) async {
+        // TODO: Implement expiration handling logic for enhanced tasks
+    }
+
+    /// Completes an enhanced background task and updates execution history.
+    /// - Parameters:
+    ///   - identifier: The identifier of the completed task.
+    ///   - success: Whether the task completed successfully.
+    func completeEnhancedTask(identifier: String, success: Bool) async {
+        // TODO: Implement completion logic and update stats for enhanced tasks
     }
 }
 

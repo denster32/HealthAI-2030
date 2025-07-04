@@ -13,21 +13,13 @@ let package = Package(
             targets: ["SleepTracking"]),
     ],
     dependencies: [
-        .package(path: "../../../Packages/Models"),
         .package(path: "../../../Packages/Managers"),
-        .package(path: "../../../Packages/Analytics"),
-        .package(path: "../../../Packages/ML"),
-        .package(path: "../../../Packages/Utilities"),
     ],
     targets: [
         .target(
             name: "SleepTracking",
             dependencies: [
-                "Models",
                 "Managers",
-                "Analytics",
-                "ML",
-                "Utilities"
             ]
         ),
         .testTarget(

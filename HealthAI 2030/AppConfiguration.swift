@@ -787,7 +787,10 @@ struct AppConfiguration {
     static let watchConnectivityRequired = false
     static let supportsBackgroundRefresh = true
     static let supportsComplications = true
-    
+
+    // MARK: - App Group Identifier
+    static let appGroupIdentifier = "group.com.healthai2030.widgets"
+
     // MARK: - Privacy Permission Descriptions
     struct PrivacyDescriptions {
         static let healthShare = "SomnaSync Pro needs access to your sleep data, heart rate, and respiratory information to provide personalized sleep optimization, intelligent sleep stage analysis, and advanced biometric monitoring for revolutionary sleep enhancement."

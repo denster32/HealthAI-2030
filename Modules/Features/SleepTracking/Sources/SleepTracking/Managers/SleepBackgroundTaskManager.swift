@@ -59,7 +59,8 @@ class SleepBackgroundTaskManager: ObservableObject {
         Logger.success("Background tasks registered", log: Logger.backgroundTasks)
     }
     
-    private func registerBackgroundTasks() {
+    /// Registers all background tasks with the system.
+    func registerBackgroundTasks() {
         // Register all background task types
         for taskId in TaskIdentifier.allCases {
             registerBackgroundTask(identifier: taskId.rawValue)
@@ -75,6 +76,7 @@ class SleepBackgroundTaskManager: ObservableObject {
     }
     
     // MARK: - Background Task Scheduling
+    /// Schedules all required background tasks for sleep monitoring.
     func scheduleBackgroundTasks() {
         guard isBackgroundProcessingEnabled else { return }
         

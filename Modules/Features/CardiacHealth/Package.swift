@@ -13,14 +13,11 @@ let package = Package(
             targets: ["CardiacHealth"]),
     ],
     dependencies: [
-        .package(path: "../../../Packages/Models"),
-        .package(path: "../../../Packages/Analytics"),
-        .package(path: "../../../Packages/Utilities"),
     ],
     targets: [
         .target(
             name: "CardiacHealth",
-            dependencies: ["Models", "Analytics", "Utilities"]),
+            dependencies: []),
         .testTarget(
             name: "CardiacHealthTests",
             dependencies: ["CardiacHealth"]),

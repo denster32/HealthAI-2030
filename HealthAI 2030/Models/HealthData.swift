@@ -1,7 +1,12 @@
 import Foundation
 import HealthKit
 
-/// Represents comprehensive health data for a user.
+/// Represents comprehensive health data for a user, including metrics from HealthKit and derived analytics.
+///
+/// - Stores basic, activity, sleep, environmental, and mental health metrics.
+/// - Provides initializers for direct input or HealthKit sample arrays.
+/// - Includes utility methods for sleep preparation and quality scoring.
+/// - TODO: Add provenance, error handling, and support for additional metrics.
 public class HealthData {
     // MARK: - Basic Health Metrics
     public var heartRate: Double
@@ -189,4 +194,9 @@ public class HealthData {
         
         sleepQualityScore = (durationScore + deepSleepScore + remSleepScore) * 100
     }
+    
+    // TODO: Add more utility methods for analytics and reporting.
+    // TODO: Add error handling and provenance for all metrics.
 }
+
+// TODO: Add unit tests for HealthData and HealthKit integration.

@@ -667,6 +667,28 @@ class SleepFeedbackEngine: ObservableObject {
         default: return .notification
         }
     }
+    
+    /// Activates the feedback engine and starts monitoring.
+    func activate() {
+        // TODO: Implement activation logic for feedback loop
+    }
+
+    /// Deactivates the feedback engine and stops all interventions.
+    func deactivate() {
+        // TODO: Implement deactivation logic and cleanup
+    }
+
+    /// Schedules a new sleep intervention.
+    /// - Parameter intervention: The intervention to schedule.
+    func scheduleIntervention(_ intervention: SleepIntervention) {
+        // TODO: Implement scheduling logic for interventions
+    }
+
+    /// Tracks the effectiveness of a completed intervention.
+    /// - Parameter intervention: The intervention to track.
+    func trackInterventionEffectiveness(_ intervention: SleepIntervention) {
+        // TODO: Implement effectiveness tracking logic
+    }
 }
 
 // MARK: - Supporting Classes

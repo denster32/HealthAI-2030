@@ -3,6 +3,10 @@ import SwiftData
 
 // MARK: - Main Health Data Model
 
+/// Unified health data entry for vitals, subjective scores, and performance metrics.
+///
+/// - Used for analytics, reporting, and sync.
+/// - TODO: Add provenance, device source, and additional metrics.
 @available(iOS 18.0, macOS 15.0, *)
 @Model
 public final class HealthDataEntry {
@@ -45,10 +49,12 @@ public final class HealthDataEntry {
         self.sleepQuality = sleepQuality
         self.nutritionScore = nutritionScore
     }
+    // TODO: Add computed properties for analytics and display.
 }
 
 // MARK: - Sleep Session Model
 
+/// Sleep session entry for storing session timing and quality.
 @available(iOS 18.0, macOS 15.0, *)
 @Model
 public final class SleepSessionEntry {
@@ -65,10 +71,12 @@ public final class SleepSessionEntry {
         self.duration = duration
         self.qualityScore = qualityScore
     }
+    // TODO: Add sleep stage breakdown and device info.
 }
 
 // MARK: - Workout Session Model
 
+/// Workout session entry for storing workout details and metrics.
 @available(iOS 18.0, macOS 15.0, *)
 @Model
 public final class WorkoutEntry {
@@ -87,10 +95,12 @@ public final class WorkoutEntry {
         self.energyBurned = energyBurned
         self.averageHeartRate = averageHeartRate
     }
+    // TODO: Add GPS, intensity, and device info.
 }
 
 // MARK: - Nutrition Log Model
 
+/// Nutrition log entry for storing macronutrient and calorie intake.
 @available(iOS 18.0, macOS 15.0, *)
 @Model
 public final class NutritionLogEntry {
@@ -109,4 +119,6 @@ public final class NutritionLogEntry {
         self.carbs = carbs
         self.fat = fat
     }
+    // TODO: Add micronutrients and meal type.
 }
+// TODO: Add unit tests for all health data models.

@@ -1,6 +1,10 @@
 import SwiftUI
 import Charts
 
+/// Main view for sleep optimization, analytics, and environment control.
+///
+/// - Uses: SleepOptimizationManager, EnvironmentManager, HealthDataManager (as EnvironmentObjects)
+/// - Accessibility: TODO: Add accessibility labels and VoiceOver support throughout.
 struct SleepOptimizationView: View {
     @EnvironmentObject var sleepOptimizationManager: SleepOptimizationManager
     @EnvironmentObject var environmentManager: EnvironmentManager
@@ -52,6 +56,7 @@ struct SleepOptimizationView: View {
 
 // MARK: - Header View
 
+/// Header section for the sleep optimization screen.
 struct SleepHeaderView: View {
     var body: some View {
         HStack {
@@ -60,6 +65,7 @@ struct SleepHeaderView: View {
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .foregroundColor(.white)
+                    .accessibilityAddTraits(.isHeader)
                 
                 Text("Intelligent sleep engineering and environment optimization")
                     .font(.title3)
@@ -101,6 +107,7 @@ struct SleepHeaderView: View {
 
 // MARK: - Sleep Session Status Card
 
+/// Card displaying the current sleep session status and controls.
 struct SleepSessionStatusCard: View {
     @EnvironmentObject var sleepOptimizationManager: SleepOptimizationManager
     
@@ -206,6 +213,7 @@ struct SleepSessionStatusCard: View {
 
 // MARK: - Sleep Environment Controls
 
+/// Controls for managing the sleep environment (temperature, humidity, lighting, air quality).
 struct SleepEnvironmentControls: View {
     @EnvironmentObject var environmentManager: EnvironmentManager
     
@@ -304,6 +312,7 @@ struct SleepEnvironmentControls: View {
     }
 }
 
+/// Card for a single environment control (e.g., temperature, humidity).
 struct EnvironmentControlCard: View {
     let title: String
     let value: String
@@ -353,6 +362,7 @@ struct EnvironmentControlCard: View {
     }
 }
 
+/// Button for quick environment presets (e.g., Sleep Mode, Relax Mode).
 struct EnvironmentPresetButton: View {
     let title: String
     let icon: String
@@ -387,6 +397,7 @@ struct EnvironmentPresetButton: View {
 
 // MARK: - Sleep Analytics Section
 
+/// Section displaying analytics cards for sleep metrics.
 struct SleepAnalyticsSection: View {
     @EnvironmentObject var healthDataManager: HealthDataManager
     
@@ -463,6 +474,7 @@ struct SleepAnalyticsSection: View {
     }
 }
 
+/// Card displaying a single sleep analytics metric.
 struct AnalyticsCard: View {
     let title: String
     let value: String
@@ -509,6 +521,7 @@ struct AnalyticsCard: View {
 
 // MARK: - Sleep Recommendations Section
 
+/// Section displaying actionable sleep recommendations.
 struct SleepRecommendationsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -549,6 +562,7 @@ struct SleepRecommendationsSection: View {
     }
 }
 
+/// Card for a single sleep recommendation.
 struct RecommendationCard: View {
     let title: String
     let description: String
@@ -605,6 +619,7 @@ struct RecommendationCard: View {
 
 // MARK: - Sleep Trends Chart
 
+/// Section displaying a chart of sleep trends over time.
 struct SleepTrendsChart: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -657,12 +672,14 @@ struct SleepTrendsChart: View {
 
 // MARK: - Supporting Types
 
+/// Priority level for recommendations.
 enum RecommendationPriority {
     case high
     case medium
     case low
 }
 
+/// Data point for sleep trends chart.
 struct SleepDataPoint {
     let date: Date
     let duration: Double
@@ -670,6 +687,7 @@ struct SleepDataPoint {
 
 // MARK: - Placeholder Views
 
+/// Placeholder for sleep session details view.
 struct SleepSessionView: View {
     var body: some View {
         VStack {
@@ -683,6 +701,7 @@ struct SleepSessionView: View {
     }
 }
 
+/// Placeholder for environment setup view.
 struct EnvironmentSetupView: View {
     var body: some View {
         VStack {
@@ -695,3 +714,6 @@ struct EnvironmentSetupView: View {
         .padding()
     }
 }
+
+// TODO: Add accessibility, dynamic type, and localization support throughout all views.
+// TODO: Refactor for modularity and testability as needed.

@@ -4,6 +4,7 @@ import CloudKit
 
 // MARK: - CloudKit Sync Protocol
 
+/// Protocol for models that support CloudKit sync.
 protocol CKSyncable {
     var id: UUID { get }
     var lastSyncDate: Date? { get set }
@@ -13,34 +14,30 @@ protocol CKSyncable {
 
 // MARK: - Enhanced Health Data Models with CloudKit Support
 
+/// Syncable health data entry for unified health metrics and CloudKit sync.
 @available(iOS 18.0, macOS 15.0, *)
 @Model
 public final class SyncableHealthDataEntry: CKSyncable {
     @Attribute(.unique) public var id: UUID
     public var timestamp: Date
-    
     // Vitals
     public var restingHeartRate: Double
     public var hrv: Double
     public var oxygenSaturation: Double
     public var bodyTemperature: Double
-    
     // Subjective Scores
     public var stressLevel: Double
     public var moodScore: Double
     public var energyLevel: Double
-    
     // Performance Metrics
     public var activityLevel: Double
     public var sleepQuality: Double
     public var nutritionScore: Double
-    
     // Sync metadata
     public var lastSyncDate: Date?
     public var needsSync: Bool = false
     public var syncVersion: Int = 1
     public var deviceSource: String = ""
-    
     public init(
         id: UUID = UUID(),
         timestamp: Date = Date(),
@@ -66,8 +63,10 @@ public final class SyncableHealthDataEntry: CKSyncable {
         self.needsSync = true
         self.syncVersion = 1
     }
+    // TODO: Add more health metrics and provenance fields as needed.
 }
 
+/// Syncable sleep session entry for CloudKit sync.
 @available(iOS 18.0, macOS 15.0, *)
 @Model
 public final class SyncableSleepSessionEntry: CKSyncable {
@@ -77,13 +76,11 @@ public final class SyncableSleepSessionEntry: CKSyncable {
     public var duration: TimeInterval
     public var qualityScore: Double
     public var stages: Data? // Serialized sleep stage data
-    
     // Sync metadata
     public var lastSyncDate: Date?
     public var needsSync: Bool = false
     public var syncVersion: Int = 1
     public var deviceSource: String = ""
-    
     public init(id: UUID = UUID(), startTime: Date, endTime: Date, duration: TimeInterval, qualityScore: Double, stages: Data? = nil, deviceSource: String = "") {
         self.id = id
         self.startTime = startTime
@@ -96,44 +93,10 @@ public final class SyncableSleepSessionEntry: CKSyncable {
         self.needsSync = true
         self.syncVersion = 1
     }
+    // TODO: Add more sleep session metadata and device info.
 }
 
-@available(iOS 18.0, macOS 15.0, *)
-@Model
-public final class AnalyticsInsight: CKSyncable {
-    @Attribute(.unique) public var id: UUID
-    public var title: String
-    public var description: String
-    public var category: String
-    public var confidence: Double
-    public var timestamp: Date
-    public var source: String // "iPhone", "Mac", "Watch"
-    public var actionable: Bool
-    public var data: Data? // Serialized insight data
-    public var priority: Int = 0 // 0=low, 1=medium, 2=high, 3=critical
-    
-    // Sync metadata
-    public var lastSyncDate: Date?
-    public var needsSync: Bool = false
-    public var syncVersion: Int = 1
-    
-    public init(id: UUID = UUID(), title: String, description: String, category: String, confidence: Double, timestamp: Date = Date(), source: String, actionable: Bool = false, data: Data? = nil, priority: Int = 0) {
-        self.id = id
-        self.title = title
-        self.description = description
-        self.category = category
-        self.confidence = confidence
-        self.timestamp = timestamp
-        self.source = source
-        self.actionable = actionable
-        self.data = data
-        self.priority = priority
-        self.lastSyncDate = nil
-        self.needsSync = true
-        self.syncVersion = 1
-    }
-}
-
+/// Syncable ML model update for federated learning and CloudKit sync.
 @available(iOS 18.0, macOS 15.0, *)
 @Model
 public final class MLModelUpdate: CKSyncable {
@@ -144,12 +107,10 @@ public final class MLModelUpdate: CKSyncable {
     public var trainingDate: Date
     public var modelData: Data? // Serialized model parameters or delta
     public var source: String // Device that trained the model
-    
     // Sync metadata
     public var lastSyncDate: Date?
     public var needsSync: Bool = false
     public var syncVersion: Int = 1
-    
     public init(id: UUID = UUID(), modelName: String, modelVersion: String, accuracy: Double, trainingDate: Date = Date(), modelData: Data? = nil, source: String) {
         self.id = id
         self.modelName = modelName
@@ -162,8 +123,10 @@ public final class MLModelUpdate: CKSyncable {
         self.needsSync = true
         self.syncVersion = 1
     }
+    // TODO: Add model provenance and update reason fields.
 }
 
+/// Syncable export request for data export and CloudKit sync.
 @available(iOS 18.0, macOS 15.0, *)
 @Model
 public final class ExportRequest: CKSyncable {
@@ -175,12 +138,10 @@ public final class ExportRequest: CKSyncable {
     public var resultURL: String? // CloudKit asset URL for download
     public var requestDate: Date
     public var completedDate: Date?
-    
     // Sync metadata
     public var lastSyncDate: Date?
     public var needsSync: Bool = false
     public var syncVersion: Int = 1
-    
     public init(id: UUID = UUID(), requestedBy: String, exportType: String, dateRange: Data, status: String = "pending", requestDate: Date = Date()) {
         self.id = id
         self.requestedBy = requestedBy
@@ -192,10 +153,12 @@ public final class ExportRequest: CKSyncable {
         self.needsSync = true
         self.syncVersion = 1
     }
+    // TODO: Add export format options and audit fields.
 }
 
 // MARK: - CloudKit Record Extensions
 
+// Extensions for converting models to/from CKRecord for CloudKit sync.
 extension SyncableHealthDataEntry {
     var ckRecord: CKRecord {
         let record = CKRecord(recordType: "HealthDataEntry", recordID: CKRecord.ID(recordName: id.uuidString))
@@ -214,7 +177,6 @@ extension SyncableHealthDataEntry {
         record["deviceSource"] = deviceSource
         return record
     }
-    
     convenience init?(from record: CKRecord) {
         guard let timestamp = record["timestamp"] as? Date,
               let restingHeartRate = record["restingHeartRate"] as? Double,
@@ -230,7 +192,6 @@ extension SyncableHealthDataEntry {
               let id = UUID(uuidString: record.recordID.recordName) else {
             return nil
         }
-        
         self.init(
             id: id,
             timestamp: timestamp,
@@ -246,7 +207,6 @@ extension SyncableHealthDataEntry {
             nutritionScore: nutritionScore,
             deviceSource: record["deviceSource"] as? String ?? ""
         )
-        
         self.lastSyncDate = Date()
         self.needsSync = false
         self.syncVersion = record["syncVersion"] as? Int ?? 1
@@ -267,7 +227,6 @@ extension SyncableSleepSessionEntry {
         }
         return record
     }
-    
     convenience init?(from record: CKRecord) {
         guard let startTime = record["startTime"] as? Date,
               let endTime = record["endTime"] as? Date,
@@ -276,7 +235,6 @@ extension SyncableSleepSessionEntry {
               let id = UUID(uuidString: record.recordID.recordName) else {
             return nil
         }
-        
         self.init(
             id: id,
             startTime: startTime,
@@ -286,56 +244,6 @@ extension SyncableSleepSessionEntry {
             stages: record["stages"] as? Data,
             deviceSource: record["deviceSource"] as? String ?? ""
         )
-        
-        self.lastSyncDate = Date()
-        self.needsSync = false
-        self.syncVersion = record["syncVersion"] as? Int ?? 1
-    }
-}
-
-extension AnalyticsInsight {
-    var ckRecord: CKRecord {
-        let record = CKRecord(recordType: "AnalyticsInsight", recordID: CKRecord.ID(recordName: id.uuidString))
-        record["title"] = title
-        record["description"] = description
-        record["category"] = category
-        record["confidence"] = confidence
-        record["timestamp"] = timestamp
-        record["source"] = source
-        record["actionable"] = actionable
-        record["priority"] = priority
-        record["syncVersion"] = syncVersion
-        if let data = data {
-            record["data"] = data
-        }
-        return record
-    }
-    
-    convenience init?(from record: CKRecord) {
-        guard let title = record["title"] as? String,
-              let description = record["description"] as? String,
-              let category = record["category"] as? String,
-              let confidence = record["confidence"] as? Double,
-              let timestamp = record["timestamp"] as? Date,
-              let source = record["source"] as? String,
-              let actionable = record["actionable"] as? Bool,
-              let id = UUID(uuidString: record.recordID.recordName) else {
-            return nil
-        }
-        
-        self.init(
-            id: id,
-            title: title,
-            description: description,
-            category: category,
-            confidence: confidence,
-            timestamp: timestamp,
-            source: source,
-            actionable: actionable,
-            data: record["data"] as? Data,
-            priority: record["priority"] as? Int ?? 0
-        )
-        
         self.lastSyncDate = Date()
         self.needsSync = false
         self.syncVersion = record["syncVersion"] as? Int ?? 1
@@ -356,7 +264,6 @@ extension MLModelUpdate {
         }
         return record
     }
-    
     convenience init?(from record: CKRecord) {
         guard let modelName = record["modelName"] as? String,
               let modelVersion = record["modelVersion"] as? String,
@@ -366,7 +273,6 @@ extension MLModelUpdate {
               let id = UUID(uuidString: record.recordID.recordName) else {
             return nil
         }
-        
         self.init(
             id: id,
             modelName: modelName,
@@ -376,7 +282,6 @@ extension MLModelUpdate {
             modelData: record["modelData"] as? Data,
             source: source
         )
-        
         self.lastSyncDate = Date()
         self.needsSync = false
         self.syncVersion = record["syncVersion"] as? Int ?? 1
@@ -400,7 +305,6 @@ extension ExportRequest {
         }
         return record
     }
-    
     convenience init?(from record: CKRecord) {
         guard let requestedBy = record["requestedBy"] as? String,
               let exportType = record["exportType"] as? String,
@@ -410,7 +314,6 @@ extension ExportRequest {
               let id = UUID(uuidString: record.recordID.recordName) else {
             return nil
         }
-        
         self.init(
             id: id,
             requestedBy: requestedBy,
@@ -419,7 +322,6 @@ extension ExportRequest {
             status: status,
             requestDate: requestDate
         )
-        
         self.resultURL = record["resultURL"] as? String
         self.completedDate = record["completedDate"] as? Date
         self.lastSyncDate = Date()
@@ -427,3 +329,5 @@ extension ExportRequest {
         self.syncVersion = record["syncVersion"] as? Int ?? 1
     }
 }
+// TODO: Add unit tests for all syncable models and CloudKit extensions.
+// TODO: Document CloudKit sync strategies and error handling.

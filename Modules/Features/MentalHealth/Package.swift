@@ -14,17 +14,11 @@ let package = Package(
             targets: ["MentalHealth"]),
     ],
     dependencies: [
-        .package(path: "../../../Packages/Analytics"),
-        .package(path: "../../../Packages/Utilities"),
-        .package(path: "../../../Packages/Models"),
     ],
     targets: [
         .target(
             name: "MentalHealth",
             dependencies: [
-                "Analytics",
-                "Utilities",
-                "Models"
             ],
             path: "Sources/MentalHealth"
         ),

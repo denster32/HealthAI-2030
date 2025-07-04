@@ -152,6 +152,10 @@ struct SyncStatusCard: View {
     }
 }
 
+import Analytics
+
+import Analytics
+
 struct DeviceInsightsCard: View {
     @State private var insights: [AnalyticsInsight] = []
     @State private var isLoading = true
@@ -214,6 +218,8 @@ struct DeviceInsightsCard: View {
 }
 
 struct InsightRow: View {
+    import Analytics
+    
     let insight: AnalyticsInsight
     
     var body: some View {
@@ -565,6 +571,8 @@ struct ExportOptionsSheet: View {
 
 // MARK: - Supporting Views
 
+import Analytics
+
 struct AllInsightsView: View {
     @State private var insights: [AnalyticsInsight] = []
     
@@ -584,6 +592,8 @@ struct AllInsightsView: View {
 }
 
 struct InsightDetailRow: View {
+    import Analytics
+    
     let insight: AnalyticsInsight
     
     var body: some View {
@@ -777,8 +787,10 @@ struct MacAnalyticsOptionsSheet: View {
             do {
                 // Create analytics insight to trigger Mac processing
                 let deviceSource = UIDevice.current.name
+                import Analytics
+                
                 let insight = AnalyticsInsight(
-                    title: "Mac Analytics Request",
+                                    title: "Mac Analytics Request",
                     description: "Requesting \(selectedAnalysisTypes.map(\.displayName).joined(separator: ", ")) analysis",
                     category: "Request",
                     confidence: 1.0,

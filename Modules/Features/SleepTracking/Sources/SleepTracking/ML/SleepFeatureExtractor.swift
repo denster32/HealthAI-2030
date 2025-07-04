@@ -12,9 +12,9 @@ struct SleepFeatures: Codable, Hashable {
     let heartRateAverage: Double
     let heartRateVariability: Double // Standard deviation of heart rate
     
-    // SpO2 features
-    let spo2Average: Double
-    let spo2Variability: Double // Standard deviation of SpO2
+    // Oxygen Saturation features
+    let oxygenSaturation: Double
+    let oxygenSaturationVariability: Double // Standard deviation of Oxygen Saturation
     
     // Accelerometer-derived movement features
     let activityCount: Double // Sum of magnitudes of accelerometer data
@@ -28,7 +28,34 @@ struct SleepFeatures: Codable, Hashable {
     let timestamp: Date
 }
 
-class SleepFeatureExtractor {
+/// SleepFeatureExtractor extracts features from raw sleep tracking data for ML models.
+public struct SleepFeatureExtractor {
+    /// Extracts features from a sequence of sleep data points.
+    /// - Parameter data: The raw sleep data points.
+    /// - Returns: An array of extracted features.
+    public static func extractFeatures(from data: [SleepDataPoint]) -> [Double] {
+        // TODO: Implement feature extraction logic
+        // Example: return data.map { $0.value }
+        return []
+    }
+}
+
+/// Represents a single sleep data point for feature extraction.
+public struct SleepDataPoint {
+    /// The timestamp of the data point.
+    public let timestamp: Date
+    /// The measured value (e.g., heart rate, movement).
+    public let value: Double
+    /// The type of measurement (e.g., heartRate, movement, temperature).
+    public let type: String
+    public init(timestamp: Date, value: Double, type: String) {
+        self.timestamp = timestamp
+        self.value = value
+        self.type = type
+    }
+}
+
+class SleepFeatureExtractorImpl {
     // This class will be responsible for extracting features from raw sensor data
     // for sleep staging.
 
@@ -56,8 +83,8 @@ class SleepFeatureExtractor {
         let heartRateAvg = calculateAverage(heartRates) ?? 0.0
         let heartRateStdDev = calculateStandardDeviation(heartRates) ?? 0.0
         
-        let spo2Avg = calculateAverage(oxygenSaturations) ?? 0.0
-        let spo2StdDev = calculateStandardDeviation(oxygenSaturations) ?? 0.0
+        let oxygenSaturationAvg = calculateAverage(oxygenSaturations) ?? 0.0
+        let oxygenSaturationStdDev = calculateStandardDeviation(oxygenSaturations) ?? 0.0
         
         let activityCount = calculateActivityCount(from: accelerometerSamples)
         let sleepWake = detectSleepWake(from: accelerometerSamples)
@@ -73,8 +100,8 @@ class SleepFeatureExtractor {
             sdnn: sdnn,
             heartRateAverage: heartRateAvg,
             heartRateVariability: heartRateStdDev,
-            spo2Average: spo2Avg,
-            spo2Variability: spo2StdDev,
+            oxygenSaturation: oxygenSaturationAvg,
+            oxygenSaturationVariability: oxygenSaturationStdDev,
             activityCount: activityCount,
             sleepWakeDetection: sleepWake,
             wristTemperatureAverage: wristTempAvg,
@@ -141,14 +168,13 @@ class SleepFeatureExtractor {
     /// - Parameter accelerometerSamples: An array of `SensorSample` objects of type `.accelerometer`.
     /// - Returns: The total activity count.
     private func calculateActivityCount(from accelerometerSamples: [SensorSample]) -> Double {
-        // Assuming accelerometer samples might come as a single value representing magnitude,
-        // or we might need to combine x, y, z if they were separate samples.
-        // For this implementation, we'll assume the 'value' is already a magnitude or a proxy.
-        // In a real scenario, accelerometer data would likely be a struct with x, y, z components.
-        
-        // If SensorSample.value for accelerometer is a combined magnitude, sum them up.
-        // If it's just one axis, this will be less accurate.
-        return accelerometerSamples.map { abs($0.value) }.reduce(0, +)
+        // Calculate activity count from accelerometer data (3D vector magnitude)
+        return accelerometerSamples.map { sample -> Double in
+            guard let x = sample.x, let y = sample.y, let z = sample.z else {
+                return 0.0 // Handle missing accelerometer components
+            }
+            return sqrt(x * x + y * y + z * z)
+        }.reduce(0, +)
     }
     
     /// Performs a simple sleep/wake detection based on accelerometer data.

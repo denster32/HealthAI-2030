@@ -214,8 +214,10 @@ struct iPadDashboardLayout<Content: View>: View {
 // MARK: - iPad Sidebar Components
 
 struct iPadSidebar: View {
+    import Analytics
+    
     @StateObject private var healthDataManager = HealthDataManager.shared
-    @StateObject private var predictiveAnalytics = PredictiveAnalyticsManager.shared
+        @StateObject private var predictiveAnalytics = PredictiveAnalyticsManager.shared
     
     var body: some View {
         VStack(spacing: 20) {
@@ -335,6 +337,8 @@ struct iPadMetricRow: View {
 }
 
 struct iPadDailySummary: View {
+    import Analytics
+    
     @StateObject private var predictiveAnalytics = PredictiveAnalyticsManager.shared
     
     var body: some View {

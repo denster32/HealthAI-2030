@@ -162,6 +162,22 @@ class SleepCloudKitManager: ObservableObject {
         await syncSleepData()
     }
     
+    /// Configures iCloud sync for sleep data.
+    func configureCloudSync() {
+        // TODO: Implement iCloud sync configuration
+    }
+
+    /// Initiates a full sync of all sleep data to iCloud.
+    func syncAllDataToCloud() async {
+        // TODO: Implement full data sync to iCloud
+    }
+
+    /// Handles sync errors and updates sync status.
+    /// - Parameter error: The error encountered during sync.
+    func handleSyncError(_ error: Error) {
+        // TODO: Implement error handling and status update
+    }
+    
     // MARK: - Sleep Sessions Sync
     private func syncSleepSessions() async {
         Logger.info("Syncing sleep sessions to CloudKit", log: Logger.cloudSync)

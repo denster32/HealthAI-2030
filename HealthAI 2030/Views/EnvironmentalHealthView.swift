@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct EnvironmentalHealthView: View {
+    import Analytics
+    
     @StateObject private var analyticsEngine = AnalyticsEngine.shared
     
     var body: some View {

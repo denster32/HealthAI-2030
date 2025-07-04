@@ -39,7 +39,8 @@ class SleepOptimizationManager: ObservableObject {
     
     // MARK: - Sleep Stage Detection
     
-    func startSleepMonitoring() {
+    /// Starts monitoring sleep patterns and updates published properties.
+    private func startSleepMonitoring() {
         Timer.publish(every: 30, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
@@ -214,6 +215,8 @@ class SleepOptimizationManager: ObservableObject {
     }
     
     // MARK: - ML Model Management
+    
+    /// Loads the Core ML model for sleep stage detection.
     private func loadSleepStageModel() async {
         print("Loading sleep stage model...")
         
@@ -259,6 +262,7 @@ class SleepOptimizationManager: ObservableObject {
         print("Sleep optimization started")
     }
 
+    /// Stops any ongoing sleep optimization.
     func stopOptimization() {
         isOptimizationActive = false
         AdaptiveAudioManager.shared.stopAudio()

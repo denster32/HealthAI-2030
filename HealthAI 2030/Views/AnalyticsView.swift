@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts // Assuming we will use Charts framework for visualizations
+import Analytics
 
 struct AnalyticsView: View {
     @EnvironmentObject var healthDataManager: HealthDataManager
@@ -31,140 +32,17 @@ struct AnalyticsView: View {
                         .shadow(radius: 3)
                         .padding(.bottom, 8)
 
-                    // Daily Summary Section
-                    DailySummarySection()
-
-                    // Weekly Trends Section
-                    WeeklyTrendsSection()
-
-                    // Sleep Analysis Section
-                    SleepAnalysisSection()
-
-                    // Activity Overview Section
                     ActivityOverviewSection()
 
-                    // Insights & Predictions Section (Placeholder for now)
+                    SleepAnalysisSection()
+
                     InsightsAndPredictionsSection()
+
+                    Spacer()
                 }
-                .padding(.vertical)
             }
-            .navigationTitle("Analytics")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle("Analytics Dashboard")
         }
-    }
-}
-
-// MARK: - Sections
-
-struct DailySummarySection: View {
-    @EnvironmentObject var healthDataManager: HealthDataManager
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Image(systemName: "calendar.day.timeline.leading")
-                    .foregroundColor(.blue)
-                Text("Daily Summary")
-                    .font(.headline)
-                Spacer()
-            }
-            .padding(.horizontal)
-
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                HealthSummaryCard(
-                    title: "Avg Heart Rate",
-                    value: "\(Int(healthDataManager.dailyMetrics.averageHeartRate))",
-                    unit: "BPM",
-                    icon: "heart.fill",
-                    color: .red
-                )
-                HealthSummaryCard(
-                    title: "Total Steps",
-                    value: "\(healthDataManager.dailyMetrics.totalSteps)",
-                    unit: "steps",
-                    icon: "figure.walk",
-                    color: .orange
-                )
-                HealthSummaryCard(
-                    title: "Sleep Duration",
-                    value: formatTimeInterval(healthDataManager.dailyMetrics.sleepDuration),
-                    unit: "",
-                    icon: "bed.double.fill",
-                    color: .purple
-                )
-                HealthSummaryCard(
-                    title: "Sleep Quality",
-                    value: "\(Int(healthDataManager.dailyMetrics.sleepQuality * 100))",
-                    unit: "%",
-                    icon: "moon.stars.fill",
-                    color: .green
-                )
-            }
-            .padding(.horizontal)
-        }
-        .padding(.vertical)
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(radius: 2)
-        .padding(.horizontal)
-    }
-
-    private func formatTimeInterval(_ interval: TimeInterval) -> String {
-        let hours = Int(interval) / 3600
-        let minutes = (Int(interval) % 3600) / 60
-        return "\(hours)h \(minutes)m"
-    }
-}
-
-struct WeeklyTrendsSection: View {
-    @EnvironmentObject var healthDataManager: HealthDataManager
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Image(systemName: "chart.line.uptrend.xyaxis")
-                    .foregroundColor(.green)
-                Text("Weekly Trends")
-                    .font(.headline)
-                Spacer()
-            }
-            .padding(.horizontal)
-
-            HealthTrendLineChart(
-                data: healthDataManager.weeklyTrends.heartRateTrend,
-                labels: (0..<healthDataManager.weeklyTrends.heartRateTrend.count).map { "Day \($0 + 1)" },
-                title: "Heart Rate Trend",
-                unit: "BPM",
-                color: .red
-            )
-            .frame(height: 200)
-            .padding(.horizontal)
-
-            HealthTrendLineChart(
-                data: healthDataManager.weeklyTrends.hrvTrend,
-                labels: (0..<healthDataManager.weeklyTrends.hrvTrend.count).map { "Day \($0 + 1)" },
-                title: "HRV Trend",
-                unit: "ms",
-                color: .green
-            )
-            .frame(height: 200)
-            .padding(.horizontal)
-
-            HealthTrendLineChart(
-                data: healthDataManager.weeklyTrends.sleepTrend.map { $0 / 3600.0 }, // Convert to hours
-                labels: (0..<healthDataManager.weeklyTrends.sleepTrend.count).map { "Day \($0 + 1)" },
-                title: "Sleep Duration Trend",
-                unit: "hours",
-                color: .purple
-            )
-            .frame(height: 200)
-            .padding(.horizontal)
-        }
-        .padding(.vertical)
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(radius: 2)
-        .padding(.horizontal)
     }
 }
 
@@ -174,52 +52,31 @@ struct SleepAnalysisSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Image(systemName: "moon.zzz.fill")
-                    .foregroundColor(.purple)
-                Text("Sleep Architecture")
+                Image(systemName: "bed.double.fill")
+                    .foregroundColor(.blue)
+                Text("Sleep Analysis")
                     .font(.headline)
                 Spacer()
             }
             .padding(.horizontal)
 
-            SleepStageDonutChart(sleepMetrics: sleepOptimizationManager.sleepMetrics)
-                .frame(height: 200)
+            Text("Average Sleep Quality: \(String(format: "%.1f", sleepOptimizationManager.averageSleepQuality))")
+                .font(.subheadline)
                 .padding(.horizontal)
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Sleep Quality:")
-                        .font(.subheadline)
-                    Spacer()
-                    Text("\(Int(sleepOptimizationManager.sleepQuality * 100))%")
-                        .font(.subheadline)
-                        .fontWeight(.bold)
-                        .foregroundColor(sleepQualityColor(sleepOptimizationManager.sleepQuality))
-                }
-                Text("Deep Sleep: \(Int(sleepOptimizationManager.deepSleepPercentage * 100))%")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Text("REM Sleep: \(Int(sleepOptimizationManager.sleepMetrics.remSleepPercentage * 100))%")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .padding(.horizontal)
+            Text("Sleep Consistency: \(String(format: "%.1f", sleepOptimizationManager.sleepConsistency))")
+                .font(.subheadline)
+                .padding(.horizontal)
+
+            SleepQualityChartView(sleepData: sleepOptimizationManager.weeklySleepData)
+                .frame(height: 200)
+                .padding(.horizontal)
         }
         .padding(.vertical)
         .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(radius: 2)
         .padding(.horizontal)
-    }
-
-    private func sleepQualityColor(_ quality: Double) -> Color {
-        if quality >= 0.8 {
-            return .green
-        } else if quality >= 0.6 {
-            return .orange
-        } else {
-            return .red
-        }
     }
 }
 
@@ -303,217 +160,35 @@ struct InsightsAndPredictionsSection: View {
     }
 }
 
-// MARK: - Reusable Visualization Components
-
-struct HealthSummaryCard: View {
-    let title: String
-    let value: String
-    let unit: String
-    let icon: String
-    let color: Color
+struct InsightRow: View {
+    let insight: DailyInsight
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(color)
-            Text(title)
-                .font(.caption)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(insight.title)
+                .font(.headline)
+            Text(insight.summary)
+                .font(.subheadline)
                 .foregroundColor(.secondary)
-            HStack(alignment: .bottom, spacing: 4) {
-                Text(value)
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
-                Text(unit)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(color.opacity(0.1))
-        .cornerRadius(8)
+        .padding(.vertical, 8)
     }
 }
 
-struct HealthTrendLineChart: View {
-    let data: [Double]
-    let labels: [String]
-    let title: String
-    let unit: String
-    let color: Color
+struct AlertRow: View {
+    let alert: PriorityAlert
 
     var body: some View {
-        VStack(alignment: .leading) {
-            Text(title)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(alert.title)
+                .font(.headline)
+            Text(alert.description)
                 .font(.subheadline)
-                .fontWeight(.medium)
-                .padding(.leading)
-
-            Chart {
-                ForEach(data.indices, id: \.self) { index in
-                    LineMark(
-                        x: .value("Day", labels[index]),
-                        y: .value(unit, data[index])
-                    )
-                    .foregroundStyle(color)
-                    PointMark(
-                        x: .value("Day", labels[index]),
-                        y: .value(unit, data[index])
-                    )
-                    .foregroundStyle(color)
-                }
-            }
-            .chartYAxisLabel(unit)
-            .chartXAxis {
-                AxisMarks(values: .automatic) { value in
-                    AxisGridLine()
-                    AxisTick()
-                    AxisValueLabel()
-                }
-            }
-            .chartYAxis {
-                AxisMarks(values: .automatic) { value in
-                    AxisGridLine()
-                    AxisTick()
-                    AxisValueLabel()
-                }
-            }
+                .foregroundColor(.red)
         }
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(10)
+        .padding(.vertical, 8)
     }
 }
-
-struct SleepStageDonutChart: View {
-    var sleepMetrics: SleepMetrics
-
-    var body: some View {
-        VStack(alignment: .leading) {
-            Text("Sleep Stage Breakdown")
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .padding(.leading)
-
-            Chart {
-                SectorMark(
-                    angle: .value("Awake", sleepMetrics.awakePercentage),
-                    innerRadius: .ratio(0.618),
-                    outerRadius: .inset(10)
-                )
-                .foregroundStyle(by: .value("Stage", "Awake"))
-                .annotation(position: .overlay) {
-                    if sleepMetrics.awakePercentage > 0.05 {
-                        Text("\(Int(sleepMetrics.awakePercentage * 100))%")
-                            .font(.caption2)
-                            .foregroundStyle(.white)
-                    }
-                }
-
-                SectorMark(
-                    angle: .value("Light Sleep", sleepMetrics.lightSleepPercentage),
-                    innerRadius: .ratio(0.618),
-                    outerRadius: .inset(10)
-                )
-                .foregroundStyle(by: .value("Stage", "Light Sleep"))
-                .annotation(position: .overlay) {
-                    if sleepMetrics.lightSleepPercentage > 0.05 {
-                        Text("\(Int(sleepMetrics.lightSleepPercentage * 100))%")
-                            .font(.caption2)
-                            .foregroundStyle(.white)
-                    }
-                }
-
-                SectorMark(
-                    angle: .value("Deep Sleep", sleepMetrics.deepSleepPercentage),
-                    innerRadius: .ratio(0.618),
-                    outerRadius: .inset(10)
-                )
-                .foregroundStyle(by: .value("Stage", "Deep Sleep"))
-                .annotation(position: .overlay) {
-                    if sleepMetrics.deepSleepPercentage > 0.05 {
-                        Text("\(Int(sleepMetrics.deepSleepPercentage * 100))%")
-                            .font(.caption2)
-                            .foregroundStyle(.white)
-                    }
-                }
-
-                SectorMark(
-                    angle: .value("REM Sleep", sleepMetrics.remSleepPercentage),
-                    innerRadius: .ratio(0.618),
-                    outerRadius: .inset(10)
-                )
-                .foregroundStyle(by: .value("Stage", "REM Sleep"))
-                .annotation(position: .overlay) {
-                    if sleepMetrics.remSleepPercentage > 0.05 {
-                        Text("\(Int(sleepMetrics.remSleepPercentage * 100))%")
-                            .font(.caption2)
-                            .foregroundStyle(.white)
-                    }
-                }
-            }
-            .chartForegroundStyleScale([
-                "Awake": Color.red,
-                "Light Sleep": Color.orange,
-                "Deep Sleep": Color.purple,
-                "REM Sleep": Color.blue
-            ])
-            .chartLegend(position: .bottom, alignment: .center)
-        }
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(10)
-    }
-}
-
-struct DailyActivityBarChart: View {
-    let data: [Double]
-    let labels: [String]
-    let title: String
-    let unit: String
-    let color: Color
-
-    var body: some View {
-        VStack(alignment: .leading) {
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .padding(.leading)
-
-            Chart {
-                ForEach(data.indices, id: \.self) { index in
-                    BarMark(
-                        x: .value("Day", labels[index]),
-                        y: .value(unit, data[index])
-                    )
-                    .foregroundStyle(color)
-                }
-            }
-            .chartYAxisLabel(unit)
-            .chartXAxis {
-                AxisMarks(values: .automatic) { value in
-                    AxisGridLine()
-                    AxisTick()
-                    AxisValueLabel()
-                }
-            }
-            .chartYAxis {
-                AxisMarks(values: .automatic) { value in
-                    AxisGridLine()
-                    AxisTick()
-                    AxisValueLabel()
-                }
-            }
-        }
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(10)
-    }
-}
-
-// MARK: - Previews
 
 struct AnalyticsView_Previews: PreviewProvider {
     static var previews: some View {

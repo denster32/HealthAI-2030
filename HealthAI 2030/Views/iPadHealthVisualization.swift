@@ -476,6 +476,7 @@ struct RecoveryPoint {
 // MARK: - iPad-Specific Analytics Dashboard
 
 struct iPadAnalyticsDashboard: View {
+    import Analytics
     @StateObject private var analyticsEngine = AnalyticsEngine.shared
     
     var body: some View {
