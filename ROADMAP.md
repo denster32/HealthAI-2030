@@ -7,3 +7,4 @@
 - Explainable AI for recommendations
 - Data privacy dashboard
 - Community plugin submission
+- Migrate CoreMLIntegrationManager to use the new SleepStageClassifier CoreML model integration

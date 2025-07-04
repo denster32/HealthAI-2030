@@ -19,8 +19,7 @@ import ActivityKit
 import AVFoundation
 import CoreML
 
-@available(iOS 17.0, *)
-@available(macOS 14.0, *)
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, *)
 
 @main
 struct HealthAI_2030App: App {
@@ -567,27 +566,6 @@ struct HealthAI_2030App: App {
             HKObjectType.quantityType(forIdentifier: .dietaryTransFat)!,
             HKObjectType.quantityType(forIdentifier: .dietaryOmega3FattyAcids)!,
             HKObjectType.quantityType(forIdentifier: .dietaryOmega6FattyAcids)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryCaffeine)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryWater)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryEnergyConsumed)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryFatTotal)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryProtein)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryCarbohydrates)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryFiber)!,
-            HKObjectType.quantityType(forIdentifier: .dietarySugar)!,
-            HKObjectType.quantityType(forIdentifier: .dietarySodium)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryPotassium)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryCalcium)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryIron)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryThiamin)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryRiboflavin)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryNiacin)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryFolate)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryVitaminA)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryVitaminB6)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryVitaminB12)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryVitaminC)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryVitaminD)!,
             HKObjectType.quantityType(forIdentifier: .dietaryVitaminE)!,
             HKObjectType.quantityType(forIdentifier: .dietaryVitaminK)!,
             HKObjectType.quantityType(forIdentifier: .dietaryZinc)!,

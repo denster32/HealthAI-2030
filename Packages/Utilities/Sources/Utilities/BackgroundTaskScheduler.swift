@@ -47,10 +47,23 @@ class BackgroundTaskScheduler {
     
     // MARK: - Task Scheduling
     
-    func scheduleHealthDataSync() {
+    // Helper to compute time interval until next specified hour
+    private func timeIntervalUntil(hour: Int) -> TimeInterval {
+        let calendar = Calendar.current
+        let now = Date()
+        var components = calendar.dateComponents([.year, .month, .day], from: now)
+        components.hour = hour
+        components.minute = 0
+        components.second = 0
+        let target = calendar.date(from: components)! // today at 'hour'
+        let interval = target.timeIntervalSince(now)
+        return interval > 0 ? interval : interval + 24*3600
+    }
+
+    func scheduleHealthDataSyncDaily(at hour: Int = 2) {
         let request = BGAppRefreshTaskRequest(identifier: healthDataSyncTaskIdentifier)
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60) // 15 minutes from now
-        
+        request.earliestBeginDate = Date(timeIntervalSinceNow: timeIntervalUntil(hour: hour))
+
         do {
             try BGTaskScheduler.shared.submit(request)
             print("Health data sync task scheduled")
@@ -58,13 +71,13 @@ class BackgroundTaskScheduler {
             print("Failed to schedule health data sync task: \(error)")
         }
     }
-    
-    func scheduleSleepAnalysis() {
+
+    func scheduleSleepAnalysisDaily(at hour: Int = 2) {
         let request = BGProcessingTaskRequest(identifier: sleepAnalysisTaskIdentifier)
         request.requiresNetworkConnectivity = false
         request.requiresExternalPower = false
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 30 * 60) // 30 minutes from now
-        
+        request.earliestBeginDate = Date(timeIntervalSinceNow: timeIntervalUntil(hour: hour))
+
         do {
             try BGTaskScheduler.shared.submit(request)
             print("Sleep analysis task scheduled")
@@ -72,13 +85,13 @@ class BackgroundTaskScheduler {
             print("Failed to schedule sleep analysis task: \(error)")
         }
     }
-    
-    func scheduleModelUpdate() {
+
+    func scheduleModelUpdateDaily(at hour: Int = 2) {
         let request = BGProcessingTaskRequest(identifier: modelUpdateTaskIdentifier)
         request.requiresNetworkConnectivity = true
         request.requiresExternalPower = true
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 60 * 60) // 1 hour from now
-        
+        request.earliestBeginDate = Date(timeIntervalSinceNow: timeIntervalUntil(hour: hour))
+
         do {
             try BGTaskScheduler.shared.submit(request)
             print("Model update task scheduled")
@@ -86,11 +99,11 @@ class BackgroundTaskScheduler {
             print("Failed to schedule model update task: \(error)")
         }
     }
-    
-    func scheduleEnvironmentSync() {
+
+    func scheduleEnvironmentSyncDaily(at hour: Int = 2) {
         let request = BGAppRefreshTaskRequest(identifier: environmentSyncTaskIdentifier)
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 10 * 60) // 10 minutes from now
-        
+        request.earliestBeginDate = Date(timeIntervalSinceNow: timeIntervalUntil(hour: hour))
+
         do {
             try BGTaskScheduler.shared.submit(request)
             print("Environment sync task scheduled")
@@ -935,4 +948,4 @@ class IntelligentInterventionEngine {
         
         return interventions
     }
-} 
+}

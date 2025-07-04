@@ -129,10 +129,10 @@ struct HealthAI2030MacApp: App {
     }
     
     private func setupBackgroundProcessing() {
-        // Schedule overnight heavy computations
-        let backgroundTask = BackgroundTaskScheduler()
+        // Schedule overnight heavy computations via MacBackgroundAnalyticsProcessor
+        let backgroundTask = BackgroundTaskScheduler.shared
         backgroundTask.scheduleOvernightAnalytics {
-            self.macAnalyticsEngine.performOvernightAnalysis()
+            MacBackgroundAnalyticsProcessor.shared.processNextJob()
         }
     }
     

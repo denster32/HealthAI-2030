@@ -4,10 +4,14 @@
 <dict>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>com.somnasync.pro.sleepanalysis</string>
-		<string>com.somnasync.pro.biometricprocessing</string>
-		<string>com.somnasync.pro.aioptimization</string>
-		<string>com.somnasync.pro.watchsync</string>
+		<string>com.healthai.sleep-analysis</string>
+		<string>com.healthai.data-sync</string>
+		<string>com.healthai.ai-processing</string>
+		<string>com.healthai.smart-alarm</string>
+		<string>com.healthai.health-alert</string>
+		<string>com.healthai.environment-monitoring</string>
+		<string>com.healthai.model-update</string>
+		<string>com.healthai.data-cleanup</string>
 	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>

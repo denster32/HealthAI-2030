@@ -2,7 +2,6 @@ import Foundation
 import CoreML
 import HealthKit
 import Combine
-import CreateML
 import os.log
 
 @available(iOS 17.0, *)
@@ -14,13 +13,19 @@ class CoreMLIntegrationManager: ObservableObject {
     private var sleepStageTransformer: SleepStageTransformer
     private var basePredictionEngine: BasePredictionEngine
     private var mlModelManager: MLModelManager
-    
+    private var sleepStageModel: SleepStageClassifier?
+    @Published var coreMLLoadError: Error?
+
     @Published var modelLoadingStatus: [String: ModelLoadingStatus] = [:]
     @Published var predictionAccuracy: [String: Double] = [:]
     @Published var isModelInitialized = false
     
     private var cancellables = Set<AnyCancellable>()
     
+    private let maxLoadRetries = 3
+    @Published var loadRetryCount: [String: Int] = [:]
+    @Published var modelLoadDurations: [String: TimeInterval] = [:]
+
     private init() {
         sleepStageTransformer = SleepStageTransformer()
         basePredictionEngine = BasePredictionEngine()
@@ -53,57 +58,104 @@ class CoreMLIntegrationManager: ObservableObject {
         modelLoadingStatus["healthPrediction"] = .loading
         modelLoadingStatus["arrhythmia"] = .loading
         
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            self?.loadAllModels()
+        Task.detached(priority: .userInitiated) { [weak self] in
+            await self?.loadAllModels()
         }
     }
     
-    private func loadAllModels() {
-        Task {
+    /// Loads CoreML models with retry logic, backoff, and performance metrics
+    private func loadAllModels() async {
+        let modelName = "sleepStage"
+        let config = MLModelConfiguration()
+        config.computeUnits = .cpuAndNeuralEngine
+        for attempt in 1...maxLoadRetries {
+            // update loading status and retry count
+            DispatchQueue.main.async {
+                self.modelLoadingStatus[modelName] = .loading
+                self.loadRetryCount[modelName] = attempt
+            }
+            let start = Date()
             do {
-                // iOS 18 enhancements - Use async model loading with new APIs
                 try await loadModelWithiOS26Enhancements()
-                
-                let sleepModelInfo = sleepStageTransformer.getModelInfo()
-                if sleepModelInfo.name.contains("Fallback") {
-                    modelLoadingStatus["sleepStage"] = .fallback
-                    predictionAccuracy["sleepStage"] = 0.65
-                } else {
-                    modelLoadingStatus["sleepStage"] = .loaded
-                    predictionAccuracy["sleepStage"] = 0.87
-                }
-                
-                modelLoadingStatus["healthPrediction"] = .loaded
-                predictionAccuracy["healthPrediction"] = 0.82
-                
-                modelLoadingStatus["arrhythmia"] = .loaded
-                predictionAccuracy["arrhythmia"] = 0.91
-                
-                await MainActor.run {
+                let model = try SleepStageClassifier(configuration: config)
+                let duration = Date().timeIntervalSince(start)
+                DispatchQueue.main.async {
+                    self.sleepStageModel = model
+                    self.modelLoadDurations[modelName] = duration
+                    self.modelLoadingStatus[modelName] = .loaded
+                    self.predictionAccuracy[modelName] = MLModelManager.shared.modelAccuracy[modelName] ?? 0.0
                     self.isModelInitialized = true
+                    
+                    // Mark other models as loaded based on MLModelManager
+                    self.modelLoadingStatus["healthPrediction"] = .loaded
+                    self.predictionAccuracy["healthPrediction"] = self.mlModelManager.modelAccuracy["healthPrediction"] ?? 0.0
+                    self.modelLoadingStatus["arrhythmia"] = .loaded
+                    self.predictionAccuracy["arrhythmia"] = self.mlModelManager.modelAccuracy["arrhythmia"] ?? 0.0
                 }
-                
-                Logger.success("CoreMLIntegrationManager: All models initialized", log: Logger.aiEngine)
+                return
             } catch {
-                Logger.error("Failed to load models: \(error)", log: Logger.aiEngine)
+                // on failure, retry or fail
+                if attempt < maxLoadRetries {
+                    // exponential backoff
+                    try? await Task.sleep(nanoseconds: UInt64(Double(attempt) * 0.5 * 1_000_000_000))
+                    continue
+                } else {
+                    DispatchQueue.main.async {
+                        self.coreMLLoadError = error
+                        self.modelLoadingStatus[modelName] = .error
+                        self.isModelInitialized = false
+                    }
+                    os_log("Failed to load CoreML model %@ after %d attempts: %{public}@", log: .default, type: .error, modelName, attempt, String(describing: error))
+                }
+            }
+        }
+        
+        // Load health prediction (mood) model
+        for name in ["healthPrediction", "arrhythmia"] {
+            DispatchQueue.main.async { self.modelLoadingStatus[name] = .loading }
+            var loaded = false
+            let maxRetries = maxLoadRetries
+            for attempt in 1...maxRetries {
+                do {
+                    let model: MLModel?
+                    if name == "healthPrediction" {
+                        model = MLModelRegistry.moodPredictionModel
+                    } else {
+                        model = MLModelRegistry.arrhythmiaDetectionModel
+                    }
+                    guard let coreModel = model else { throw NSError(domain: "CoreMLIntegrationManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Model not found in registry"] ) }
+                    // Optionally wrap into specific type
+                    let accuracy = MLModelManager.shared.modelAccuracy[name] ?? 0.0
+                    DispatchQueue.main.async {
+                        self.modelLoadingStatus[name] = .loaded
+                        self.predictionAccuracy[name] = accuracy
+                    }
+                    loaded = true
+                    break
+                } catch {
+                    if attempt < maxRetries {
+                        try? await Task.sleep(nanoseconds: UInt64(Double(attempt) * 0.3 * 1_000_000_000))
+                        continue
+                    } else {
+                        DispatchQueue.main.async {
+                            self.modelLoadingStatus[name] = .error
+                            self.predictionAccuracy[name] = 0.0
+                            self.coreMLLoadError = NSError(domain: "CoreMLIntegrationManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "Failed loading \(name) model: \(error.localizedDescription)"])
+                        }
+                    }
+                }
             }
         }
     }
     
-    @available(iOS 17.0, *)
     private func loadModelWithiOS26Enhancements() async throws {
-        // Use iOS 18+ optimized model loading with background processing
-        if #available(iOS 17.0, *) {
-            // Use new MLModelConfiguration for iOS 18+ optimizations
-            let config = MLModelConfiguration()
-            config.allowLowPrecisionAccumulationOnGPU = true
-            config.computeUnits = .cpuAndNeuralEngine
-            
-            // Enhanced model caching and optimization for iOS 18
-            config.parameters = [
-                .modelOptimizationHints: MLModelOptimizationHints.reduceMemoryFootprint.rawValue
-            ]
-        }
+        // Use optimized model loading with background processing
+        let config = MLModelConfiguration()
+        config.allowLowPrecisionAccumulationOnGPU = true
+        config.computeUnits = .cpuAndNeuralEngine
+        
+        // Note: Future optimizations will be added when available in newer iOS versions
+        // For now, we use standard configuration options
     }
     
     private func updateModelStatus(_ status: [String: ModelStatus]) {
@@ -121,13 +173,14 @@ class CoreMLIntegrationManager: ObservableObject {
         }
     }
     
+    /// Predicts sleep stage using the loaded CoreML model
     func predictSleepStage(from sensorData: [SensorSample]) -> SleepPredictionResult {
-        guard isModelInitialized else {
+        guard isModelInitialized, let model = sleepStageModel else {
             return SleepPredictionResult(
                 stage: .unknown,
                 confidence: 0.0,
                 quality: 0.0,
-                modelUsed: "None - Not Initialized",
+                modelUsed: modelLoadingStatus["sleepStage"] == .error ? "Error" : "Not Initialized",
                 timestamp: Date()
             )
         }
@@ -135,15 +188,43 @@ class CoreMLIntegrationManager: ObservableObject {
         let sleepFeatureExtractor = SleepFeatureExtractor()
         let features = sleepFeatureExtractor.extractFeatures(from: sensorData)
         
-        let prediction = basePredictionEngine.predictSleepStage(from: features)
-        
-        return SleepPredictionResult(
-            stage: prediction.stage,
-            confidence: prediction.confidence,
-            quality: prediction.quality,
-            modelUsed: getModelName(for: "sleepStage"),
-            timestamp: Date()
-        )
+        do {
+            let input = SleepStageClassifierInput(
+                heart_rate: features.heartRate,
+                hrv: features.hrv,
+                motion: features.movement,
+                spo2: features.oxygenSaturation
+            )
+            let output = try model.prediction(input: input)
+            
+            let stage: SleepStageType = {
+                switch output.sleep_stage {
+                case 0: return .awake
+                case 1: return .lightSleep
+                case 2: return .deepSleep
+                case 3: return .remSleep
+                default: return .unknown
+                }
+            }()
+            
+            let confidence = output.sleep_stageProbability?[NSNumber(value: output.sleep_stage)]?.doubleValue ?? 0.0
+            return SleepPredictionResult(
+                stage: stage,
+                confidence: confidence,
+                quality: confidence,
+                modelUsed: getModelName(for: "sleepStage"),
+                timestamp: Date()
+            )
+        } catch {
+            os_log("SleepStage prediction error: %{public}@", log: .default, type: .error, String(describing: error))
+            return SleepPredictionResult(
+                stage: .unknown,
+                confidence: 0.0,
+                quality: 0.0,
+                modelUsed: "Error",
+                timestamp: Date()
+            )
+        }
     }
     
     func predictHealthMetrics(currentMetrics: HealthMetrics, historicalData: [HealthMetrics]) -> HealthPredictionResult {
@@ -275,20 +356,20 @@ class CoreMLIntegrationManager: ObservableObject {
         return recommendations.isEmpty ? ["All metrics look good! Continue current lifestyle."] : recommendations
     }
     
+    /// Returns retry count and load duration for a given model
+    func getLoadMetrics(for model: String) -> (retries: Int, duration: TimeInterval?) {
+        let retries = loadRetryCount[model] ?? 0
+        let duration = modelLoadDurations[model]
+        return (retries, duration)
+    }
+
+    /// Provides friendly model name and version if available
     private func getModelName(for type: String) -> String {
-        let status = modelLoadingStatus[type] ?? .error
-        switch status {
-        case .loaded:
-            return "CoreML (\(type))"
-        case .fallback:
-            return "Fallback (\(type))"
-        case .loading:
-            return "Loading (\(type))"
-        case .training:
-            return "Training (\(type))"
-        case .error:
-            return "Error (\(type))"
+        var name = type.capitalized
+        if let (retries, duration) = Optional(getLoadMetrics(for: type)), retries > 0 {
+            name += " (loaded in \(String(format: "%.2fs", duration ?? 0)) after \(retries) attempts)"
         }
+        return name
     }
     
     func getModelStatus() -> [String: ModelLoadingStatus] {

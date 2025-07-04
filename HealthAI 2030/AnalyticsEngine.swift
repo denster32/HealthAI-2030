@@ -20,8 +20,11 @@ class AnalyticsEngine {
         // For now, we'll simulate some async work.
         try await Task.sleep(nanoseconds: 1_000_000_000)
 
-        // Collect all data points from the stream.
-        let allData = try await dataStream.collect().async()
+        // Collect all data points from the stream using AsyncSequence
+        var allData = [HealthData]()
+        for try await data in dataStream.values {
+            allData.append(data)
+        }
 
         // Perform some analysis.
         let averageValue = allData.map(\.value).reduce(0, +) / Double(allData.count)

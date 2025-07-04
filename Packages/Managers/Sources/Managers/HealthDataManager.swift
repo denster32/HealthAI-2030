@@ -38,13 +38,25 @@ class HealthDataManager: ObservableObject {
     private let federatedLearningManager = FederatedLearningManager.shared
 
     private init() {
-        requestHealthKitAuthorization { [weak self] success in
-            if success {
-                self?.setupHealthKitObservers()
-                self?.startDataCollection()
-            } else {
-                print("HealthKit authorization failed. Cannot collect health data.")
+        // Initialization is deferred to the initialize() method
+    }
+    
+    /// Initializes the HealthDataManager and sets up data collection.
+    func initialize() async {
+        print("Initializing HealthDataManager...")
+        
+        let success = await withCheckedContinuation { continuation in
+            requestHealthKitAuthorization { success in
+                continuation.resume(returning: success)
             }
+        }
+        
+        if success {
+            setupHealthKitObservers()
+            startDataCollection()
+            print("HealthDataManager initialized successfully")
+        } else {
+            print("HealthKit authorization failed. Cannot collect health data.")
         }
     }
     

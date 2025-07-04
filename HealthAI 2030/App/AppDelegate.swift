@@ -18,6 +18,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var healthStore: HKHealthStore?
     var session: WCSession?
     var backgroundTaskScheduler: BackgroundTaskScheduler?
+    var enhancedBackgroundManager: EnhancedSleepBackgroundManager?
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         
@@ -91,8 +92,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
     
     private func setupBackgroundTasks() {
+        // Legacy background task scheduler
         backgroundTaskScheduler = BackgroundTaskScheduler()
         backgroundTaskScheduler?.registerBackgroundTasks()
+        
+        // Enhanced sleep background manager
+        enhancedBackgroundManager = EnhancedSleepBackgroundManager.shared
+        
+        // Enable background processing by default
+        Task { @MainActor in
+            enhancedBackgroundManager?.enableBackgroundProcessing()
+        }
     }
     
     private func initializeManagers() {
@@ -119,6 +129,64 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Reload all widget timelines to ensure they are up-to-date
         WidgetCenter.shared.reloadAllTimelines()
         print("Widget bundle registered and timelines reloaded.")
+    }
+    
+    // MARK: - App Lifecycle for Background Tasks
+    
+    func applicationDidEnterBackground(_ application: UIApplication) {
+        print("App entered background - scheduling background tasks")
+        
+        // Schedule background tasks when app goes to background
+        Task { @MainActor in
+            enhancedBackgroundManager?.scheduleOptimalBackgroundTasks()
+        }
+        
+        // Update user sleep time if sleep session is active
+        if let sleepManager = SleepManager.shared as? SleepManager,
+           sleepManager.isMonitoring {
+            Task { @MainActor in
+                enhancedBackgroundManager?.updateUserSleepTime(Date())
+            }
+        }
+    }
+    
+    func applicationWillEnterForeground(_ application: UIApplication) {
+        print("App will enter foreground")
+        
+        // Handle app entering foreground
+        Task { @MainActor in
+            enhancedBackgroundManager?.handleAppWillEnterForeground()
+        }
+    }
+    
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        print("App became active")
+        
+        // Handle app becoming active
+        Task { @MainActor in
+            enhancedBackgroundManager?.handleAppDidBecomeActive()
+        }
+        
+        // Reload widget timelines
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+    
+    func applicationWillResignActive(_ application: UIApplication) {
+        print("App will resign active")
+        // App is about to become inactive
+    }
+    
+    func applicationWillTerminate(_ application: UIApplication) {
+        print("App will terminate")
+        
+        // Save any pending data before termination
+        Task { @MainActor in
+            // Ensure all data is saved
+            if let sleepManager = SleepManager.shared as? SleepManager,
+               sleepManager.isMonitoring {
+                await sleepManager.endSleepSession()
+            }
+        }
     }
 }
 

@@ -53,12 +53,25 @@ class FederatedLearningManager: ObservableObject {
     // MARK: - Public Methods
     
     /// Initialize federated learning system
-    func initialize() {
+    func initialize() async {
+        print("Initializing FederatedLearningManager...")
+        
+        // Setup components
         setupModelTraining()
         setupAggregationEngine()
         setupPrivacyManager()
         setupCommunicationManager()
+        
+        // Load configuration
         loadFederatedConfiguration()
+        
+        // Initialize local model (if available)
+        do {
+            try await initializeLocalModel()
+            print("FederatedLearningManager initialized successfully")
+        } catch {
+            print("Error initializing local model: \(error.localizedDescription)")
+        }
     }
     
     /// Start federated learning training
@@ -755,12 +768,22 @@ class FederatedLearningManager: ObservableObject {
         loadPrivacySettings()
         loadModelConfiguration()
     }
-    
+
     private func loadFederatedConfig() {
-        // Load federated learning configuration
-        // This is a placeholder implementation
+        // Load federated learning configuration from keychain
+        if let configString = keychainManager.get(key: federatedConfigKey),
+           let configData = configString.data(using: .utf8) {
+            do {
+                federatedConfig = try JSONDecoder().decode(FederatedConfig.self, from: configData)
+                print("Federated configuration loaded successfully.")
+            } catch {
+                print("Error decoding federated configuration: \(error.localizedDescription)")
+            }
+        } else {
+            print("No federated configuration found in keychain. Using default.")
+        }
     }
-    
+
     private func saveFederatedConfiguration() {
         // Save federated learning configuration
         do {
@@ -1364,12 +1387,6 @@ struct PrivacyBudget {
         privacyBudget.remainingBudget = privacyBudget.totalBudget
         privacyBudget.usedBudget = 0.0
     }
-}
-
-struct PrivacyBudget {
-    var totalBudget: Double = 1.0
-    var remainingBudget: Double = 1.0
-    var usedBudget: Double = 0.0
 }
 
 class FederatedCommunicationManager: ObservableObject {

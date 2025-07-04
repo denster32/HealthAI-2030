@@ -56,6 +56,12 @@ struct MainTabView: View {
                     Text("Analytics")
                 }
             
+            SleepCoachingView()
+                .tabItem {
+                    Image(systemName: "moon.zzz.fill")
+                    Text("Sleep Coach")
+                }
+            
             MentalHealthDashboardView()
                 .tabItem {
                     Image(systemName: "brain.head.profile")
@@ -103,6 +109,10 @@ extension MainTabView {
             }
             
             Section("Health Categories") {
+                NavigationLink(destination: SleepCoachingView()) {
+                    Label("Sleep Coach", systemImage: "moon.zzz.fill")
+                }
+                
                 NavigationLink(destination: MentalHealthDashboardView()) {
                     Label("Mental Health", systemImage: "brain.head.profile")
                 }

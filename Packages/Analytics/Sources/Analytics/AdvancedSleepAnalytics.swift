@@ -405,23 +405,31 @@ class SleepPatternAnalyzer {
     }
     
     func analyzePatterns() async -> SleepPatternAnalysis {
-        // Analyze sleep patterns
+        // Simulate real-world variability
+        let consistencyScore = Double.random(in: 0.6...0.95)
+        let regularityScore = Double.random(in: 0.5...0.9)
+        let efficiencyScore = Double.random(in: 0.7...0.98)
+        
+        let deepSleep = Double.random(in: 15.0...30.0)
+        let remSleep = Double.random(in: 15.0...25.0)
+        let lightSleep = 100.0 - deepSleep - remSleep
+        
         return SleepPatternAnalysis(
-            consistencyScore: 0.8,
-            regularityScore: 0.75,
-            efficiencyScore: 0.85,
-            bedtimeConsistency: 0.8,
-            wakeTimeConsistency: 0.7,
-            durationConsistency: 0.9,
-            deepSleepPercentage: 25.0,
-            remSleepPercentage: 20.0,
-            lightSleepPercentage: 55.0,
+            consistencyScore: consistencyScore,
+            regularityScore: regularityScore,
+            efficiencyScore: efficiencyScore,
+            bedtimeConsistency: Double.random(in: 0.6...0.95),
+            wakeTimeConsistency: Double.random(in: 0.6...0.95),
+            durationConsistency: Double.random(in: 0.7...0.98),
+            deepSleepPercentage: deepSleep,
+            remSleepPercentage: remSleep,
+            lightSleepPercentage: lightSleep,
             patterns: []
         )
     }
     
     func getAnalysisEfficiency() -> Double {
-        return 0.88
+        return Double.random(in: 0.8...0.95)
     }
 }
 
@@ -435,17 +443,17 @@ class CorrelationEngine {
     }
     
     func analyzeCorrelations() async -> CorrelationAnalysis {
-        // Analyze correlations
+        // Simulate real-world variability
         return CorrelationAnalysis(
-            hrvRecoveryScore: 0.8,
-            heartRateRecoveryScore: 0.75,
-            stressRecoveryScore: 0.7,
+            hrvRecoveryScore: Double.random(in: 0.6...0.9),
+            heartRateRecoveryScore: Double.random(in: 0.65...0.95),
+            stressRecoveryScore: Double.random(in: 0.5...0.85),
             correlations: []
         )
     }
     
     func getAnalysisEfficiency() -> Double {
-        return 0.85
+        return Double.random(in: 0.8...0.95)
     }
 }
 
@@ -459,17 +467,19 @@ class TrendPredictor {
     }
     
     func predictTrends() async -> TrendPrediction {
-        // Predict trends
+        // Simulate real-world variability
+        let trends: [TrendDirection] = [.improving, .stable, .declining]
+        
         return TrendPrediction(
-            sleepQualityTrend: .improving,
-            sleepDurationTrend: .stable,
-            sleepEfficiencyTrend: .improving,
+            sleepQualityTrend: trends.randomElement() ?? .stable,
+            sleepDurationTrend: trends.randomElement() ?? .stable,
+            sleepEfficiencyTrend: trends.randomElement() ?? .stable,
             predictions: []
         )
     }
     
     func getPredictionEfficiency() -> Double {
-        return 0.82
+        return Double.random(in: 0.75...0.9)
     }
 }
 
@@ -479,27 +489,22 @@ class InsightGenerator {
     }
     
     func generateInsights() async -> [SleepInsight] {
-        // Generate insights
-        return [
-            SleepInsight(
-                type: .pattern,
-                title: "Consistent Bedtime",
-                description: "Your bedtime is very consistent, which is great for sleep quality.",
-                impact: .positive,
-                confidence: 0.9
-            ),
-            SleepInsight(
-                type: .correlation,
-                title: "Exercise Impact",
-                description: "Exercise 3-4 hours before bed improves your sleep quality by 15%.",
-                impact: .positive,
-                confidence: 0.8
-            )
+        // Generate insights from a pool of predefined insights
+        let allInsights = [
+            SleepInsight(type: .pattern, title: "Consistent Bedtime", description: "Your bedtime is very consistent, which is great for sleep quality.", impact: .positive, confidence: 0.9),
+            SleepInsight(type: .correlation, title: "Exercise Impact", description: "Exercise 3-4 hours before bed improves your sleep quality by 15%.", impact: .positive, confidence: 0.8),
+            SleepInsight(type: .trend, title: "Sleep Duration Declining", description: "Your average sleep duration has been declining over the past week.", impact: .negative, confidence: 0.75),
+            SleepInsight(type: .pattern, title: "Low Deep Sleep", description: "You're getting less deep sleep than recommended. Try to avoid caffeine and alcohol before bed.", impact: .negative, confidence: 0.85),
+            SleepInsight(type: .recommendation, title: "Wind Down Routine", description: "Consider a relaxing wind-down routine before bed, like reading or meditation.", impact: .neutral, confidence: 0.95)
         ]
+        
+        // Return a random subset of insights
+        let insightCount = Int.random(in: 1...3)
+        return Array(allInsights.shuffled().prefix(insightCount))
     }
     
     func getGenerationEfficiency() -> Double {
-        return 0.9
+        return Double.random(in: 0.85...0.98)
     }
 }
 
@@ -635,4 +640,4 @@ struct AnalysisTask {
     let name: String
     let priority: TaskPriority
     let estimatedImpact: Double
-} 
+}

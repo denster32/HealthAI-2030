@@ -9,7 +9,7 @@ HealthAI 2030 is a forward-looking application designed to provide users with de
 
 ## ✨ Features
 
-- **Advanced Health Analytics:** Deep analysis of sleep, cardiac, respiratory, and mental health data.
+- **Advanced Health Analytics:** Deep analysis of sleep, cardiac, respiratory, and mental health data. [Learn more → Sleep Stage Classification Model](docs/SleepStageClassifier.md)
 - **AI Health Coach:** Personalized recommendations and proactive nudges powered by machine learning.
 - **Multi-Platform Experience:** Seamless integration across iPhone, Apple Watch, Apple TV, and Mac.
 - **AR Health Visualizer:** Augmented Reality visualizations of health data.

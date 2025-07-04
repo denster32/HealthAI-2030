@@ -1,13 +1,50 @@
 
 import Foundation
+import Utilities
 
 /// Manages integration with smart home devices.
-class SmartHomeManager {
+class SmartHomeManager: ObservableObject {
 
     static let shared = SmartHomeManager()
     private let circadianCalculator = CircadianRhythmCalculator()
+    
+    @Published var isInitialized = false
+    @Published var connectedDevices: [String] = []
 
     private init() {}
+    
+    /// Initializes the SmartHomeManager and connects to available devices.
+    func initialize() async {
+        // Simulate device discovery and connection
+        print("SMART HOME: Initializing SmartHomeManager...")
+        
+        // Simulate device discovery
+        await discoverDevices()
+        
+        // Update initial lighting based on time of day
+        updateCircadianLighting()
+        
+        isInitialized = true
+        print("SMART HOME: SmartHomeManager initialized with \(connectedDevices.count) devices")
+    }
+    
+    /// Discovers and connects to available smart home devices.
+    private func discoverDevices() async {
+        // Simulate device discovery
+        // In a real app, this would use HomeKit, Matter, or other protocols
+        
+        // Simulate a delay for device discovery
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        // Add discovered devices
+        connectedDevices = [
+            "Living Room Lights",
+            "Bedroom Lights",
+            "Smart Thermostat",
+            "Air Purifier",
+            "Smart Blinds"
+        ]
+    }
 
     /// Adjusts smart lights to align with the user's circadian rhythm.
     func updateCircadianLighting() {

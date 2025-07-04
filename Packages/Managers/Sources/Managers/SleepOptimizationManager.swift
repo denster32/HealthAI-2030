@@ -21,8 +21,20 @@ class SleepOptimizationManager: ObservableObject {
     private var sleepStageModel: MLModel?
     
     private init() {
-        loadSleepStageModel()
+        // Initialization is deferred to the initialize() method
+    }
+    
+    /// Initializes the SleepOptimizationManager and sets up sleep monitoring.
+    func initialize() async {
+        print("Initializing SleepOptimizationManager...")
+        
+        // Load the sleep stage ML model
+        await loadSleepStageModel()
+        
+        // Start monitoring sleep patterns
         startSleepMonitoring()
+        
+        print("SleepOptimizationManager initialized successfully")
     }
     
     // MARK: - Sleep Stage Detection
@@ -64,30 +76,35 @@ class SleepOptimizationManager: ObservableObject {
         ]
     }
     
-    private func predictSleepStage(with input: [Double]) {
-        let prediction = performSleepStagePrediction(input: input)
-        
-        DispatchQueue.main.async {
-            self.currentSleepStage = prediction
-            self.sleepMetrics.addTime(30, to: prediction) // Assuming 30-second intervals
-            self.updateSleepMetrics()
-            self.triggerInterventionsIfNeeded()
+    private func predictSleepStage(with input: MLMultiArray) {
+        do {
+            let model = try SleepStageClassifier(configuration: MLModelConfiguration())
+            let prediction = try model.prediction(input: SleepStageClassifierInput(heart_rate: input[0].doubleValue, hrv: input[1].doubleValue, motion: input[2].doubleValue, spo2: input[3].doubleValue))
+            
+            let sleepStage: SleepStageType
+            switch prediction.sleep_stage {
+            case 0: sleepStage = .awake
+            case 1: sleepStage = .lightSleep
+            case 2: sleepStage = .deepSleep
+            case 3: sleepStage = .remSleep
+            default: sleepStage = .unknown
+            }
+            
+            DispatchQueue.main.async {
+                self.currentSleepStage = sleepStage
+                self.sleepMetrics.addTime(30, to: sleepStage) // Assuming 30-second intervals
+                self.updateSleepMetrics()
+                self.triggerInterventionsIfNeeded()
+            }
+        } catch {
+            print("Error making prediction: \(error.localizedDescription)")
         }
     }
     
     private func performSleepStagePrediction(input: [Double]) -> SleepStageType {
-        let heartRate = input[0]
-        let hrv = input[1]
-        
-        if heartRate < 60 && hrv > 50 {
-            return .deepSleep
-        } else if heartRate < 70 && hrv > 30 {
-            return .lightSleep
-        } else if heartRate > 80 {
-            return .remSleep
-        } else {
-            return .awake
-        }
+        // This method is now replaced by the CoreML model integration.
+        // The logic has been moved to predictSleepStage(with: MLMultiArray).
+        return .unknown
     }
     
     // MARK: - Sleep Interventions
@@ -197,8 +214,20 @@ class SleepOptimizationManager: ObservableObject {
     }
     
     // MARK: - ML Model Management
-    private func loadSleepStageModel() {
+    private func loadSleepStageModel() async {
         print("Loading sleep stage model...")
+        
+        guard let modelURL = Bundle.main.url(forResource: "SleepStageClassifier", withExtension: "mlmodelc") else {
+            print("Error: SleepStageClassifier.mlmodelc not found.")
+            return
+        }
+        
+        do {
+            sleepStageModel = try MLModel(contentsOf: modelURL)
+            print("Sleep stage model loaded successfully")
+        } catch {
+            print("Error loading sleep stage model: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Metrics and Analytics
