@@ -1,0 +1,372 @@
+name: HealthAI 2030 CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop, feature/*, hotfix/* ]
+  pull_request:
+    branches: [ main, develop ]
+  release:
+    types: [ published, created ]
+
+env:
+  SWIFT_VERSION: "5.9"
+  XCODE_VERSION: "15.2"
+  IOS_DEPLOYMENT_TARGET: "18.0"
+  MACOS_DEPLOYMENT_TARGET: "15.0"
+
+jobs:
+  # MARK: - Code Quality & Linting
+  code-quality:
+    name: Code Quality & Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v1
+        with:
+          swift-version: ${{ env.SWIFT_VERSION }}
+          
+      - name: Install SwiftLint
+        run: |
+          curl -sSL "https://github.com/realm/SwiftLint/releases/latest/download/bazel-bin-swiftlint_macos" -o swiftlint
+          chmod +x swiftlint
+          sudo mv swiftlint /usr/local/bin/
+          
+      - name: Run SwiftLint
+        run: |
+          swiftlint lint --reporter github-actions-logging
+          
+      - name: Check code formatting
+        run: |
+          swiftlint lint --reporter json > swiftlint-report.json
+          
+      - name: Upload SwiftLint results
+        uses: actions/upload-artifact@v3
+        with:
+          name: swiftlint-report
+          path: swiftlint-report.json
+
+  # MARK: - Unit Tests
+  unit-tests:
+    name: Unit Tests
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        platform: [iOS, macOS, watchOS, tvOS]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+          
+      - name: Run Unit Tests
+        run: |
+          swift test --platform ${{ matrix.platform }} --parallel
+          
+      - name: Generate test coverage
+        run: |
+          swift test --enable-code-coverage
+          xcrun llvm-cov export -format=lcov .build/debug/HealthAI2030PackageTests.xctest/Contents/MacOS/HealthAI2030PackageTests > coverage.lcov
+          
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: coverage.lcov
+          flags: ${{ matrix.platform }}
+          name: ${{ matrix.platform }}-coverage
+
+  # MARK: - Integration Tests
+  integration-tests:
+    name: Integration Tests
+    runs-on: macos-latest
+    needs: unit-tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+          
+      - name: Run Integration Tests
+        run: |
+          swift test --filter IntegrationTests
+          
+      - name: Run Performance Tests
+        run: |
+          swift test --filter PerformanceTests
+
+  # MARK: - UI Tests
+  ui-tests:
+    name: UI Tests
+    runs-on: macos-latest
+    needs: integration-tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+          
+      - name: Start iOS Simulator
+        run: |
+          xcrun simctl boot "iPhone 15 Pro"
+          xcrun simctl boot "iPad Pro (12.9-inch) (6th generation)"
+          
+      - name: Run UI Tests
+        run: |
+          xcodebuild test -scheme HealthAI2030 -destination 'platform=iOS Simulator,name=iPhone 15 Pro' -only-testing:UITests
+          xcodebuild test -scheme HealthAI2030 -destination 'platform=iOS Simulator,name=iPad Pro (12.9-inch) (6th generation)' -only-testing:UITests
+
+  # MARK: - Build & Archive
+  build:
+    name: Build & Archive
+    runs-on: macos-latest
+    needs: [unit-tests, integration-tests, ui-tests]
+    strategy:
+      matrix:
+        platform: [iOS, macOS, watchOS, tvOS]
+        configuration: [Debug, Release]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+          
+      - name: Build for ${{ matrix.platform }} (${{ matrix.configuration }})
+        run: |
+          swift build -c ${{ matrix.configuration }} --platform ${{ matrix.platform }}
+          
+      - name: Archive for ${{ matrix.platform }}
+        if: matrix.configuration == 'Release'
+        run: |
+          xcodebuild archive -scheme HealthAI2030 -destination generic/platform=${{ matrix.platform }} -archivePath ./build/HealthAI2030-${{ matrix.platform }}.xcarchive
+          
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-${{ matrix.platform }}-${{ matrix.configuration }}
+          path: .build/${{ matrix.configuration }}
+
+  # MARK: - Security Scan
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Run OWASP ZAP Scan
+        uses: zaproxy/action-full-scan@v0.8.0
+        with:
+          target: 'https://healthai2030.com'
+          
+      - name: Run Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'HealthAI2030'
+          path: '.'
+          format: 'HTML'
+          out: 'reports'
+          
+      - name: Upload security report
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-report
+          path: reports/
+
+  # MARK: - Performance Testing
+  performance-test:
+    name: Performance Testing
+    runs-on: macos-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+          
+      - name: Run Performance Tests
+        run: |
+          swift test --filter PerformanceTests --parallel
+          
+      - name: Generate Performance Report
+        run: |
+          xcrun xctest -XCTest All PerformanceTests -resultBundlePath ./performance-results.xcresult
+          
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-results
+          path: performance-results.xcresult
+
+  # MARK: - Documentation Generation
+  documentation:
+    name: Generate Documentation
+    runs-on: macos-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+          
+      - name: Generate Documentation
+        run: |
+          swift package generate-documentation --target HealthAI2030
+          
+      - name: Build Documentation Site
+        run: |
+          swift package --allow-writing-to-directory docs generate-documentation --target HealthAI2030 --output-path docs
+          
+      - name: Deploy Documentation
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+
+  # MARK: - App Store Connect
+  app-store-connect:
+    name: App Store Connect
+    runs-on: macos-latest
+    needs: [build, security-scan, performance-test, documentation]
+    if: github.event_name == 'release' && github.event.action == 'published'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+          
+      - name: Setup App Store Connect API
+        uses: apple-actions/import-codesigning-certs@v1
+        with:
+          p12-file-base64: ${{ secrets.P12_BASE64 }}
+          p12-password: ${{ secrets.P12_PASSWORD }}
+          
+      - name: Build and Upload to App Store Connect
+        run: |
+          xcodebuild -scheme HealthAI2030 -destination generic/platform=iOS archive -archivePath ./build/HealthAI2030.xcarchive
+          xcodebuild -exportArchive -archivePath ./build/HealthAI2030.xcarchive -exportOptionsPlist exportOptions.plist -exportPath ./build/export
+          
+      - name: Upload to App Store Connect
+        uses: apple-actions/upload-testflight@v1
+        with:
+          app-path: ./build/export/HealthAI2030.ipa
+          api-key: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          api-issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+
+  # MARK: - Deployment
+  deployment:
+    name: Deployment
+    runs-on: ubuntu-latest
+    needs: [build, security-scan, performance-test, documentation]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v2
+        
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: healthai2030/app:latest,healthai2030/app:${{ github.sha }}
+          
+      - name: Deploy to Kubernetes
+        uses: steebchen/kubectl@v2
+        with:
+          config: ${{ secrets.KUBE_CONFIG_DATA }}
+          command: apply -f k8s/
+          
+      - name: Deploy to Cloud Functions
+        run: |
+          gcloud functions deploy healthai2030-api --runtime swift --trigger-http --allow-unauthenticated
+          
+      - name: Update CDN
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+
+  # MARK: - Notification
+  notification:
+    name: Notification
+    runs-on: ubuntu-latest
+    needs: [deployment]
+    if: always()
+    steps:
+      - name: Send Slack notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#healthai-deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          
+      - name: Send email notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "HealthAI 2030 Deployment - ${{ github.sha }}"
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: "HealthAI 2030 CI/CD"
+          body: |
+            Deployment completed for commit ${{ github.sha }}
+            Status: ${{ job.status }}
+            View details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  # MARK: - Cleanup
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [notification]
+    if: always()
+    steps:
+      - name: Cleanup old artifacts
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - 30);
+            
+            for (const artifact of artifacts.data.artifacts) {
+              if (new Date(artifact.created_at) < cutoff) {
+                await github.rest.actions.deleteArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id,
+                });
+              }
+            } 

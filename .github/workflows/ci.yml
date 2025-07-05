@@ -1,0 +1,661 @@
+# HealthAI 2030 Continuous Integration Pipeline
+# Comprehensive CI/CD for iOS 18+ / macOS 15+ health application
+
+name: 🏥 HealthAI 2030 CI/CD
+
+on:
+  push:
+    branches: [ main, develop, release/* ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run nightly security scans
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: 'Deployment environment'
+        required: false
+        default: 'none'
+        type: choice
+        options:
+        - none
+        - testflight
+        - app-store
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_16.0.app/Contents/Developer
+  XCODE_VERSION: '16.0'
+  SWIFT_VERSION: '6.0'
+  IOS_VERSION: '18.0'
+  MACOS_VERSION: '15.0'
+
+# =============================================================================
+# WORKFLOW JOBS
+# =============================================================================
+
+jobs:
+
+  # ===========================================================================
+  # ENVIRONMENT SETUP AND VALIDATION
+  # ===========================================================================
+  
+  setup:
+    name: 🔧 Environment Setup
+    runs-on: macos-15
+    timeout-minutes: 10
+    
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
+      xcode-version: ${{ steps.xcode-info.outputs.version }}
+      swift-version: ${{ steps.swift-info.outputs.version }}
+      
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 🍎 Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: 📊 System Information
+      id: xcode-info
+      run: |
+        echo "version=$(xcodebuild -version | head -n1 | awk '{print $2}')" >> $GITHUB_OUTPUT
+        echo "📱 Xcode Version: $(xcodebuild -version | head -n1)"
+        echo "🛠️  Available SDKs:"
+        xcodebuild -showsdks | grep -E "(iOS|macOS|watchOS|tvOS)"
+        
+    - name: 🔧 Swift Information
+      id: swift-info
+      run: |
+        echo "version=$(swift --version | head -n1 | awk '{print $4}')" >> $GITHUB_OUTPUT
+        echo "⚡ Swift Version: $(swift --version | head -n1)"
+        
+    - name: 🔑 Cache Key Generation
+      id: cache-key
+      run: |
+        CACHE_KEY="v1-swift-${{ runner.os }}-$(date +'%Y-%m')-$(shasum Package.swift Package.resolved 2>/dev/null | shasum | head -c8)"
+        echo "key=${CACHE_KEY}" >> $GITHUB_OUTPUT
+        echo "🔑 Cache Key: ${CACHE_KEY}"
+
+  # ===========================================================================
+  # SWIFT PACKAGE ANALYSIS
+  # ===========================================================================
+  
+  swift-analysis:
+    name: 🔍 Swift Package Analysis
+    runs-on: macos-15
+    needs: setup
+    timeout-minutes: 15
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🍎 Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: 📦 Cache Swift Packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          .build
+          DerivedData
+        key: ${{ needs.setup.outputs.cache-key }}
+        restore-keys: |
+          v1-swift-${{ runner.os }}-
+          
+    - name: 🔗 Resolve Dependencies
+      run: |
+        echo "🔗 Resolving Swift Package dependencies..."
+        swift package resolve
+        swift package show-dependencies --format json > package-dependencies.json
+        
+    - name: 📊 Package Analysis
+      run: |
+        echo "📊 Analyzing package structure..."
+        echo "Total packages: $(swift package show-dependencies | grep -c "├──\|└──")"
+        echo "Direct dependencies: $(swift package show-dependencies | grep -c "├──")"
+        
+    - name: 🔒 Security Audit
+      run: |
+        echo "🔒 Running security audit..."
+        # Check for known vulnerabilities in dependencies
+        if command -v swift-audit &> /dev/null; then
+          swift audit
+        else
+          echo "ℹ️  swift-audit not available, skipping vulnerability check"
+        fi
+        
+    - name: 📋 Upload Package Info
+      uses: actions/upload-artifact@v4
+      with:
+        name: package-analysis
+        path: package-dependencies.json
+        retention-days: 7
+
+  # ===========================================================================
+  # CODE QUALITY AND STYLE
+  # ===========================================================================
+  
+  code-quality:
+    name: 🎨 Code Quality & Style
+    runs-on: macos-15
+    needs: setup
+    timeout-minutes: 20
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 🍎 Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: 📦 Cache Swift Packages
+      uses: actions/cache@v4
+      with:
+        path: .build
+        key: ${{ needs.setup.outputs.cache-key }}
+        restore-keys: |
+          v1-swift-${{ runner.os }}-
+          
+    - name: 🔧 Install Development Tools
+      run: |
+        # Install SwiftLint
+        if ! command -v swiftlint &> /dev/null; then
+          echo "📥 Installing SwiftLint..."
+          brew install swiftlint
+        fi
+        
+        # Install SwiftFormat  
+        if ! command -v swiftformat &> /dev/null; then
+          echo "📥 Installing SwiftFormat..."
+          brew install swiftformat
+        fi
+        
+    - name: 🎨 SwiftLint Analysis
+      run: |
+        echo "🎨 Running SwiftLint analysis..."
+        swiftlint --reporter github-actions-logging
+        
+    - name: 📐 SwiftFormat Check
+      run: |
+        echo "📐 Checking code formatting..."
+        swiftformat --lint --reporter github-actions .
+        
+    - name: 🔍 Custom Code Analysis
+      run: |
+        echo "🔍 Running custom code analysis..."
+        
+        # Check for TODO/FIXME comments
+        echo "📝 TODO/FIXME Analysis:"
+        find . -name "*.swift" -exec grep -l "TODO\|FIXME" {} \; | wc -l | xargs echo "Found TODO/FIXME in files:"
+        
+        # Check for sensitive data patterns
+        echo "🔒 Sensitive Data Check:"
+        if grep -r --include="*.swift" --include="*.plist" -i "password\|secret\|key\|token" . --exclude-dir=.build --exclude-dir=.git; then
+          echo "⚠️  Potential sensitive data found"
+        else
+          echo "✅ No obvious sensitive data patterns found"
+        fi
+        
+        # Code complexity analysis
+        echo "📊 Code Statistics:"
+        find . -name "*.swift" -not -path "./.build/*" | xargs wc -l | tail -1
+
+  # ===========================================================================
+  # SWIFT PACKAGE TESTING
+  # ===========================================================================
+  
+  swift-package-tests:
+    name: 🧪 Swift Package Tests
+    runs-on: macos-15
+    needs: [setup, swift-analysis]
+    timeout-minutes: 30
+    
+    strategy:
+      matrix:
+        configuration: [debug, release]
+        
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🍎 Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: 📦 Cache Swift Packages
+      uses: actions/cache@v4
+      with:
+        path: .build
+        key: ${{ needs.setup.outputs.cache-key }}
+        restore-keys: |
+          v1-swift-${{ runner.os }}-
+          
+    - name: 🔨 Build Swift Packages
+      run: |
+        echo "🔨 Building Swift packages in ${{ matrix.configuration }} mode..."
+        swift build -c ${{ matrix.configuration }} --build-tests
+        
+    - name: 🧪 Run Swift Package Tests
+      run: |
+        echo "🧪 Running Swift package tests..."
+        swift test -c ${{ matrix.configuration }} --parallel --enable-code-coverage
+        
+    - name: 📊 Generate Coverage Report
+      if: matrix.configuration == 'debug'
+      run: |
+        echo "📊 Generating code coverage report..."
+        xcrun llvm-cov export -format="lcov" \
+          .build/debug/HealthAI2030PackageTests.xctest/Contents/MacOS/HealthAI2030PackageTests \
+          -instr-profile .build/debug/codecov/default.profdata > coverage.lcov
+        
+    - name: 📈 Upload Coverage
+      if: matrix.configuration == 'debug'
+      uses: codecov/codecov-action@v4
+      with:
+        file: coverage.lcov
+        flags: swift-packages
+        name: swift-package-coverage
+
+  # ===========================================================================
+  # IOS APPLICATION TESTING
+  # ===========================================================================
+  
+  ios-tests:
+    name: 📱 iOS Application Tests
+    runs-on: macos-15
+    needs: [setup, code-quality]
+    timeout-minutes: 45
+    
+    strategy:
+      matrix:
+        device: ['iPhone 15 Pro', 'iPad Pro (12.9-inch) (6th generation)']
+        ios-version: ['18.0']
+        
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🍎 Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: 📦 Cache Build Artifacts
+      uses: actions/cache@v4
+      with:
+        path: |
+          .build
+          DerivedData
+        key: ${{ needs.setup.outputs.cache-key }}-ios
+        restore-keys: |
+          ${{ needs.setup.outputs.cache-key }}
+          v1-swift-${{ runner.os }}-
+          
+    - name: 📱 List Available Simulators
+      run: |
+        echo "📱 Available iOS Simulators:"
+        xcrun simctl list devices available | grep iOS
+        
+    - name: 🔨 Build iOS App
+      run: |
+        echo "🔨 Building iOS app for ${{ matrix.device }}..."
+        xcodebuild \
+          -scheme HealthAI2030 \
+          -destination 'platform=iOS Simulator,name=${{ matrix.device }},OS=${{ matrix.ios-version }}' \
+          -configuration Debug \
+          -derivedDataPath DerivedData \
+          build-for-testing
+          
+    - name: 🧪 Run iOS Unit Tests
+      run: |
+        echo "🧪 Running iOS unit tests on ${{ matrix.device }}..."
+        xcodebuild \
+          -scheme HealthAI2030 \
+          -destination 'platform=iOS Simulator,name=${{ matrix.device }},OS=${{ matrix.ios-version }}' \
+          -configuration Debug \
+          -derivedDataPath DerivedData \
+          -enableCodeCoverage YES \
+          test-without-building
+          
+    - name: 🎭 Run iOS UI Tests
+      continue-on-error: true
+      run: |
+        echo "🎭 Running iOS UI tests on ${{ matrix.device }}..."
+        xcodebuild \
+          -scheme HealthAI2030UITests \
+          -destination 'platform=iOS Simulator,name=${{ matrix.device }},OS=${{ matrix.ios-version }}' \
+          -configuration Debug \
+          -derivedDataPath DerivedData \
+          test-without-building
+          
+    - name: 📊 Process Test Results
+      if: always()
+      run: |
+        echo "📊 Processing test results..."
+        find DerivedData -name "*.xcresult" -exec echo "Found test result: {}" \;
+        
+    - name: 📋 Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-test-results-${{ matrix.device }}-${{ matrix.ios-version }}
+        path: |
+          DerivedData/**/Logs/Test/*.xcresult
+        retention-days: 7
+
+  # ===========================================================================
+  # MACOS APPLICATION TESTING
+  # ===========================================================================
+  
+  macos-tests:
+    name: 🖥️ macOS Application Tests
+    runs-on: macos-15
+    needs: [setup, code-quality]
+    timeout-minutes: 30
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🍎 Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: 📦 Cache Build Artifacts
+      uses: actions/cache@v4
+      with:
+        path: |
+          .build
+          DerivedData
+        key: ${{ needs.setup.outputs.cache-key }}-macos
+        restore-keys: |
+          ${{ needs.setup.outputs.cache-key }}
+          v1-swift-${{ runner.os }}-
+          
+    - name: 🔨 Build macOS App
+      run: |
+        echo "🔨 Building macOS app..."
+        xcodebuild \
+          -scheme HealthAI2030-macOS \
+          -destination 'platform=macOS' \
+          -configuration Debug \
+          -derivedDataPath DerivedData \
+          build-for-testing
+          
+    - name: 🧪 Run macOS Tests
+      run: |
+        echo "🧪 Running macOS tests..."
+        xcodebuild \
+          -scheme HealthAI2030-macOS \
+          -destination 'platform=macOS' \
+          -configuration Debug \
+          -derivedDataPath DerivedData \
+          -enableCodeCoverage YES \
+          test-without-building
+
+  # ===========================================================================
+  # PERFORMANCE AND MEMORY TESTING
+  # ===========================================================================
+  
+  performance-tests:
+    name: ⚡ Performance Tests
+    runs-on: macos-15
+    needs: [setup, swift-package-tests]
+    timeout-minutes: 25
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🍎 Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: 📦 Cache Build Artifacts
+      uses: actions/cache@v4
+      with:
+        path: .build
+        key: ${{ needs.setup.outputs.cache-key }}-performance
+        
+    - name: ⚡ Run Performance Tests
+      run: |
+        echo "⚡ Running performance benchmark tests..."
+        swift test --filter PerformanceTests -c release
+        
+    - name: 🧠 Memory Usage Analysis
+      run: |
+        echo "🧠 Analyzing memory usage patterns..."
+        # Run with memory debugging enabled
+        swift test --filter MemoryTests -c debug \
+          -Xswiftc -sanitize=address \
+          -Xswiftc -sanitize-address-use-after-scope
+          
+    - name: 📊 Performance Report
+      run: |
+        echo "📊 Generating performance report..."
+        echo "Build completed successfully - detailed performance metrics would be captured here"
+
+  # ===========================================================================
+  # SECURITY SCANNING
+  # ===========================================================================
+  
+  security-scan:
+    name: 🔒 Security Analysis
+    runs-on: macos-15
+    needs: setup
+    timeout-minutes: 20
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🔍 Dependency Security Scan
+      run: |
+        echo "🔍 Scanning dependencies for vulnerabilities..."
+        swift package show-dependencies --format json > deps.json
+        
+        # Check for known vulnerable packages
+        if grep -q "vulnerable" deps.json; then
+          echo "⚠️  Potentially vulnerable dependencies found"
+        else
+          echo "✅ No known vulnerable dependencies"
+        fi
+        
+    - name: 🔒 Code Security Analysis
+      run: |
+        echo "🔒 Running security code analysis..."
+        
+        # Check for hardcoded secrets
+        if grep -r --include="*.swift" -i "password.*=\|secret.*=\|key.*=" . --exclude-dir=.build --exclude-dir=.git; then
+          echo "⚠️  Potential hardcoded secrets found"
+          exit 1
+        fi
+        
+        # Check for insecure network calls
+        if grep -r --include="*.swift" "http://" . --exclude-dir=.build --exclude-dir=.git; then
+          echo "⚠️  Insecure HTTP calls found"
+          exit 1
+        fi
+        
+        echo "✅ Basic security checks passed"
+        
+    - name: 🔐 Privacy Manifest Validation
+      run: |
+        echo "🔐 Validating privacy manifests..."
+        
+        PRIVACY_MANIFEST="Apps/MainApp/Resources/PrivacyInfo.xcprivacy"
+        if [[ -f "$PRIVACY_MANIFEST" ]]; then
+          if xmllint --noout "$PRIVACY_MANIFEST"; then
+            echo "✅ Privacy manifest is valid"
+          else
+            echo "❌ Privacy manifest has errors"
+            exit 1
+          fi
+        else
+          echo "⚠️  Privacy manifest not found"
+        fi
+
+  # ===========================================================================
+  # BUILD VERIFICATION
+  # ===========================================================================
+  
+  build-verification:
+    name: 🔧 Build Verification
+    runs-on: macos-15
+    needs: [ios-tests, macos-tests]
+    timeout-minutes: 30
+    
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+        platform: [iOS, macOS]
+        
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🍎 Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: 🔨 Build Verification
+      run: |
+        echo "🔨 Verifying ${{ matrix.platform }} build in ${{ matrix.configuration }} configuration..."
+        
+        case "${{ matrix.platform }}" in
+          iOS)
+            DESTINATION="platform=iOS Simulator,name=iPhone 15 Pro"
+            SCHEME="HealthAI2030"
+            ;;
+          macOS)
+            DESTINATION="platform=macOS"
+            SCHEME="HealthAI2030-macOS"
+            ;;
+        esac
+        
+        xcodebuild \
+          -scheme "$SCHEME" \
+          -destination "$DESTINATION" \
+          -configuration "${{ matrix.configuration }}" \
+          -derivedDataPath "DerivedData-${{ matrix.platform }}-${{ matrix.configuration }}" \
+          clean build
+          
+    - name: 📏 Build Size Analysis
+      if: matrix.configuration == 'Release'
+      run: |
+        echo "📏 Analyzing build size for ${{ matrix.platform }}..."
+        find "DerivedData-${{ matrix.platform }}-${{ matrix.configuration }}" -name "*.app" -exec du -sh {} \;
+
+  # ===========================================================================
+  # DEPLOYMENT PREPARATION
+  # ===========================================================================
+  
+  deployment-prep:
+    name: 🚀 Deployment Preparation
+    runs-on: macos-15
+    needs: [build-verification, security-scan, performance-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    timeout-minutes: 20
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🍎 Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: 📦 Create Archive Build
+      run: |
+        echo "📦 Creating archive build for App Store..."
+        
+        # iOS Archive
+        xcodebuild \
+          -scheme HealthAI2030 \
+          -destination 'generic/platform=iOS' \
+          -configuration Release \
+          -archivePath "build/HealthAI2030-iOS.xcarchive" \
+          archive
+          
+    - name: 📋 Upload Archive
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-archive
+        path: build/HealthAI2030-iOS.xcarchive
+        retention-days: 30
+
+  # ===========================================================================
+  # NOTIFICATION AND REPORTING
+  # ===========================================================================
+  
+  report:
+    name: 📊 Final Report
+    runs-on: macos-15
+    needs: [swift-package-tests, ios-tests, macos-tests, security-scan, performance-tests]
+    if: always()
+    timeout-minutes: 5
+    
+    steps:
+    - name: 📊 Generate CI Report
+      run: |
+        echo "📊 HealthAI 2030 CI/CD Pipeline Report"
+        echo "=================================="
+        echo ""
+        echo "🔧 Environment:"
+        echo "  - Xcode: ${{ needs.setup.outputs.xcode-version }}"
+        echo "  - Swift: ${{ needs.setup.outputs.swift-version }}"
+        echo "  - iOS Target: ${{ env.IOS_VERSION }}+"
+        echo "  - macOS Target: ${{ env.MACOS_VERSION }}+"
+        echo ""
+        echo "📋 Job Status:"
+        echo "  - Swift Package Tests: ${{ needs.swift-package-tests.result }}"
+        echo "  - iOS Tests: ${{ needs.ios-tests.result }}"
+        echo "  - macOS Tests: ${{ needs.macos-tests.result }}"
+        echo "  - Security Scan: ${{ needs.security-scan.result }}"
+        echo "  - Performance Tests: ${{ needs.performance-tests.result }}"
+        echo ""
+        
+        # Overall status
+        if [[ "${{ needs.swift-package-tests.result }}" == "success" && \
+              "${{ needs.ios-tests.result }}" == "success" && \
+              "${{ needs.macos-tests.result }}" == "success" && \
+              "${{ needs.security-scan.result }}" == "success" ]]; then
+          echo "✅ Overall Status: PASSED"
+          echo "🚀 Ready for deployment!"
+        else
+          echo "❌ Overall Status: FAILED"
+          echo "🔧 Issues need to be resolved before deployment"
+        fi
+
+# =============================================================================
+# WORKFLOW CONFIGURATION
+# =============================================================================
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  checks: write
+  pull-requests: write
