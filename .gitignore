@@ -1,135 +1,380 @@
-# Xcode
-#
-# gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
+# HealthAI 2030 .gitignore
+# Comprehensive exclusion list for iOS/macOS Swift development
 
-## User settings
-xcuserdata/
+# =============================================================================
+# XCODE AND SWIFT
+# =============================================================================
 
-## compatibility with Xcode 8 and earlier (ignoring not required starting Xcode 9)
-*.xcscmblueprint
-*.xccheckout
-
-## compatibility with Xcode 3 and earlier (ignoring not required starting Xcode 4)
+# Xcode build artifacts
 build/
 DerivedData/
-*.moved-aside
-*.pbxuser
-!default.pbxuser
-*.mode1v3
-!default.mode1v3
-*.mode2v3
-!default.mode2v3
-*.perspectivev3
-!default.perspectivev3
+*.xcarchive
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xcuserdatad
+**/xcshareddata/WorkspaceSettings.xcsettings
 
-## Obj-C/Swift specific
-*.hmap
+# Swift Package Manager
+/.build
+/Packages
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+.swiftpm/
 
-## App packaging
+# Swift compilation artifacts
+*.swiftmodule
+*.swiftdoc
+*.swiftsourceinfo
+*.generated.swift
+
+# Xcode Previews
+**/Preview Content/
+
+# =============================================================================
+# APPLE PLATFORM SPECIFIC
+# =============================================================================
+
+# iOS/macOS app bundles
+*.app
 *.ipa
 *.dSYM.zip
 *.dSYM
 
-## Playgrounds
-timeline.xctimeline
-playground.xcworkspace
+# Simulator artifacts
+**/iOS Simulator/
+**/Simulator/
 
-# Swift Package Manager
-#
-# Add this line if you want to avoid checking in source code from Swift Package Manager dependencies.
-# Packages/
-# Package.pins
-# Package.resolved
-# *.xcodeproj
-#
-# Xcode automatically generates this directory with a .xcworkspacedata file and xcshareddata dir
-# hence it is not needed unless you have added a package configuration file to your project
-# .swiftpm
+# Provisioning profiles
+*.mobileprovision
+*.provisionprofile
 
-.build/
+# Code signing
+*.certSigningRequest
+*.p12
+*.cer
+*.crt
 
-# CocoaPods
-#
-# We recommend against adding the Pods directory to your .gitignore. However
-# you should judge for yourself, the pros and cons are mentioned at:
-# https://guides.cocoapods.org/using/using-cocoapods.html#should-i-check-the-pods-directory-into-source-control
-#
-# Pods/
-#
-# Add this line if you want to avoid checking in source code from the Xcode workspace
-# *.xcworkspace
+# Metal compiled shaders
+*.metallib
+*.air
 
-# Carthage
-#
-# Add this line if you want to avoid checking in source code from Carthage dependencies.
-# Carthage/Checkouts
+# Core Data
+*.mom
+*.momd
+*.omo
 
+# =============================================================================
+# HEALTHAI 2030 SPECIFIC
+# =============================================================================
+
+# Environment configuration
+.env
+.env.local
+.env.development
+.env.production
+
+# Health data exports (contains sensitive information)
+/exports/
+/health_data_exports/
+*.health_export
+*.healthai_backup
+
+# Machine Learning models (may be large)
+/Models/Compiled/
+*.mlmodelc
+/MLModels/Training/
+/training_data/
+
+# Graphics assets cache
+/GeneratedAssets/
+/MetalCache/
+*.mtlp-json
+
+# Analytics and crash reports
+/Analytics/
+/CrashReports/
+*.crash
+*.symbolicatecrash
+
+# Test artifacts
+/TestResults/
+*.test_result
+/PerformanceBaselines/
+
+# =============================================================================
+# SENSITIVE INFORMATION
+# =============================================================================
+
+# API keys and secrets
+secrets.plist
+APIKeys.plist
+**/Secrets/
+*.key
+*.pem
+*.p8
+
+# CloudKit private information
+CloudKitPrivate.plist
+CloudKitSecrets.plist
+
+# Development certificates
+*.developerprofile
+dev_certs/
+
+# Database files
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+
+# Configuration files with sensitive data
+config.private.json
+settings.private.plist
+
+# =============================================================================
+# DEVELOPMENT TOOLS
+# =============================================================================
+
+# CocoaPods (if used)
+Pods/
+Podfile.lock
+*.xcworkspace
+
+# Carthage (if used)
 Carthage/Build/
+Carthage/Checkouts/
 
-# Accio dependency management
-Dependencies/
-.accio/
+# SPM checkouts
+.build/
+.swiftpm/
 
-# fastlane
-#
-# It is recommended to not store the screenshots in the git repo.
-# Instead, use fastlane to re-generate the screenshots whenever they are needed.
-# For more information about the recommended setup visit:
-# https://docs.fastlane.tools/best-practices/source-control/
+# Instruments traces
+*.trace
 
+# Memory graphs
+*.memgraph
+
+# Xcode debugging
+*.xcactivitylog
+*.xcscmblueprint
+
+# =============================================================================
+# MACOS SPECIFIC
+# =============================================================================
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon files
+Icon?
+Icon\r\r
+
+# Thumbnails
+._*
+
+# Files that might appear on external disks
+.Spotlight-V100
+.Trashes
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# =============================================================================
+# IDE SPECIFIC
+# =============================================================================
+
+# AppCode
+.idea/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# =============================================================================
+# CI/CD AND DEPLOYMENT
+# =============================================================================
+
+# Fastlane
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+fastlane/builds/
 
-# Code Injection
-#
-# After new code Injection tools there's a generated folder /iOSInjectionProject
-# https://github.com/johnno1962/injectionforxcode
+# GitHub Actions artifacts
+.github/workflows/artifacts/
 
-iOSInjectionProject/
+# Deployment artifacts
+/dist/
+/release/
+*.zip
 
-# SwiftLint
-.swiftlint-cache/
+# =============================================================================
+# DOCUMENTATION GENERATION
+# =============================================================================
 
-# Mac OS
-.DS_Store
+# DocC generated documentation
+.docc-build/
+/Documentation/Build/
 
-# Temporary files
-*.tmp
-*.temp
-*~.nib
+# Jazzy documentation
+docs/
 
-# Analysis files
-all_swift_files.txt
-pbxproj_files.txt
-kilo-code.json
+# =============================================================================
+# THIRD PARTY SERVICES
+# =============================================================================
 
-# IDE files
-.vscode/
-.idea/
+# Sentry
+sentry.properties
 
-# Logs
-*.log
+# Firebase
+GoogleService-Info.plist
+google-services.json
 
-# Environment files
-.env
-.env.local
-.env.production
+# AWS
+.aws/
 
-# Documentation builds
-docs/build/
+# =============================================================================
+# TESTING
+# =============================================================================
 
-# Coverage reports
-*.gcov
-*.lcov
+# XCTest artifacts
+*.xcresult
+/TestArtifacts/
+
+# UI Test screenshots
+/UITestScreenshots/
+
+# Performance test results
+*.perfdata
+
+# Code coverage
+*.gcda
+*.gcno
+lcov.info
 coverage/
 
-# Backup files
-*.backup
-*.bak
+# =============================================================================
+# LOGGING AND MONITORING
+# =============================================================================
 
-# Archive files
-*.tar.gz
-*.zip
-*.rar
+# Log files
+*.log
+logs/
+/Logs/
+
+# Crash logs
+*.crash
+crash_logs/
+
+# Performance monitoring
+*.perf
+*.prof
+
+# =============================================================================
+# TEMPORARY FILES
+# =============================================================================
+
+# Temporary directories
+tmp/
+temp/
+/tmp/
+
+# Cache directories
+cache/
+/Cache/
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Lock files
+*.lock
+
+# =============================================================================
+# CUSTOM PROJECT EXCLUSIONS
+# =============================================================================
+
+# Health data simulation files
+/SimulatedHealthData/
+*.health_sim
+
+# Research and development
+/Research/
+/Prototypes/
+/Experiments/
+
+# Design assets (if large)
+/DesignAssets/Raw/
+*.sketch
+*.fig
+
+# Video and audio assets (if large)
+*.mov
+*.mp4
+*.m4a
+*.wav
+
+# =============================================================================
+# SECURITY SCANNING RESULTS
+# =============================================================================
+
+# Security scan reports
+/SecurityReports/
+*.security_report
+security_scan_results/
+
+# Vulnerability assessments
+/VulnerabilityReports/
+
+# =============================================================================
+# MISCELLANEOUS
+# =============================================================================
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+
+# Editor directories and files
+.vscode-test
+.nyc_output
+.grunt
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# Environment variables (backup)
+.env.backup
+.env.*.backup

@@ -1,0 +1,9 @@
+# Example Loki configuration for centralized logging
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9095
+
+scrape_configs:
+  - job_name: system
+    static_configs:
+      - targets: [localhost]

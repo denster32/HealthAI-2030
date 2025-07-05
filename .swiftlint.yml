@@ -1,69 +1,171 @@
-# SwiftLint Configuration for HealthAI 2030
+# HealthAI 2030 SwiftLint Configuration
+# Comprehensive code quality and style enforcement for iOS 18+ / macOS 15+ health app
 
-# Included and Excluded directories
+# =============================================================================
+# BASIC CONFIGURATION
+# =============================================================================
+
+# SwiftLint version requirement
+min_swift_version: "6.0"
+
+# Directories to include in linting
 included:
-  - HealthAI\ 2030
+  - Apps
+  - Packages
+  - Modules
   - Tests
+  - Sources
 
+# Directories and files to exclude
 excluded:
-  - HealthAI\ 2030.xcodeproj
-  - HealthAI\ 2030/Assets.xcassets
-  - HealthAI\ 2030/Documentation
   - .build
+  - .git
+  - DerivedData
   - Carthage
   - Pods
-  - Packages
+  - vendor
+  - "**/*.generated.swift"
+  - "**/*.pb.swift"
+  - "**/Protobuf/**"
+  - Package.swift
 
-# Analyzer Rules (require compilation)
+# File types to analyze
+file_types:
+  - .swift
+
+# =============================================================================
+# ANALYZER RULES
+# =============================================================================
+
 analyzer_rules:
   - explicit_self
   - unused_declaration
   - unused_import
 
-# Disabled Rules
-disabled_rules:
-  - line_length # Handled by opt_in_rules with custom length
-  - trailing_whitespace # Auto-fixed by Xcode
-  - todo # Allow TODO comments during development
-  - force_cast # Sometimes necessary for Core Data
-  - type_name # Allow single character type names for generics
+# =============================================================================
+# RULE CONFIGURATION
+# =============================================================================
 
-# Opt-in Rules (not enabled by default)
+# Rules to enable (opt-in rules)
 opt_in_rules:
-  - accessibility_label_for_image
+  # Performance rules
   - array_init
-  - attributes
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - contains_over_first_not_nil
+  - contains_over_range_nil_comparison
+  - empty_collection_literal
+  - empty_count
+  - empty_string
+  - first_where
+  - flatmap_over_map_reduce
+  - last_where
+  - reduce_into
+  - sorted_first_last
+
+  # Style rules
+  - attributes_order
   - closure_end_indentation
   - closure_spacing
   - collection_alignment
+  - comma_inheritance
   - conditional_returns_on_newline
-  - contains_over_filter_count
-  - contains_over_filter_is_empty
-  - empty_count
   - explicit_init
-  - fatal_error_message
-  - first_where
-  - force_try
+  - explicit_top_level_acl
+  - extension_access_modifier
+  - file_header
+  - file_name
+  - file_name_no_space
+  - implicit_return
   - joined_default_parameter
   - let_var_whitespace
   - literal_expression_end_indentation
-  - nimble_operator
+  - modifier_order
+  - multiline_arguments
+  - multiline_arguments_brackets
+  - multiline_function_chains
+  - multiline_literal_brackets
+  - multiline_parameters
+  - multiline_parameters_brackets
+  - number_separator
   - operator_usage_whitespace
   - overridden_super_call
-  - private_action
-  - private_outlet
+  - pattern_matching_keywords
+  - prefer_self_type_over_type_of_self
+  - prefer_zero_over_explicit_init
   - redundant_nil_coalescing
-  - redundant_optional_initialization
-  - redundant_set_access_control
-  - sorted_first_last
+  - redundant_type_annotation
+  - single_test_class
+  - sorted_imports
   - switch_case_on_newline
   - toggle_bool
-  - unavailable_function
+  - trailing_closure
   - unneeded_parentheses_in_closure_argument
   - vertical_parameter_alignment_on_call
+  - vertical_whitespace_closing_braces
+  - vertical_whitespace_opening_braces
   - yoda_condition
 
-# Custom Rule Configuration
+  # Idiomatic rules
+  - anonymous_argument_in_multiline_closure
+  - convenience_type
+  - discouraged_optional_collection
+  - explicit_enum_raw_value
+  - fallthrough
+  - fatal_error_message
+  - force_unwrapping
+  - function_default_parameter_at_end
+  - ibinspectable_in_extension
+  - identical_operands
+  - implicit_getter
+  - legacy_random
+  - lower_acl_than_parent
+  - missing_docs
+  - nimble_operator
+  - no_extension_access_modifier
+  - object_literal
+  - optional_enum_case_matching
+  - prefixed_toplevel_constant
+  - private_action
+  - private_outlet
+  - prohibited_super_call
+  - quick_discouraged_call
+  - quick_discouraged_focused_test
+  - quick_discouraged_pending_test
+  - raw_value_for_camel_cased_codable_enum
+  - reduce_boolean
+  - redundant_objc_attribute
+  - required_enum_case
+  - static_operator
+  - strong_iboutlet
+  - test_case_accessibility
+  - unavailable_function
+  - unowned_variable_capture
+  - untyped_error_in_catch
+  - vertical_whitespace_between_cases
+  - weak_delegate
+  - xct_specific_matcher
+
+  # Health-specific and security rules
+  - explicit_acl
+  - explicit_type_interface
+  - file_types_order
+  - strict_fileprivate
+
+# Rules to disable
+disabled_rules:
+  - todo  # We allow TODO comments in development
+  - line_length  # Configured separately
+  - cyclomatic_complexity  # Configured separately
+  - function_body_length  # Configured separately
+  - type_body_length  # Configured separately
+  - file_length  # Configured separately
+
+# =============================================================================
+# RULE SPECIFIC CONFIGURATION
+# =============================================================================
+
+# Line length configuration
 line_length:
   warning: 120
   error: 140
@@ -71,34 +173,66 @@ line_length:
   ignores_comments: true
   ignores_urls: true
 
-file_length:
-  warning: 400
-  error: 500
-
+# Function body length
 function_body_length:
-  warning: 40
-  error: 60
+  warning: 50
+  error: 100
 
+# Function parameter count
 function_parameter_count:
-  warning: 5
+  warning: 6
   error: 8
 
+# Type body length
 type_body_length:
-  warning: 250
-  error: 350
+  warning: 300
+  error: 400
 
+# File length
+file_length:
+  warning: 500
+  error: 800
+  ignore_comment_only_lines: true
+
+# Cyclomatic complexity
 cyclomatic_complexity:
-  warning: 10
-  error: 15
+  warning: 15
+  error: 25
+  ignores_case_statements: true
 
+# Nesting depth
 nesting:
   type_level:
     warning: 2
     error: 3
-  function_level:
-    warning: 3
-    error: 4
+  statement_level:
+    warning: 5
+    error: 10
 
+# Large tuple
+large_tuple:
+  warning: 3
+  error: 4
+
+# Type name configuration
+type_name:
+  min_length:
+    warning: 3
+    error: 2
+  max_length:
+    warning: 40
+    error: 50
+  excluded:
+    - T
+    - U
+    - V
+    - ID
+    - ML
+    - AR
+    - UI
+    - AI
+
+# Identifier name configuration
 identifier_name:
   min_length:
     warning: 2
@@ -111,45 +245,197 @@ identifier_name:
     - x
     - y
     - z
+    - t
     - i
     - j
     - k
+    - db
+    - ml
+    - ai
+    - ui
+    - ar
+    - hr  # heart rate
+    - bp  # blood pressure
+    - bpm # beats per minute
 
-# Custom Rules
-custom_rules:
-  # Enforce proper spacing around operators
-  operator_spacing:
-    name: "Operator Spacing"
-    regex: '([^!<>=\s])([<>=]+)([^<>=\s])'
-    message: "Operators should be surrounded by spaces"
-    severity: warning
-    
-  # Discourage force try
-  force_try:
-    name: "Force Try"
-    regex: 'try!'
-    message: "Avoid using force try. Use proper error handling instead."
-    severity: warning
-    
-  # Require documentation for public APIs
-  public_documentation:
-    name: "Public Documentation"
-    regex: '^[ \t]*public[ \t]+(?:class|struct|enum|protocol|func|var|let)(?![^{]*\/\/\/)'
-    message: "Public declarations should be documented"
-    severity: warning
+# Number of arguments in function call
+number_separator:
+  minimum_length: 5
 
-# File Header Template
+# Trailing whitespace
+trailing_whitespace:
+  ignores_empty_lines: false
+  ignores_comments: true
+
+# File header template for health app
 file_header:
   required_pattern: |
                     \/\/
-                    \/\/  .*\.swift
-                    \/\/  HealthAI 2030
+                    \/\/.*\.swift
+                    \/\/  HealthAI 2030.*
                     \/\/
-                    \/\/  Created by .* on \d{1,2}\/\d{1,2}\/\d{2,4}\.
+                    \/\/  Created.*
                     \/\/
 
-# Reporter Configuration
+# Health-specific naming patterns
+custom_rules:
+  # Health data type naming
+  health_data_naming:
+    name: "Health Data Type Naming"
+    regex: "enum.*HealthDataType|struct.*HealthData"
+    match_kinds:
+      - typeidentifier
+    message: "Health data types should be clearly named and documented"
+    severity: warning
+
+  # Privacy compliance check
+  privacy_documentation:
+    name: "Privacy Documentation"
+    regex: "func.*health.*|var.*health.*"
+    match_kinds:
+      - identifier
+    message: "Health-related code should include privacy documentation"
+    severity: warning
+
+  # Sensitive data logging prevention
+  no_health_data_logging:
+    name: "No Health Data Logging"
+    regex: "print.*health|NSLog.*health|os_log.*health"
+    match_kinds:
+      - identifier
+    message: "Avoid logging sensitive health data"
+    severity: error
+
+  # Encryption requirement for health data
+  health_encryption_check:
+    name: "Health Data Encryption"
+    regex: "struct.*HealthData.*{[^}]*(?<!encrypt|Encrypt|secure|Secure)"
+    message: "Health data structures should implement encryption"
+    severity: warning
+
+  # HealthKit authorization check
+  healthkit_authorization:
+    name: "HealthKit Authorization"
+    regex: "HKHealthStore.*(?!requestAuthorization)"
+    message: "HealthKit usage should request proper authorization"
+    severity: warning
+
+# =============================================================================
+# REPORTER CONFIGURATION
+# =============================================================================
+
+# Output format
 reporter: "xcode"
 
-# Build Time Analyzer
-compilation_mode: wholemodule
+# Report output file
+# output: "swiftlint-results.xml"
+
+# =============================================================================
+# HEALTH APP SPECIFIC CONFIGURATIONS
+# =============================================================================
+
+# Allow longer lines in specific files
+line_length:
+  ignores_function_declarations: true
+  ignores_comments: true
+  ignores_interpolated_strings: true
+
+# Allow more complex functions for health algorithms
+cyclomatic_complexity:
+  ignores_case_statements: true
+
+# Custom severity overrides for health-critical code
+severity_overrides:
+  force_unwrapping: error  # Critical for health data safety
+  implicitly_unwrapped_optional: error  # Avoid crashes with health data
+  force_cast: error  # Type safety is critical
+  force_try: warning  # Allow in test code with justification
+
+# =============================================================================
+# HEALTH DATA SECURITY RULES
+# =============================================================================
+
+# Additional custom rules for health data security
+security_rules:
+  # Prevent hardcoded secrets
+  no_hardcoded_secrets:
+    name: "No Hardcoded Secrets"
+    regex: "(password|secret|key|token)\\s*=\\s*[\"'][^\"']+[\"']"
+    message: "Avoid hardcoded secrets in source code"
+    severity: error
+
+  # Ensure HTTPS usage
+  require_https:
+    name: "Require HTTPS"
+    regex: "http://(?!localhost|127\\.0\\.0\\.1)"
+    message: "Use HTTPS for network requests"
+    severity: error
+
+  # CloudKit security
+  cloudkit_security:
+    name: "CloudKit Security"
+    regex: "CKDatabase.*public"
+    message: "Use private CloudKit database for health data"
+    severity: warning
+
+# =============================================================================
+# PERFORMANCE RULES FOR HEALTH DATA
+# =============================================================================
+
+# Rules specific to health data processing performance
+performance_rules:
+  # Avoid force unwrapping in loops
+  avoid_force_unwrap_in_loops:
+    name: "Avoid Force Unwrapping in Loops"
+    regex: "for.*\\{[^}]*!\\s*\\."
+    message: "Avoid force unwrapping in loops processing health data"
+    severity: warning
+
+  # Prefer lazy evaluation for large health datasets
+  prefer_lazy_evaluation:
+    name: "Prefer Lazy Evaluation"
+    regex: "\\.map\\s*\\{.*\\}\\.filter"
+    message: "Consider lazy evaluation for large health data processing"
+    severity: warning
+
+# =============================================================================
+# ACCESSIBILITY RULES
+# =============================================================================
+
+# Health apps must be accessible
+accessibility_rules:
+  accessibility_label_required:
+    name: "Accessibility Label Required"
+    regex: "Button\\(|Toggle\\(|Image\\("
+    message: "UI elements should have accessibility labels for health apps"
+    severity: warning
+
+# =============================================================================
+# DOCUMENTATION REQUIREMENTS
+# =============================================================================
+
+# Require documentation for public health APIs
+documentation_rules:
+  public_documentation:
+    name: "Public API Documentation"
+    regex: "public.*func|public.*var|public.*class|public.*struct"
+    message: "Public health APIs must be documented"
+    severity: warning
+
+# =============================================================================
+# TESTING RULES
+# =============================================================================
+
+# Health app specific testing requirements
+testing_rules:
+  health_test_coverage:
+    name: "Health Test Coverage"
+    regex: "class.*HealthManager|struct.*HealthData"
+    message: "Health-related classes should have comprehensive test coverage"
+    severity: warning
+
+  mock_health_data:
+    name: "Mock Health Data"
+    regex: "HKHealthStore\\(\\)"
+    message: "Use mock health store in tests"
+    severity: warning

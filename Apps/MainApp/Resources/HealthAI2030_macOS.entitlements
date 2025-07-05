@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- CloudKit Configuration -->
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
+		<string>CloudDocuments</string>
+	</array>
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.com.healthai2030.HealthAI2030</string>
+	</array>
+	
+	<!-- App Groups for Cross-Device Sync -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.healthai2030.shared</string>
+	</array>
+	
+	<!-- Keychain Sharing -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.healthai2030.HealthAI2030</string>
+		<string>$(AppIdentifierPrefix)group.com.healthai2030.shared</string>
+	</array>
+	
+	<!-- App Sandbox for macOS -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.network.server</key>
+	<true/>
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<key>com.apple.security.files.downloads.read-write</key>
+	<true/>
+	
+	<!-- Background App Refresh -->
+	<key>com.apple.developer.background-modes</key>
+	<array>
+		<string>background-fetch</string>
+		<string>background-processing</string>
+		<string>remote-notification</string>
+	</array>
+	
+	<!-- Push Notifications -->
+	<key>com.apple.developer.aps-environment</key>
+	<string>development</string>
+	
+	<!-- Core ML and Metal Performance Shaders -->
+	<key>com.apple.developer.coreml.private-model-access</key>
+	<true/>
+	<key>com.apple.developer.metal</key>
+	<true/>
+	
+	<!-- Network Extensions for Advanced Analytics -->
+	<key>com.apple.developer.networking.networkextension</key>
+	<array>
+		<string>app-proxy-provider</string>
+	</array>
+	
+	<!-- Associated Domains -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:healthai2030.com</string>
+		<string>applinks:sync.healthai2030.com</string>
+	</array>
+	
+	<!-- System Extension for Background Processing -->
+	<key>com.apple.developer.system-extension.install</key>
+	<true/>
+	
+	<!-- Hardened Runtime Exceptions for Advanced Processing -->
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<true/>
+	<key>com.apple.security.cs.allow-dyld-environment-variables</key>
+	<true/>
+	
+	<!-- Export and File Access -->
+	<key>com.apple.security.temporary-exception.files.absolute-path.read-write</key>
+	<array>
+		<string>/Users/</string>
+		<string>/tmp/</string>
+	</array>
+</dict>
+</plist>

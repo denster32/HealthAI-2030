@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+        <key>UISceneConfigurations</key>
+        <dict>
+            <key>UIWindowSceneSessionRoleApplication</key>
+            <array>
+                <dict>
+                    <key>UISceneConfigurationName</key>
+                    <string>Default Configuration</string>
+                    <key>UISceneDelegateClassName</key>
+                    <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+                </dict>
+            </array>
+        </dict>
+    </dict>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>arm64</string>
+    </array>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    
+    <!-- HealthKit Permissions -->
+    <key>NSHealthShareUsageDescription</key>
+    <string>HealthAI 2030 needs access to your health data to provide personalized insights and recommendations for your wellness journey.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>HealthAI 2030 needs to write health data to track your progress and sync with your health profile.</string>
+    
+    <!-- Camera Permission -->
+    <key>NSCameraUsageDescription</key>
+    <string>HealthAI 2030 uses your camera for AR health visualizations and biometric analysis to enhance your health monitoring experience.</string>
+    
+    <!-- Microphone Permission -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>HealthAI 2030 uses your microphone for voice commands and audio-based health assessments to provide hands-free interaction.</string>
+    
+    <!-- Location Permission -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>HealthAI 2030 uses your location to provide location-based health insights and environmental health data analysis.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>HealthAI 2030 uses your location in the background to provide continuous environmental health monitoring and location-based wellness recommendations.</string>
+    
+    <!-- Motion & Fitness Permission -->
+    <key>NSMotionUsageDescription</key>
+    <string>HealthAI 2030 uses motion data to track your physical activity and provide personalized fitness recommendations.</string>
+    
+    <!-- Face ID Permission -->
+    <key>NSFaceIDUsageDescription</key>
+    <string>HealthAI 2030 uses Face ID to securely access your health data and provide personalized health insights.</string>
+    
+    <!-- Local Network Permission -->
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>HealthAI 2030 uses your local network to connect with smart home devices for environmental health monitoring.</string>
+    
+    <!-- Bluetooth Permission -->
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>HealthAI 2030 uses Bluetooth to connect with health devices and wearables for comprehensive health monitoring.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>HealthAI 2030 uses Bluetooth to connect with health devices and wearables for comprehensive health monitoring.</string>
+    
+    <!-- Photo Library Permission -->
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>HealthAI 2030 uses your photo library to analyze food intake and provide nutritional insights for your health journey.</string>
+    
+    <!-- Siri Permission -->
+    <key>NSSiriUsageDescription</key>
+    <string>HealthAI 2030 uses Siri to provide voice-activated health commands and quick access to your health insights.</string>
+    
+    <!-- Background Modes -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>background-processing</string>
+        <string>background-fetch</string>
+        <string>remote-notification</string>
+        <string>health-kit</string>
+        <string>location</string>
+    </array>
+    
+    <!-- App Transport Security -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>healthai2030.com</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <false/>
+                <key>NSExceptionMinimumTLSVersion</key>
+                <string>TLSv1.3</string>
+            </dict>
+        </dict>
+    </dict>
+</dict>
+</plist>

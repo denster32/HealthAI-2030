@@ -1,0 +1,73 @@
+# Dependabot configuration for HealthAI 2030
+# Automated dependency updates for security and performance
+
+version: 2
+updates:
+  # Swift Package Manager dependencies
+  - package-ecosystem: "swift"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    target-branch: "develop"
+    reviewers:
+      - "healthai2030/security-team"
+    assignees:
+      - "healthai2030/maintainers"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      include: "scope"
+    # Security updates get priority
+    labels:
+      - "dependencies"
+      - "security"
+    # Allow auto-merge for patch updates of trusted packages
+    auto-merge:
+      enabled: true
+      merge-method: "squash"
+    # Health-critical package monitoring
+    ignore:
+      # Never auto-update these critical packages
+      - dependency-name: "aws-sdk-swift"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "sentry-cocoa"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "healthai2030/devops-team"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "ci/cd"
+      - "dependencies"
+
+  # Docker dependencies (if used for CI)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "09:00"
+    open-pull-requests-limit: 2
+    reviewers:
+      - "healthai2030/devops-team"
+    commit-message:
+      prefix: "docker"
+    labels:
+      - "docker"
+      - "dependencies"
+
+# Security vulnerability alerts
+enable-beta-ecosystems: true
