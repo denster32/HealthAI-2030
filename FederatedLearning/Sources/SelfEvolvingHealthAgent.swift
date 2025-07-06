@@ -1,6 +1,8 @@
 import Foundation
 import Combine
 import SwiftData
+import Observation
+import os.log
 
 /// Self-Evolving AI Health Agent for HealthAI 2030
 /// Implements advanced self-modifying architecture, meta-learning, adaptive personality traits, 

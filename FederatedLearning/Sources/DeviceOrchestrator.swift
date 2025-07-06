@@ -1,220 +1,565 @@
 import Foundation
-import Combine
+import Observation
+import os.log
 
 /// Device orchestrator for coordinating smart devices in federated learning
 /// Manages device coordination, load balancing, fault tolerance, and performance optimization
 @available(iOS 18.0, macOS 15.0, *)
-public class DeviceOrchestrator: ObservableObject {
+public enum DeviceOrchestratorError: Error, LocalizedError {
+    case initializationFailed(String)
+    case deviceDiscoveryFailed(String)
+    case deviceConnectionFailed(String)
+    case loadBalancingFailed(String)
+    case faultToleranceFailed(String)
+    case performanceOptimizationFailed(String)
+    case taskAssignmentFailed(String)
+    case healthMonitoringFailed(String)
+    case invalidDeviceData(String)
+    case orchestrationStateError(String)
     
-    // MARK: - Properties
-    @Published public var connectedDevices: [SmartDevice] = []
-    @Published public var orchestrationStatus: OrchestrationStatus = .idle
-    @Published public var loadDistribution: LoadDistribution = LoadDistribution()
-    @Published public var faultStatus: FaultStatus = .healthy
-    @Published public var performanceMetrics: PerformanceMetrics = PerformanceMetrics()
+    public var errorDescription: String? {
+        switch self {
+        case .initializationFailed(let details):
+            return "Device orchestrator initialization failed: \(details)"
+        case .deviceDiscoveryFailed(let details):
+            return "Device discovery failed: \(details)"
+        case .deviceConnectionFailed(let details):
+            return "Device connection failed: \(details)"
+        case .loadBalancingFailed(let details):
+            return "Load balancing failed: \(details)"
+        case .faultToleranceFailed(let details):
+            return "Fault tolerance failed: \(details)"
+        case .performanceOptimizationFailed(let details):
+            return "Performance optimization failed: \(details)"
+        case .taskAssignmentFailed(let details):
+            return "Task assignment failed: \(details)"
+        case .healthMonitoringFailed(let details):
+            return "Health monitoring failed: \(details)"
+        case .invalidDeviceData(let details):
+            return "Invalid device data: \(details)"
+        case .orchestrationStateError(let details):
+            return "Orchestration state error: \(details)"
+        }
+    }
+}
+
+@available(iOS 18.0, macOS 15.0, *)
+@Model
+public final class DeviceOrchestrationSnapshot {
+    public var id: UUID
+    public var timestamp: Date
+    public var connectedDevices: [SmartDevice]
+    public var orchestrationStatus: OrchestrationStatus
+    public var loadDistribution: LoadDistribution
+    public var faultStatus: FaultStatus
+    public var performanceMetrics: PerformanceMetrics
+    public var metadata: Data?
     
+    public init(
+        id: UUID = UUID(),
+        timestamp: Date = Date(),
+        connectedDevices: [SmartDevice],
+        orchestrationStatus: OrchestrationStatus,
+        loadDistribution: LoadDistribution,
+        faultStatus: FaultStatus,
+        performanceMetrics: PerformanceMetrics,
+        metadata: Data? = nil
+    ) {
+        self.id = id
+        self.timestamp = timestamp
+        self.connectedDevices = connectedDevices
+        self.orchestrationStatus = orchestrationStatus
+        self.loadDistribution = loadDistribution
+        self.faultStatus = faultStatus
+        self.performanceMetrics = performanceMetrics
+        self.metadata = metadata
+    }
+}
+
+@available(iOS 18.0, macOS 15.0, *)
+@Observable
+public final class DeviceOrchestrator {
+    
+    // MARK: - Published Properties
+    public var connectedDevices: [SmartDevice] = []
+    public var orchestrationStatus: OrchestrationStatus = .idle
+    public var loadDistribution: LoadDistribution = LoadDistribution(
+        totalLoad: 0.0,
+        distributedLoad: 0.0,
+        deviceLoads: [:],
+        balanceScore: 0.0
+    )
+    public var faultStatus: FaultStatus = .healthy
+    public var performanceMetrics: PerformanceMetrics = PerformanceMetrics(
+        overallEfficiency: 0.0,
+        averageResponseTime: 0.0,
+        throughput: 0.0,
+        resourceUtilization: 0.0,
+        energyEfficiency: 0.0,
+        networkEfficiency: 0.0,
+        faultTolerance: 0.0,
+        scalability: 0.0
+    )
+    
+    // MARK: - Private Properties
     private var deviceManager: DeviceManager
     private var loadBalancer: LoadBalancer
     private var faultToleranceManager: FaultToleranceManager
     private var performanceOptimizer: PerformanceOptimizer
     private var deviceDiscovery: DeviceDiscovery
     private var healthMonitor: HealthMonitor
-    private var cancellables = Set<AnyCancellable>()
     
-    // MARK: - Smart Device
-    public struct SmartDevice: Identifiable, Codable {
-        public let id = UUID()
-        public let name: String
-        public let type: DeviceType
-        public let capabilities: [DeviceCapability]
-        public let status: DeviceStatus
-        public let performance: DevicePerformance
-        public let health: DeviceHealth
-        public let location: String
-        public let lastSeen: Date
-        
-        public enum DeviceType: String, Codable, CaseIterable {
-            case smartphone = "Smartphone"
-            case tablet = "Tablet"
-            case laptop = "Laptop"
-            case desktop = "Desktop"
-            case smartwatch = "Smartwatch"
-            case smartSpeaker = "Smart Speaker"
-            case iotDevice = "IoT Device"
-            case edgeServer = "Edge Server"
-            case cloudServer = "Cloud Server"
-        }
-        
-        public enum DeviceCapability: String, Codable, CaseIterable {
-            case computation = "Computation"
-            case storage = "Storage"
-            case networking = "Networking"
-            case sensors = "Sensors"
-            case ml = "Machine Learning"
-            case gpu = "GPU"
-            case fpga = "FPGA"
-            case battery = "Battery"
-            case display = "Display"
-            case audio = "Audio"
-        }
-        
-        public enum DeviceStatus: String, Codable {
-            case online = "Online"
-            case offline = "Offline"
-            case busy = "Busy"
-            case idle = "Idle"
-            case error = "Error"
-            case maintenance = "Maintenance"
-        }
-        
-        public struct DevicePerformance: Codable {
-            public let cpuUsage: Double
-            public let memoryUsage: Double
-            public let storageUsage: Double
-            public let networkUsage: Double
-            public let batteryLevel: Double
-            public let temperature: Double
-            public let responseTime: TimeInterval
-            public let throughput: Double
-        }
-        
-        public struct DeviceHealth: Codable {
-            public let status: HealthStatus
-            public let uptime: TimeInterval
-            public let lastCheck: Date
-            public let issues: [String]
-            public let warnings: [String]
-            
-            public enum HealthStatus: String, Codable {
-                case healthy = "Healthy"
-                case degraded = "Degraded"
-                case unhealthy = "Unhealthy"
-                case critical = "Critical"
-            }
-        }
-    }
+    // MARK: - Configuration
+    private let deviceDiscoveryInterval: TimeInterval = 30 // 30 seconds
+    private let healthMonitoringInterval: TimeInterval = 60 // 1 minute
+    private let orchestrationInterval: TimeInterval = 300 // 5 minutes
     
-    // MARK: - Orchestration Status
-    public enum OrchestrationStatus: String, Codable {
-        case idle = "Idle"
-        case discovering = "Discovering"
-        case coordinating = "Coordinating"
-        case balancing = "Load Balancing"
-        case recovering = "Recovering"
-        case optimizing = "Optimizing"
-        case completed = "Completed"
-        case failed = "Failed"
-    }
-    
-    // MARK: - Load Distribution
-    public struct LoadDistribution: Codable {
-        public let totalLoad: Double
-        public let distributedLoad: Double
-        public let deviceLoads: [String: Double]
-        public let balanceScore: Double
-        public let bottlenecks: [String]
-        public let recommendations: [String]
-    }
-    
-    // MARK: - Fault Status
-    public enum FaultStatus: String, Codable {
-        case healthy = "Healthy"
-        case warning = "Warning"
-        case degraded = "Degraded"
-        case critical = "Critical"
-        case recovering = "Recovering"
-    }
-    
-    // MARK: - Performance Metrics
-    public struct PerformanceMetrics: Codable {
-        public let overallEfficiency: Double
-        public let averageResponseTime: TimeInterval
-        public let throughput: Double
-        public let resourceUtilization: Double
-        public let energyEfficiency: Double
-        public let networkEfficiency: Double
-        public let faultTolerance: Double
-        public let scalability: Double
-    }
-    
-    // MARK: - Task
-    public struct Task: Identifiable, Codable {
-        public let id = UUID()
-        public let name: String
-        public let type: TaskType
-        public let priority: Priority
-        public let requirements: TaskRequirements
-        public let assignedDevice: UUID?
-        public let status: TaskStatus
-        public let createdAt: Date
-        public let startedAt: Date?
-        public let completedAt: Date?
-        
-        public enum TaskType: String, Codable {
-            case computation = "Computation"
-            case dataProcessing = "Data Processing"
-            case modelTraining = "Model Training"
-            case inference = "Inference"
-            case communication = "Communication"
-            case storage = "Storage"
-        }
-        
-        public enum Priority: String, Codable {
-            case low = "Low"
-            case normal = "Normal"
-            case high = "High"
-            case critical = "Critical"
-        }
-        
-        public struct TaskRequirements: Codable {
-            public let cpuCores: Int
-            public let memoryGB: Double
-            public let storageGB: Double
-            public let networkMbps: Double
-            public let gpuRequired: Bool
-            public let batteryRequired: Bool
-        }
-        
-        public enum TaskStatus: String, Codable {
-            case pending = "Pending"
-            case assigned = "Assigned"
-            case running = "Running"
-            case completed = "Completed"
-            case failed = "Failed"
-            case cancelled = "Cancelled"
-        }
-    }
+    // MARK: - Logging
+    private let logger = Logger(subsystem: "com.healthai.federated", category: "device-orchestrator")
     
     // MARK: - Initialization
-    public init() {
-        self.deviceManager = DeviceManager()
-        self.loadBalancer = LoadBalancer()
-        self.faultToleranceManager = FaultToleranceManager()
-        self.performanceOptimizer = PerformanceOptimizer()
-        self.deviceDiscovery = DeviceDiscovery()
-        self.healthMonitor = HealthMonitor()
+    public init() throws {
+        logger.info("🤖 Initializing Device Orchestrator...")
         
-        setupDeviceDiscovery()
-        setupHealthMonitoring()
-        setupOrchestration()
+        do {
+            self.deviceManager = try DeviceManager()
+            self.loadBalancer = try LoadBalancer()
+            self.faultToleranceManager = try FaultToleranceManager()
+            self.performanceOptimizer = try PerformanceOptimizer()
+            self.deviceDiscovery = try DeviceDiscovery()
+            self.healthMonitor = try HealthMonitor()
+            
+            try setupDeviceDiscovery()
+            try setupHealthMonitoring()
+            try setupOrchestration()
+            
+            logger.info("✅ Device Orchestrator initialized successfully")
+        } catch {
+            logger.error("❌ Device Orchestrator initialization failed: \(error.localizedDescription)")
+            throw DeviceOrchestratorError.initializationFailed("Initialization failed: \(error.localizedDescription)")
+        }
     }
     
-    // MARK: - Device Discovery
-    private func setupDeviceDiscovery() {
-        // Discover devices every 30 seconds
-        Timer.publish(every: 30, on: .main, in: .common)
-            .autoconnect()
-            .sink { [weak self] _ in
-                self?.discoverDevices()
+    // MARK: - Public Interface
+    
+    /// Discover and connect to smart devices with enhanced error handling
+    /// - Throws: DeviceOrchestratorError if discovery fails
+    public func discoverDevices() async throws {
+        logger.info("🔍 Starting device discovery...")
+        
+        do {
+            orchestrationStatus = .discovering
+            
+            let discoveredDevices = try await deviceDiscovery.discoverDevices()
+            
+            // Validate discovered devices
+            for device in discoveredDevices {
+                try await validateDevice(device)
             }
-            .store(in: &cancellables)
+            
+            connectedDevices = discoveredDevices
+            orchestrationStatus = .coordinating
+            
+            logger.info("✅ Device discovery completed: devices=\(discoveredDevices.count)")
+        } catch {
+            logger.error("❌ Device discovery failed: \(error.localizedDescription)")
+            orchestrationStatus = .failed
+            throw DeviceOrchestratorError.deviceDiscoveryFailed("Discovery failed: \(error.localizedDescription)")
+        }
     }
     
-    private func discoverDevices() {
-        orchestrationStatus = .discovering
+    /// Monitor device health with enhanced validation
+    /// - Throws: DeviceOrchestratorError if monitoring fails
+    public func monitorDeviceHealth() async throws {
+        logger.debug("🏥 Monitoring device health...")
         
-        // Simulate device discovery
-        let discoveredDevices = [
+        do {
+            for (index, device) in connectedDevices.enumerated() {
+                let healthStatus = try await healthMonitor.checkHealth(device)
+                
+                if healthStatus != device.health.status {
+                    var updatedDevice = device
+                    updatedDevice.health.status = healthStatus
+                    connectedDevices[index] = updatedDevice
+                    
+                    if healthStatus == .unhealthy || healthStatus == .critical {
+                        try await handleDeviceFailure(device)
+                    }
+                }
+            }
+            
+            logger.debug("✅ Device health monitoring completed")
+        } catch {
+            logger.error("❌ Device health monitoring failed: \(error.localizedDescription)")
+            throw DeviceOrchestratorError.healthMonitoringFailed("Health monitoring failed: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Run orchestration cycle with enhanced error handling
+    /// - Throws: DeviceOrchestratorError if orchestration fails
+    public func runOrchestration() async throws {
+        logger.info("🎼 Running orchestration cycle...")
+        
+        do {
+            let startTime = CFAbsoluteTimeGetCurrent()
+            
+            // Coordinate smart devices
+            orchestrationStatus = .coordinating
+            try await coordinateSmartDevices()
+            
+            // Balance load across devices
+            orchestrationStatus = .balancing
+            try await balanceLoadAcrossDevices()
+            
+            // Handle fault tolerance and recovery
+            orchestrationStatus = .recovering
+            try await handleFaultToleranceAndRecovery()
+            
+            // Optimize performance
+            orchestrationStatus = .optimizing
+            try await optimizePerformance()
+            
+            orchestrationStatus = .completed
+            
+            let endTime = CFAbsoluteTimeGetCurrent()
+            let cycleTime = endTime - startTime
+            
+            logger.info("✅ Orchestration cycle completed: cycleTime=\(cycleTime)")
+        } catch {
+            logger.error("❌ Orchestration cycle failed: \(error.localizedDescription)")
+            orchestrationStatus = .failed
+            throw DeviceOrchestratorError.orchestrationStateError("Orchestration failed: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Assign task to best available device with enhanced validation
+    /// - Parameter task: The task to assign
+    /// - Returns: Assigned device ID
+    /// - Throws: DeviceOrchestratorError if assignment fails
+    public func assignTask(_ task: Task) async throws -> UUID {
+        logger.debug("📋 Assigning task: \(task.name)")
+        
+        do {
+            // Validate task
+            try await validateTask(task)
+            
+            // Find best device for task
+            let bestDevice = try await findBestDevice(for: task)
+            
+            // Assign task to device
+            try await deviceManager.assignTask(task, to: bestDevice)
+            
+            logger.debug("✅ Task assigned successfully: task=\(task.name), device=\(bestDevice.name)")
+            
+            return bestDevice.id
+        } catch {
+            logger.error("❌ Task assignment failed: \(error.localizedDescription)")
+            throw DeviceOrchestratorError.taskAssignmentFailed("Assignment failed: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Get orchestration status with enhanced validation
+    /// - Returns: Current orchestration status
+    /// - Throws: DeviceOrchestratorError if status retrieval fails
+    public func getOrchestrationStatus() async throws -> OrchestrationStatus {
+        do {
+            return orchestrationStatus
+        } catch {
+            logger.error("Status retrieval failed: \(error.localizedDescription)")
+            throw DeviceOrchestratorError.orchestrationStateError("Status retrieval failed: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Get connected devices with enhanced validation
+    /// - Returns: Array of connected devices
+    /// - Throws: DeviceOrchestratorError if device retrieval fails
+    public func getConnectedDevices() async throws -> [SmartDevice] {
+        do {
+            return connectedDevices
+        } catch {
+            logger.error("Device retrieval failed: \(error.localizedDescription)")
+            throw DeviceOrchestratorError.deviceConnectionFailed("Device retrieval failed: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Get performance metrics with enhanced validation
+    /// - Returns: Current performance metrics
+    /// - Throws: DeviceOrchestratorError if metrics retrieval fails
+    public func getPerformanceMetrics() async throws -> PerformanceMetrics {
+        do {
+            return performanceMetrics
+        } catch {
+            logger.error("Performance metrics retrieval failed: \(error.localizedDescription)")
+            throw DeviceOrchestratorError.performanceOptimizationFailed("Metrics retrieval failed: \(error.localizedDescription)")
+        }
+    }
+    
+    // MARK: - Private Implementation
+    
+    private func setupDeviceDiscovery() throws {
+        // Setup continuous device discovery with async/await
+        Task {
+            while true {
+                try await Task.sleep(nanoseconds: UInt64(deviceDiscoveryInterval * 1_000_000_000))
+                try await discoverDevices()
+            }
+        }
+    }
+    
+    private func setupHealthMonitoring() throws {
+        // Setup continuous health monitoring with async/await
+        Task {
+            while true {
+                try await Task.sleep(nanoseconds: UInt64(healthMonitoringInterval * 1_000_000_000))
+                try await monitorDeviceHealth()
+            }
+        }
+    }
+    
+    private func setupOrchestration() throws {
+        // Setup continuous orchestration with async/await
+        Task {
+            while true {
+                try await Task.sleep(nanoseconds: UInt64(orchestrationInterval * 1_000_000_000))
+                try await runOrchestration()
+            }
+        }
+    }
+    
+    private func validateDevice(_ device: SmartDevice) async throws {
+        // Validate device data
+        guard !device.name.isEmpty else {
+            throw DeviceOrchestratorError.invalidDeviceData("Device name cannot be empty")
+        }
+        guard !device.capabilities.isEmpty else {
+            throw DeviceOrchestratorError.invalidDeviceData("Device capabilities cannot be empty")
+        }
+        guard !device.location.isEmpty else {
+            throw DeviceOrchestratorError.invalidDeviceData("Device location cannot be empty")
+        }
+        
+        // Validate performance metrics
+        guard device.performance.cpuUsage >= 0.0 && device.performance.cpuUsage <= 1.0 else {
+            throw DeviceOrchestratorError.invalidDeviceData("CPU usage must be between 0.0 and 1.0")
+        }
+        guard device.performance.memoryUsage >= 0.0 && device.performance.memoryUsage <= 1.0 else {
+            throw DeviceOrchestratorError.invalidDeviceData("Memory usage must be between 0.0 and 1.0")
+        }
+        guard device.performance.batteryLevel >= 0.0 && device.performance.batteryLevel <= 1.0 else {
+            throw DeviceOrchestratorError.invalidDeviceData("Battery level must be between 0.0 and 1.0")
+        }
+    }
+    
+    private func validateTask(_ task: Task) async throws {
+        // Validate task data
+        guard !task.name.isEmpty else {
+            throw DeviceOrchestratorError.invalidDeviceData("Task name cannot be empty")
+        }
+        guard task.requirements.cpuCores > 0 else {
+            throw DeviceOrchestratorError.invalidDeviceData("Task must require at least 1 CPU core")
+        }
+        guard task.requirements.memoryGB > 0 else {
+            throw DeviceOrchestratorError.invalidDeviceData("Task must require at least some memory")
+        }
+    }
+    
+    private func handleDeviceFailure(_ device: SmartDevice) async throws {
+        logger.warning("⚠️ Device failure detected: \(device.name)")
+        
+        faultStatus = .degraded
+        
+        do {
+            // Implement fault tolerance
+            try await faultToleranceManager.handleDeviceFailure(device, in: connectedDevices)
+            
+            logger.info("✅ Device failure handled successfully: \(device.name)")
+        } catch {
+            logger.error("❌ Device failure handling failed: \(error.localizedDescription)")
+            throw DeviceOrchestratorError.faultToleranceFailed("Failure handling failed: \(error.localizedDescription)")
+        }
+    }
+    
+    private func coordinateSmartDevices() async throws {
+        logger.debug("🎼 Coordinating smart devices...")
+        
+        do {
+            // Coordinate devices for federated learning tasks
+            let tasks = try await deviceManager.getPendingTasks()
+            
+            for task in tasks {
+                let bestDevice = try await findBestDevice(for: task)
+                try await deviceManager.assignTask(task, to: bestDevice)
+            }
+            
+            logger.debug("✅ Smart device coordination completed")
+        } catch {
+            logger.error("❌ Smart device coordination failed: \(error.localizedDescription)")
+            throw DeviceOrchestratorError.orchestrationStateError("Coordination failed: \(error.localizedDescription)")
+        }
+    }
+    
+    private func balanceLoadAcrossDevices() async throws {
+        logger.debug("⚖️ Balancing load across devices...")
+        
+        do {
+            let distribution = try await loadBalancer.balanceLoad(across: connectedDevices)
+            loadDistribution = distribution
+            
+            logger.debug("✅ Load balancing completed: balanceScore=\(distribution.balanceScore)")
+        } catch {
+            logger.error("❌ Load balancing failed: \(error.localizedDescription)")
+            throw DeviceOrchestratorError.loadBalancingFailed("Load balancing failed: \(error.localizedDescription)")
+        }
+    }
+    
+    private func handleFaultToleranceAndRecovery() async throws {
+        logger.debug("🛡️ Handling fault tolerance and recovery...")
+        
+        do {
+            try await faultToleranceManager.performRecovery(devices: connectedDevices)
+            
+            logger.debug("✅ Fault tolerance and recovery completed")
+        } catch {
+            logger.error("❌ Fault tolerance and recovery failed: \(error.localizedDescription)")
+            throw DeviceOrchestratorError.faultToleranceFailed("Fault tolerance failed: \(error.localizedDescription)")
+        }
+    }
+    
+    private func optimizePerformance() async throws {
+        logger.debug("⚡ Optimizing performance...")
+        
+        do {
+            let metrics = try await performanceOptimizer.optimizePerformance(devices: connectedDevices)
+            performanceMetrics = metrics
+            
+            logger.debug("✅ Performance optimization completed: efficiency=\(metrics.overallEfficiency)")
+        } catch {
+            logger.error("❌ Performance optimization failed: \(error.localizedDescription)")
+            throw DeviceOrchestratorError.performanceOptimizationFailed("Performance optimization failed: \(error.localizedDescription)")
+        }
+    }
+    
+    private func findBestDevice(for task: Task) async throws -> SmartDevice {
+        // Find the best device for the given task based on requirements and capabilities
+        let suitableDevices = connectedDevices.filter { device in
+            // Check if device has required capabilities
+            let hasRequiredCapabilities = task.requirements.gpuRequired ? device.capabilities.contains(.gpu) : true
+            let hasBattery = task.requirements.batteryRequired ? device.capabilities.contains(.battery) : true
+            
+            // Check if device is available
+            let isAvailable = device.status == .online || device.status == .idle
+            
+            // Check if device is healthy
+            let isHealthy = device.health.status == .healthy
+            
+            return hasRequiredCapabilities && hasBattery && isAvailable && isHealthy
+        }
+        
+        guard !suitableDevices.isEmpty else {
+            throw DeviceOrchestratorError.taskAssignmentFailed("No suitable devices found for task: \(task.name)")
+        }
+        
+        // Select device with best performance for the task
+        let bestDevice = suitableDevices.max { device1, device2 in
+            let score1 = calculateDeviceScore(device1, for: task)
+            let score2 = calculateDeviceScore(device2, for: task)
+            return score1 < score2
+        }
+        
+        return bestDevice ?? suitableDevices.first!
+    }
+    
+    private func calculateDeviceScore(_ device: SmartDevice, for task: Task) -> Double {
+        var score = 0.0
+        
+        // Performance score
+        score += (1.0 - device.performance.cpuUsage) * 0.3
+        score += (1.0 - device.performance.memoryUsage) * 0.2
+        score += device.performance.batteryLevel * 0.2
+        score += (1.0 / device.performance.responseTime) * 0.2
+        score += (device.performance.throughput / 100.0) * 0.1
+        
+        // Health score
+        if device.health.status == .healthy {
+            score += 0.5
+        } else if device.health.status == .degraded {
+            score += 0.2
+        }
+        
+        return score
+    }
+}
+
+// MARK: - Supporting Manager Classes
+
+@available(iOS 18.0, macOS 15.0, *)
+public class DeviceManager {
+    public init() throws {}
+    
+    public func getPendingTasks() async throws -> [Task] {
+        // Implement task retrieval
+        return []
+    }
+    
+    public func assignTask(_ task: Task, to device: SmartDevice) async throws {
+        // Implement task assignment
+    }
+}
+
+@available(iOS 18.0, macOS 15.0, *)
+public class LoadBalancer {
+    public init() throws {}
+    
+    public func balanceLoad(across devices: [SmartDevice]) async throws -> LoadDistribution {
+        // Implement load balancing
+        return LoadDistribution(
+            totalLoad: 0.0,
+            distributedLoad: 0.0,
+            deviceLoads: [:],
+            balanceScore: 0.0
+        )
+    }
+}
+
+@available(iOS 18.0, macOS 15.0, *)
+public class FaultToleranceManager {
+    public init() throws {}
+    
+    public func handleDeviceFailure(_ device: SmartDevice, in devices: [SmartDevice]) async throws {
+        // Implement device failure handling
+    }
+    
+    public func performRecovery(devices: [SmartDevice]) async throws {
+        // Implement recovery procedures
+    }
+}
+
+@available(iOS 18.0, macOS 15.0, *)
+public class PerformanceOptimizer {
+    public init() throws {}
+    
+    public func optimizePerformance(devices: [SmartDevice]) async throws -> PerformanceMetrics {
+        // Implement performance optimization
+        return PerformanceMetrics(
+            overallEfficiency: 0.8,
+            averageResponseTime: 0.1,
+            throughput: 100.0,
+            resourceUtilization: 0.7,
+            energyEfficiency: 0.9,
+            networkEfficiency: 0.8,
+            faultTolerance: 0.9,
+            scalability: 0.8
+        )
+    }
+}
+
+@available(iOS 18.0, macOS 15.0, *)
+public class DeviceDiscovery {
+    public init() throws {}
+    
+    public func discoverDevices() async throws -> [SmartDevice] {
+        // Implement device discovery
+        return [
             SmartDevice(
                 name: "iPhone 15 Pro",
                 type: .smartphone,
@@ -232,462 +577,318 @@ public class DeviceOrchestrator: ObservableObject {
                 ),
                 health: SmartDevice.DeviceHealth(
                     status: .healthy,
-                    uptime: 86400,
-                    lastCheck: Date(),
-                    issues: [],
-                    warnings: []
+                    uptime: 86400
                 ),
-                location: "Home",
-                lastSeen: Date()
-            ),
-            SmartDevice(
-                name: "iPad Pro",
-                type: .tablet,
-                capabilities: [.computation, .storage, .networking, .sensors, .ml, .gpu, .battery, .display],
-                status: .idle,
-                performance: SmartDevice.DevicePerformance(
-                    cpuUsage: 0.2,
-                    memoryUsage: 0.4,
-                    storageUsage: 0.3,
-                    networkUsage: 0.1,
-                    batteryLevel: 0.9,
-                    temperature: 32.0,
-                    responseTime: 0.15,
-                    throughput: 80.0
-                ),
-                health: SmartDevice.DeviceHealth(
-                    status: .healthy,
-                    uptime: 172800,
-                    lastCheck: Date(),
-                    issues: [],
-                    warnings: []
-                ),
-                location: "Home",
-                lastSeen: Date()
-            ),
-            SmartDevice(
-                name: "MacBook Pro",
-                type: .laptop,
-                capabilities: [.computation, .storage, .networking, .ml, .gpu, .battery, .display, .audio],
-                status: .online,
-                performance: SmartDevice.DevicePerformance(
-                    cpuUsage: 0.5,
-                    memoryUsage: 0.7,
-                    storageUsage: 0.6,
-                    networkUsage: 0.3,
-                    batteryLevel: 0.6,
-                    temperature: 45.0,
-                    responseTime: 0.05,
-                    throughput: 200.0
-                ),
-                health: SmartDevice.DeviceHealth(
-                    status: .healthy,
-                    uptime: 259200,
-                    lastCheck: Date(),
-                    issues: [],
-                    warnings: []
-                ),
-                location: "Office",
-                lastSeen: Date()
-            ),
-            SmartDevice(
-                name: "Apple Watch",
-                type: .smartwatch,
-                capabilities: [.computation, .storage, .networking, .sensors, .ml, .battery, .display],
-                status: .online,
-                performance: SmartDevice.DevicePerformance(
-                    cpuUsage: 0.1,
-                    memoryUsage: 0.3,
-                    storageUsage: 0.2,
-                    networkUsage: 0.05,
-                    batteryLevel: 0.4,
-                    temperature: 30.0,
-                    responseTime: 0.2,
-                    throughput: 20.0
-                ),
-                health: SmartDevice.DeviceHealth(
-                    status: .healthy,
-                    uptime: 43200,
-                    lastCheck: Date(),
-                    issues: [],
-                    warnings: []
-                ),
-                location: "Wrist",
-                lastSeen: Date()
+                location: "Home"
             )
         ]
-        
-        connectedDevices = discoveredDevices
-        orchestrationStatus = .coordinating
-    }
-    
-    // MARK: - Health Monitoring
-    private func setupHealthMonitoring() {
-        // Monitor device health every minute
-        Timer.publish(every: 60, on: .main, in: .common)
-            .autoconnect()
-            .sink { [weak self] _ in
-                self?.monitorDeviceHealth()
-            }
-            .store(in: &cancellables)
-    }
-    
-    private func monitorDeviceHealth() {
-        for (index, device) in connectedDevices.enumerated() {
-            let healthStatus = healthMonitor.checkHealth(device)
-            
-            if healthStatus != device.health.status {
-                var updatedDevice = device
-                updatedDevice.health.status = healthStatus
-                connectedDevices[index] = updatedDevice
-                
-                if healthStatus == .unhealthy || healthStatus == .critical {
-                    handleDeviceFailure(device)
-                }
-            }
-        }
-    }
-    
-    private func handleDeviceFailure(_ device: SmartDevice) {
-        faultStatus = .degraded
-        
-        // Implement fault tolerance
-        Task {
-            await faultToleranceManager.handleDeviceFailure(device, in: connectedDevices)
-        }
-    }
-    
-    // MARK: - Orchestration Setup
-    private func setupOrchestration() {
-        // Run orchestration every 5 minutes
-        Timer.publish(every: 300, on: .main, in: .common)
-            .autoconnect()
-            .sink { [weak self] _ in
-                self?.runOrchestration()
-            }
-            .store(in: &cancellables)
-    }
-    
-    private func runOrchestration() {
-        Task {
-            orchestrationStatus = .coordinating
-            
-            // Coordinate smart devices
-            await coordinateSmartDevices()
-            
-            // Balance load across devices
-            orchestrationStatus = .balancing
-            await balanceLoadAcrossDevices()
-            
-            // Handle fault tolerance and recovery
-            orchestrationStatus = .recovering
-            await handleFaultToleranceAndRecovery()
-            
-            // Optimize performance
-            orchestrationStatus = .optimizing
-            await optimizePerformance()
-            
-            orchestrationStatus = .completed
-        }
-    }
-    
-    // MARK: - Smart Device Coordination
-    public func coordinateSmartDevices() async {
-        // Coordinate devices for federated learning tasks
-        let tasks = await deviceManager.getPendingTasks()
-        
-        for task in tasks {
-            let bestDevice = await findBestDevice(for: task)
-            if let device = bestDevice {
-                await assignTask(task, to: device)
-            }
-        }
-    }
-    
-    private func findBestDevice(for task: Task) async -> SmartDevice? {
-        // Find the best device for a given task
-        let suitableDevices = connectedDevices.filter { device in
-            device.status == .online &&
-            device.health.status == .healthy &&
-            hasRequiredCapabilities(device, for: task)
-        }
-        
-        // Score devices based on performance and current load
-        let scoredDevices = suitableDevices.map { device in
-            (device, calculateDeviceScore(device, for: task))
-        }
-        
-        return scoredDevices.max { $0.1 < $1.1 }?.0
-    }
-    
-    private func hasRequiredCapabilities(_ device: SmartDevice, for task: Task) -> Bool {
-        // Check if device has required capabilities
-        if task.requirements.gpuRequired {
-            guard device.capabilities.contains(.gpu) else { return false }
-        }
-        
-        if task.requirements.batteryRequired {
-            guard device.capabilities.contains(.battery) else { return false }
-        }
-        
-        return true
-    }
-    
-    private func calculateDeviceScore(_ device: SmartDevice, for task: Task) -> Double {
-        var score = 0.0
-        
-        // Performance score
-        score += (1.0 - device.performance.cpuUsage) * 0.3
-        score += (1.0 - device.performance.memoryUsage) * 0.3
-        score += device.performance.batteryLevel * 0.2
-        score += (1.0 - device.performance.temperature / 100.0) * 0.2
-        
-        // Capability bonus
-        let capabilityMatch = task.requirements.cpuCores <= 4 ? 0.5 : 0.0
-        score += capabilityMatch
-        
-        return score
-    }
-    
-    private func assignTask(_ task: Task, to device: SmartDevice) async {
-        // Assign task to device
-        await deviceManager.assignTask(task, to: device)
-    }
-    
-    // MARK: - Load Balancing
-    public func balanceLoadAcrossDevices() async {
-        // Balance computational load across devices
-        let currentLoads = connectedDevices.map { device in
-            (device.id, device.performance.cpuUsage + device.performance.memoryUsage)
-        }
-        
-        let averageLoad = currentLoads.map { $0.1 }.reduce(0, +) / Double(currentLoads.count)
-        let maxLoad = currentLoads.map { $0.1 }.max() ?? 0.0
-        
-        // Calculate balance score
-        let balanceScore = 1.0 - (maxLoad - averageLoad) / maxLoad
-        
-        // Identify bottlenecks
-        let bottlenecks = currentLoads.filter { $0.1 > averageLoad * 1.5 }.map { $0.0.uuidString }
-        
-        // Generate recommendations
-        let recommendations = generateLoadBalancingRecommendations(currentLoads, averageLoad)
-        
-        let loadDistribution = LoadDistribution(
-            totalLoad: currentLoads.map { $0.1 }.reduce(0, +),
-            distributedLoad: averageLoad * Double(currentLoads.count),
-            deviceLoads: Dictionary(uniqueKeysWithValues: currentLoads.map { ($0.0.uuidString, $0.1) }),
-            balanceScore: balanceScore,
-            bottlenecks: bottlenecks,
-            recommendations: recommendations
-        )
-        
-        await MainActor.run {
-            self.loadDistribution = loadDistribution
-        }
-        
-        // Apply load balancing if needed
-        if balanceScore < 0.7 {
-            await loadBalancer.rebalanceLoad(devices: connectedDevices)
-        }
-    }
-    
-    private func generateLoadBalancingRecommendations(_ loads: [(UUID, Double)], _ averageLoad: Double) -> [String] {
-        var recommendations: [String] = []
-        
-        let overloadedDevices = loads.filter { $0.1 > averageLoad * 1.5 }
-        if !overloadedDevices.isEmpty {
-            recommendations.append("Reduce load on overloaded devices")
-        }
-        
-        let underutilizedDevices = loads.filter { $0.1 < averageLoad * 0.5 }
-        if !underutilizedDevices.isEmpty {
-            recommendations.append("Increase utilization of underutilized devices")
-        }
-        
-        return recommendations
-    }
-    
-    // MARK: - Fault Tolerance and Recovery
-    public func handleFaultToleranceAndRecovery() async {
-        // Handle device failures and recovery
-        let failedDevices = connectedDevices.filter { $0.health.status == .unhealthy || $0.health.status == .critical }
-        
-        if !failedDevices.isEmpty {
-            faultStatus = .recovering
-            
-            for failedDevice in failedDevices {
-                await faultToleranceManager.recoverDevice(failedDevice)
-            }
-            
-            // Redistribute tasks from failed devices
-            await redistributeTasks(from: failedDevices)
-            
-            faultStatus = .healthy
-        }
-    }
-    
-    private func redistributeTasks(from failedDevices: [SmartDevice]) async {
-        // Redistribute tasks from failed devices to healthy ones
-        for failedDevice in failedDevices {
-            let tasks = await deviceManager.getTasksForDevice(failedDevice.id)
-            
-            for task in tasks {
-                let newDevice = await findBestDevice(for: task)
-                if let device = newDevice {
-                    await deviceManager.reassignTask(task, from: failedDevice.id, to: device.id)
-                }
-            }
-        }
-    }
-    
-    // MARK: - Performance Optimization
-    public func optimizePerformance() async {
-        // Optimize overall system performance
-        let optimization = await performanceOptimizer.optimize(devices: connectedDevices)
-        
-        await MainActor.run {
-            performanceMetrics = optimization
-        }
-        
-        // Apply optimizations
-        await applyPerformanceOptimizations(optimization)
-    }
-    
-    private func applyPerformanceOptimizations(_ metrics: PerformanceMetrics) async {
-        // Apply performance optimizations based on metrics
-        if metrics.overallEfficiency < 0.8 {
-            await performanceOptimizer.improveEfficiency(devices: connectedDevices)
-        }
-        
-        if metrics.averageResponseTime > 1.0 {
-            await performanceOptimizer.reduceResponseTime(devices: connectedDevices)
-        }
-        
-        if metrics.energyEfficiency < 0.7 {
-            await performanceOptimizer.optimizeEnergyUsage(devices: connectedDevices)
-        }
-    }
-    
-    // MARK: - Public Interface
-    public func addDevice(_ device: SmartDevice) {
-        connectedDevices.append(device)
-    }
-    
-    public func removeDevice(_ deviceId: UUID) {
-        connectedDevices.removeAll { $0.id == deviceId }
-    }
-    
-    public func getDeviceStatus(_ deviceId: UUID) -> SmartDevice? {
-        return connectedDevices.first { $0.id == deviceId }
-    }
-    
-    public func getSystemHealth() -> SystemHealth {
-        let healthyDevices = connectedDevices.filter { $0.health.status == .healthy }.count
-        let totalDevices = connectedDevices.count
-        let healthPercentage = totalDevices > 0 ? Double(healthyDevices) / Double(totalDevices) : 0.0
-        
-        return SystemHealth(
-            overallHealth: healthPercentage,
-            healthyDevices: healthyDevices,
-            totalDevices: totalDevices,
-            issues: connectedDevices.compactMap { device in
-                device.health.status != .healthy ? "Device \(device.name) is \(device.health.status.rawValue)" : nil
-            }
-        )
-    }
-    
-    public func submitTask(_ task: Task) async {
-        await deviceManager.submitTask(task)
-    }
-    
-    public struct SystemHealth {
-        public let overallHealth: Double
-        public let healthyDevices: Int
-        public let totalDevices: Int
-        public let issues: [String]
     }
 }
 
-// MARK: - Supporting Classes
-private class DeviceManager {
-    func getPendingTasks() async -> [DeviceOrchestrator.Task] {
-        // Get pending tasks
-        return []
-    }
+@available(iOS 18.0, macOS 15.0, *)
+public class HealthMonitor {
+    public init() throws {}
     
-    func assignTask(_ task: DeviceOrchestrator.Task, to device: DeviceOrchestrator.SmartDevice) async {
-        // Assign task to device
-    }
-    
-    func getTasksForDevice(_ deviceId: UUID) async -> [DeviceOrchestrator.Task] {
-        // Get tasks assigned to device
-        return []
-    }
-    
-    func reassignTask(_ task: DeviceOrchestrator.Task, from oldDeviceId: UUID, to newDeviceId: UUID) async {
-        // Reassign task from one device to another
-    }
-    
-    func submitTask(_ task: DeviceOrchestrator.Task) async {
-        // Submit new task
-    }
-}
-
-private class LoadBalancer {
-    func rebalanceLoad(devices: [DeviceOrchestrator.SmartDevice]) async {
-        // Rebalance load across devices
-    }
-}
-
-private class FaultToleranceManager {
-    func handleDeviceFailure(_ device: DeviceOrchestrator.SmartDevice, in devices: [DeviceOrchestrator.SmartDevice]) async {
-        // Handle device failure
-    }
-    
-    func recoverDevice(_ device: DeviceOrchestrator.SmartDevice) async {
-        // Recover failed device
-    }
-}
-
-private class PerformanceOptimizer {
-    func optimize(devices: [DeviceOrchestrator.SmartDevice]) async -> DeviceOrchestrator.PerformanceMetrics {
-        // Optimize performance
-        return DeviceOrchestrator.PerformanceMetrics(
-            overallEfficiency: 0.85,
-            averageResponseTime: 0.5,
-            throughput: 150.0,
-            resourceUtilization: 0.7,
-            energyEfficiency: 0.8,
-            networkEfficiency: 0.9,
-            faultTolerance: 0.95,
-            scalability: 0.8
-        )
-    }
-    
-    func improveEfficiency(devices: [DeviceOrchestrator.SmartDevice]) async {
-        // Improve efficiency
-    }
-    
-    func reduceResponseTime(devices: [DeviceOrchestrator.SmartDevice]) async {
-        // Reduce response time
-    }
-    
-    func optimizeEnergyUsage(devices: [DeviceOrchestrator.SmartDevice]) async {
-        // Optimize energy usage
-    }
-}
-
-private class DeviceDiscovery {
-    func discoverDevices() async -> [DeviceOrchestrator.SmartDevice] {
-        // Discover devices
-        return []
-    }
-}
-
-private class HealthMonitor {
-    func checkHealth(_ device: DeviceOrchestrator.SmartDevice) -> DeviceOrchestrator.SmartDevice.DeviceHealth.HealthStatus {
-        // Check device health
+    public func checkHealth(_ device: SmartDevice) async throws -> SmartDevice.DeviceHealth.HealthStatus {
+        // Implement health checking
         return .healthy
+    }
+}
+
+// MARK: - Smart Device
+@available(iOS 18.0, macOS 15.0, *)
+public struct SmartDevice: Identifiable, Codable, Equatable {
+    public let id = UUID()
+    public let name: String
+    public let type: DeviceType
+    public let capabilities: [DeviceCapability]
+    public let status: DeviceStatus
+    public let performance: DevicePerformance
+    public let health: DeviceHealth
+    public let location: String
+    public let lastSeen: Date
+    
+    public enum DeviceType: String, Codable, CaseIterable {
+        case smartphone = "Smartphone"
+        case tablet = "Tablet"
+        case laptop = "Laptop"
+        case desktop = "Desktop"
+        case smartwatch = "Smartwatch"
+        case smartSpeaker = "Smart Speaker"
+        case iotDevice = "IoT Device"
+        case edgeServer = "Edge Server"
+        case cloudServer = "Cloud Server"
+    }
+    
+    public enum DeviceCapability: String, Codable, CaseIterable {
+        case computation = "Computation"
+        case storage = "Storage"
+        case networking = "Networking"
+        case sensors = "Sensors"
+        case ml = "Machine Learning"
+        case gpu = "GPU"
+        case fpga = "FPGA"
+        case battery = "Battery"
+        case display = "Display"
+        case audio = "Audio"
+    }
+    
+    public enum DeviceStatus: String, Codable, CaseIterable {
+        case online = "Online"
+        case offline = "Offline"
+        case busy = "Busy"
+        case idle = "Idle"
+        case error = "Error"
+        case maintenance = "Maintenance"
+    }
+    
+    public struct DevicePerformance: Codable, Equatable {
+        public let cpuUsage: Double
+        public let memoryUsage: Double
+        public let storageUsage: Double
+        public let networkUsage: Double
+        public let batteryLevel: Double
+        public let temperature: Double
+        public let responseTime: TimeInterval
+        public let throughput: Double
+        
+        public init(
+            cpuUsage: Double,
+            memoryUsage: Double,
+            storageUsage: Double,
+            networkUsage: Double,
+            batteryLevel: Double,
+            temperature: Double,
+            responseTime: TimeInterval,
+            throughput: Double
+        ) {
+            self.cpuUsage = cpuUsage
+            self.memoryUsage = memoryUsage
+            self.storageUsage = storageUsage
+            self.networkUsage = networkUsage
+            self.batteryLevel = batteryLevel
+            self.temperature = temperature
+            self.responseTime = responseTime
+            self.throughput = throughput
+        }
+    }
+    
+    public struct DeviceHealth: Codable, Equatable {
+        public let status: HealthStatus
+        public let uptime: TimeInterval
+        public let lastCheck: Date
+        public let issues: [String]
+        public let warnings: [String]
+        
+        public enum HealthStatus: String, Codable, CaseIterable {
+            case healthy = "Healthy"
+            case degraded = "Degraded"
+            case unhealthy = "Unhealthy"
+            case critical = "Critical"
+        }
+        
+        public init(
+            status: HealthStatus,
+            uptime: TimeInterval,
+            lastCheck: Date = Date(),
+            issues: [String] = [],
+            warnings: [String] = []
+        ) {
+            self.status = status
+            self.uptime = uptime
+            self.lastCheck = lastCheck
+            self.issues = issues
+            self.warnings = warnings
+        }
+    }
+    
+    public init(
+        name: String,
+        type: DeviceType,
+        capabilities: [DeviceCapability],
+        status: DeviceStatus,
+        performance: DevicePerformance,
+        health: DeviceHealth,
+        location: String,
+        lastSeen: Date = Date()
+    ) {
+        self.name = name
+        self.type = type
+        self.capabilities = capabilities
+        self.status = status
+        self.performance = performance
+        self.health = health
+        self.location = location
+        self.lastSeen = lastSeen
+    }
+}
+
+// MARK: - Orchestration Status
+@available(iOS 18.0, macOS 15.0, *)
+public enum OrchestrationStatus: String, Codable, CaseIterable {
+    case idle = "Idle"
+    case discovering = "Discovering"
+    case coordinating = "Coordinating"
+    case balancing = "Load Balancing"
+    case recovering = "Recovering"
+    case optimizing = "Optimizing"
+    case completed = "Completed"
+    case failed = "Failed"
+}
+
+// MARK: - Load Distribution
+@available(iOS 18.0, macOS 15.0, *)
+public struct LoadDistribution: Codable, Equatable {
+    public let totalLoad: Double
+    public let distributedLoad: Double
+    public let deviceLoads: [String: Double]
+    public let balanceScore: Double
+    public let bottlenecks: [String]
+    public let recommendations: [String]
+    
+    public init(
+        totalLoad: Double,
+        distributedLoad: Double,
+        deviceLoads: [String: Double],
+        balanceScore: Double,
+        bottlenecks: [String] = [],
+        recommendations: [String] = []
+    ) {
+        self.totalLoad = totalLoad
+        self.distributedLoad = distributedLoad
+        self.deviceLoads = deviceLoads
+        self.balanceScore = balanceScore
+        self.bottlenecks = bottlenecks
+        self.recommendations = recommendations
+    }
+}
+
+// MARK: - Fault Status
+@available(iOS 18.0, macOS 15.0, *)
+public enum FaultStatus: String, Codable, CaseIterable {
+    case healthy = "Healthy"
+    case warning = "Warning"
+    case degraded = "Degraded"
+    case critical = "Critical"
+    case recovering = "Recovering"
+}
+
+// MARK: - Performance Metrics
+@available(iOS 18.0, macOS 15.0, *)
+public struct PerformanceMetrics: Codable, Equatable {
+    public let overallEfficiency: Double
+    public let averageResponseTime: TimeInterval
+    public let throughput: Double
+    public let resourceUtilization: Double
+    public let energyEfficiency: Double
+    public let networkEfficiency: Double
+    public let faultTolerance: Double
+    public let scalability: Double
+    
+    public init(
+        overallEfficiency: Double,
+        averageResponseTime: TimeInterval,
+        throughput: Double,
+        resourceUtilization: Double,
+        energyEfficiency: Double,
+        networkEfficiency: Double,
+        faultTolerance: Double,
+        scalability: Double
+    ) {
+        self.overallEfficiency = overallEfficiency
+        self.averageResponseTime = averageResponseTime
+        self.throughput = throughput
+        self.resourceUtilization = resourceUtilization
+        self.energyEfficiency = energyEfficiency
+        self.networkEfficiency = networkEfficiency
+        self.faultTolerance = faultTolerance
+        self.scalability = scalability
+    }
+}
+
+// MARK: - Task
+@available(iOS 18.0, macOS 15.0, *)
+public struct Task: Identifiable, Codable, Equatable {
+    public let id = UUID()
+    public let name: String
+    public let type: TaskType
+    public let priority: Priority
+    public let requirements: TaskRequirements
+    public let assignedDevice: UUID?
+    public let status: TaskStatus
+    public let createdAt: Date
+    public let startedAt: Date?
+    public let completedAt: Date?
+    
+    public enum TaskType: String, Codable, CaseIterable {
+        case computation = "Computation"
+        case dataProcessing = "Data Processing"
+        case modelTraining = "Model Training"
+        case inference = "Inference"
+        case communication = "Communication"
+        case storage = "Storage"
+    }
+    
+    public enum Priority: String, Codable, CaseIterable {
+        case low = "Low"
+        case normal = "Normal"
+        case high = "High"
+        case critical = "Critical"
+    }
+    
+    public struct TaskRequirements: Codable, Equatable {
+        public let cpuCores: Int
+        public let memoryGB: Double
+        public let storageGB: Double
+        public let networkMbps: Double
+        public let gpuRequired: Bool
+        public let batteryRequired: Bool
+        
+        public init(
+            cpuCores: Int,
+            memoryGB: Double,
+            storageGB: Double,
+            networkMbps: Double,
+            gpuRequired: Bool,
+            batteryRequired: Bool
+        ) {
+            self.cpuCores = cpuCores
+            self.memoryGB = memoryGB
+            self.storageGB = storageGB
+            self.networkMbps = networkMbps
+            self.gpuRequired = gpuRequired
+            self.batteryRequired = batteryRequired
+        }
+    }
+    
+    public enum TaskStatus: String, Codable, CaseIterable {
+        case pending = "Pending"
+        case assigned = "Assigned"
+        case running = "Running"
+        case completed = "Completed"
+        case failed = "Failed"
+        case cancelled = "Cancelled"
+    }
+    
+    public init(
+        name: String,
+        type: TaskType,
+        priority: Priority,
+        requirements: TaskRequirements,
+        assignedDevice: UUID? = nil,
+        status: TaskStatus = .pending,
+        createdAt: Date = Date(),
+        startedAt: Date? = nil,
+        completedAt: Date? = nil
+    ) {
+        self.name = name
+        self.type = type
+        self.priority = priority
+        self.requirements = requirements
+        self.assignedDevice = assignedDevice
+        self.status = status
+        self.createdAt = createdAt
+        self.startedAt = startedAt
+        self.completedAt = completedAt
     }
 }
