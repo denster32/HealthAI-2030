@@ -94,10 +94,17 @@ swift test --filter HealthAI2030CoreTests
 
 ### 📚 Documentation
 
-- [Architecture Guide](docs/Architecture.md)
-- [API Reference](docs/API.md)
-- [Security Framework](docs/Security.md)
-- [Deployment Guide](docs/Deployment.md)
+📖 **[Complete Documentation Index](docs/DOCUMENTATION_INDEX.md)** - All documentation organized by category
+
+**Core Guides:**
+- [Architecture Guide](docs/architecture.md)
+- [API Documentation](docs/APIDocumentation.md)
+- [Security Framework](SECURITY.md)
+- [Developer Guide](docs/DEVELOPER_GUIDE.md)
+- [Onboarding Guide](docs/onboarding.md)
+- [Machine Learning Integration](docs/machine_learning_integration.md)
+- [Health Analytics](docs/health_insights_analytics.md)
+- [Multi-Platform Support](docs/multi_platform_support.md)
 
 ### 🔒 Security & Compliance
 
