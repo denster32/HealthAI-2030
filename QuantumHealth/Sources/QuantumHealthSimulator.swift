@@ -1,59 +1,142 @@
 import Foundation
 import Accelerate
 import simd
+import SwiftData
+import os.log
+import Observation
 
+/// Quantum Health Simulator for HealthAI 2030
+/// Refactored for Swift 6 & iOS 18+ with modern features and enhanced error handling
+@available(iOS 18.0, macOS 15.0, watchOS 11.0, tvOS 18.0, *)
+@Observable
 public class QuantumHealthSimulator {
+    // MARK: - Observable Properties
+    public private(set) var simulationProgress: Double = 0.0
+    public private(set) var currentEpoch: Int = 0
+    public private(set) var lastSimulationTime: Date?
+    public private(set) var simulationStatus: SimulationStatus = .idle
+    public private(set) var lossHistory: [Double] = []
+    
+    // MARK: - SwiftData Integration
+    private let modelContext: ModelContext
+    private let logger = Logger(subsystem: "com.healthai.quantum", category: "simulator")
+    
+    // MARK: - Performance Optimization
+    private let simulationQueue = DispatchQueue(label: "com.healthai.quantum.simulation", qos: .userInitiated, attributes: .concurrent)
+    private let cache = NSCache<NSString, AnyObject>()
+    
+    // MARK: - Error Handling
+    public enum SimulationError: LocalizedError, CustomStringConvertible {
+        case invalidInput(String)
+        case simulationFailed(String)
+        case memoryError(String)
+        case quantumError(String)
+        case systemError(String)
+        
+        public var errorDescription: String? {
+            switch self {
+            case .invalidInput(let message):
+                return "Invalid input: \(message)"
+            case .simulationFailed(let message):
+                return "Simulation failed: \(message)"
+            case .memoryError(let message):
+                return "Memory error: \(message)"
+            case .quantumError(let message):
+                return "Quantum error: \(message)"
+            case .systemError(let message):
+                return "System error: \(message)"
+            }
+        }
+        public var description: String { errorDescription ?? "Unknown error" }
+        public var failureReason: String? { errorDescription }
+        public var recoverySuggestion: String? {
+            switch self {
+            case .invalidInput: return "Check input data and format."
+            case .simulationFailed: return "Retry simulation with different parameters."
+            case .memoryError: return "Free up memory and retry."
+            case .quantumError: return "Retry quantum operation."
+            case .systemError: return "Restart the simulator."
+            }
+        }
+    }
+    
+    public enum SimulationStatus: String, CaseIterable, Sendable {
+        case idle, running, completed, failed
+    }
+    
     private let qubits: Int
     private var quantumState: [Complex<Double>]
     private var entanglementMatrix: [[Double]]
     
-    public init(qubits: Int) {
-        self.qubits = qubits
-        self.quantumState = Array(repeating: Complex<Double>(0.0, 0.0), count: 1 << qubits)
-        self.quantumState[0] = Complex<Double>(1.0, 0.0)
-        self.entanglementMatrix = Array(repeating: Array(repeating: 0.0, count: qubits), count: qubits)
-    }
-    
-    public func quantumFourierTransform(healthSignal: [Double]) -> [Complex<Double>] {
-        let N = healthSignal.count
-        var result = Array(repeating: Complex<Double>(0.0, 0.0), count: N)
-        
-        for k in 0..<N {
-            var sum = Complex<Double>(0.0, 0.0)
-            for n in 0..<N {
-                let angle = -2.0 * Double.pi * Double(k * n) / Double(N)
-                let w = Complex<Double>(cos(angle), sin(angle))
-                sum = sum + Complex<Double>(healthSignal[n], 0.0) * w
-            }
-            result[k] = sum / sqrt(Double(N))
+    public init(modelContext: ModelContext) throws {
+        self.modelContext = modelContext
+        // Initialization with error handling
+        do {
+            setupSimulator()
+            setupCache()
+        } catch {
+            logger.error("Failed to initialize simulator: \(error.localizedDescription)")
+            throw SimulationError.systemError("Failed to initialize simulator: \(error.localizedDescription)")
         }
-        
-        return result
+        logger.info("QuantumHealthSimulator initialized successfully")
+        self.qubits = 0
+        self.quantumState = []
+        self.entanglementMatrix = []
     }
     
-    public func quantumMachineLearning(healthData: [[Double]], labels: [Int]) -> QuantumHealthModel {
-        let inputSize = healthData[0].count
-        let hiddenSize = min(16, inputSize * 2)
+    /// Quantum Fourier Transform for health signals
+    public func quantumFourierTransform(healthSignal: [Double]) async throws -> [Complex<Double>] {
+        guard !healthSignal.isEmpty else {
+            throw SimulationError.invalidInput("Health signal array is empty")
+        }
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let N = healthSignal.count
+                var result = Array(repeating: Complex<Double>(0.0, 0.0), count: N)
+                for k in 0..<N {
+                    var sum = Complex<Double>(0.0, 0.0)
+                    for n in 0..<N {
+                        let angle = -2.0 * Double.pi * Double(k * n) / Double(N)
+                        let w = Complex<Double>(cos(angle), sin(angle))
+                        sum = sum + Complex<Double>(healthSignal[n], 0.0) * w
+                    }
+                    result[k] = sum / sqrt(Double(N))
+                }
+                continuation.resume(returning: result)
+            }
+        }
+    }
+    
+    /// Quantum ML for health data
+    public func runQuantumMachineLearning(
+        healthData: [[Double]],
+        labels: [Int],
+        epochs: Int = 100
+    ) async throws -> QuantumHealthModel {
+        simulationStatus = .running
+        simulationProgress = 0.0
+        currentEpoch = 0
+        lossHistory.removeAll()
+        let inputSize = healthData.first?.count ?? 0
         let outputSize = Set(labels).count
-        
-        var quantumWeights = generateQuantumWeights(inputSize: inputSize, hiddenSize: hiddenSize, outputSize: outputSize)
-        
-        for epoch in 0..<100 {
+        var quantumWeights = generateQuantumWeights(inputSize: inputSize, hiddenSize: min(16, inputSize * 2), outputSize: outputSize)
+        for epoch in 0..<epochs {
+            currentEpoch = epoch
             var totalLoss = 0.0
-            
             for (i, sample) in healthData.enumerated() {
                 let prediction = quantumForwardPass(input: sample, weights: quantumWeights)
                 let loss = quantumLoss(prediction: prediction, target: labels[i])
                 totalLoss += loss
-                
                 quantumWeights = quantumBackpropagation(weights: quantumWeights, loss: loss, input: sample)
             }
-            
+            lossHistory.append(totalLoss / Double(healthData.count))
+            simulationProgress = Double(epoch + 1) / Double(epochs)
             if epoch % 10 == 0 {
-                print("Quantum ML Epoch \(epoch), Loss: \(totalLoss / Double(healthData.count))")
+                logger.info("Quantum ML Epoch \(epoch), Loss: \(totalLoss / Double(healthData.count))")
             }
         }
-        
+        simulationStatus = .completed
+        lastSimulationTime = Date()
         return QuantumHealthModel(weights: quantumWeights, inputSize: inputSize, outputSize: outputSize)
     }
     

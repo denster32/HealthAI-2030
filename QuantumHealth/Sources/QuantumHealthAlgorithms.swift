@@ -1,26 +1,102 @@
 import Foundation
 import Accelerate
+import SwiftData
+import os.log
+import Observation
 
+/// Quantum Health Algorithms for HealthAI 2030
+/// Refactored for Swift 6 & iOS 18+ with modern features and enhanced error handling
+@available(iOS 18.0, macOS 15.0, watchOS 11.0, tvOS 18.0, *)
+@Observable
 public class QuantumHealthAlgorithms {
+    // MARK: - Observable Properties
+    public private(set) var algorithmProgress: Double = 0.0
+    public private(set) var lastRunTime: Date?
+    public private(set) var algorithmStatus: AlgorithmStatus = .idle
+    public private(set) var resultHistory: [Double] = []
     
-    public static func groversHealthSearch(database: [HealthRecord], targetCondition: String) -> [HealthRecord] {
+    // MARK: - SwiftData Integration
+    private let modelContext: ModelContext
+    private let logger = Logger(subsystem: "com.healthai.quantum", category: "algorithms")
+    
+    // MARK: - Performance Optimization
+    private let algorithmQueue = DispatchQueue(label: "com.healthai.quantum.algorithms", qos: .userInitiated, attributes: .concurrent)
+    private let cache = NSCache<NSString, AnyObject>()
+    
+    // MARK: - Error Handling
+    public enum AlgorithmError: LocalizedError, CustomStringConvertible {
+        case invalidInput(String)
+        case algorithmFailed(String)
+        case memoryError(String)
+        case quantumError(String)
+        case systemError(String)
+        
+        public var errorDescription: String? {
+            switch self {
+            case .invalidInput(let message):
+                return "Invalid input: \(message)"
+            case .algorithmFailed(let message):
+                return "Algorithm failed: \(message)"
+            case .memoryError(let message):
+                return "Memory error: \(message)"
+            case .quantumError(let message):
+                return "Quantum error: \(message)"
+            case .systemError(let message):
+                return "System error: \(message)"
+            }
+        }
+        public var description: String { errorDescription ?? "Unknown error" }
+        public var failureReason: String? { errorDescription }
+        public var recoverySuggestion: String? {
+            switch self {
+            case .invalidInput: return "Check input data and format."
+            case .algorithmFailed: return "Retry with different parameters."
+            case .memoryError: return "Free up memory and retry."
+            case .quantumError: return "Retry quantum operation."
+            case .systemError: return "Restart the algorithm."
+            }
+        }
+    }
+    
+    public enum AlgorithmStatus: String, CaseIterable, Sendable {
+        case idle, running, completed, failed
+    }
+    
+    public init(modelContext: ModelContext) throws {
+        self.modelContext = modelContext
+        // Initialization with error handling
+        do {
+            setupAlgorithms()
+            setupCache()
+        } catch {
+            logger.error("Failed to initialize algorithms: \(error.localizedDescription)")
+            throw AlgorithmError.systemError("Failed to initialize algorithms: \(error.localizedDescription)")
+        }
+        logger.info("QuantumHealthAlgorithms initialized successfully")
+    }
+    /// Run Grover's search for health records
+    public func runGroversHealthSearch(
+        database: [HealthRecord],
+        targetCondition: String
+    ) async throws -> [HealthRecord] {
+        algorithmStatus = .running
+        algorithmProgress = 0.0
         let n = database.count
         let iterations = Int(Double.pi / 4.0 * sqrt(Double(n)))
-        
         var amplitudes = Array(repeating: 1.0 / sqrt(Double(n)), count: n)
-        
-        for _ in 0..<iterations {
+        for i in 0..<iterations {
             amplitudes = oracleFunction(amplitudes: amplitudes, database: database, target: targetCondition)
             amplitudes = diffusionOperator(amplitudes: amplitudes)
+            algorithmProgress = Double(i + 1) / Double(iterations)
         }
-        
         var results: [HealthRecord] = []
         for (i, amplitude) in amplitudes.enumerated() {
             if amplitude * amplitude > 0.5 {
                 results.append(database[i])
             }
         }
-        
+        algorithmStatus = .completed
+        lastRunTime = Date()
         return results
     }
     

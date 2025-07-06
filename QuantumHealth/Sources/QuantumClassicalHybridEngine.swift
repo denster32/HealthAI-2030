@@ -1,31 +1,143 @@
 import Foundation
 import Accelerate
-import Combine
-
-// MARK: - Health Problem Definition
-
-/// Represents a health-related optimization problem.
-public struct HealthProblem {
-    public let id: String
-    public let description: String
-    public let problemData: [String: Any]
-}
-
-// MARK: - Quantum Circuit Simulation
-
-/// Simulates a parameterized quantum circuit for a given problem.
-/// In a real-world scenario, this would interface with quantum hardware or a simulator.
-public struct QuantumCircuitSimulator {
-    /// Simulates the expectation value for a given set of parameters and problem.
-    public static func expectationValue(parameters: [Double], problem: HealthProblem) -> Double {
-        // Simulate a non-trivial energy landscape (e.g., for molecular energy minimization)
-        // This is a stand-in for a quantum circuit's output.
-        let sum = parameters.reduce(0, +)
-        let product = parameters.reduce(1, *)
-        let base = sin(sum) + cos(product)
-        // Add a problem-dependent offset for variety
-        let offset = Double(problem.id.hashValue % 10) * 0.1
-        return base + offset
+import SwiftData
+import os.log
+import Observation
+/// Quantum-Classical Hybrid Engine for HealthAI 2030
+/// Refactored for Swift 6 & iOS 18+ with modern features and enhanced error handling
+/// Combines quantum computing with classical algorithms for optimal performance
+@available(iOS 18.0, macOS 15.0, watchOS 11.0, tvOS 18.0, *)
+@Observable
+public class QuantumClassicalHybridEngine {
+    
+    // MARK: - Observable Properties
+    public private(set) var quantumExecutionTime: TimeInterval = 0.0
+    public private(set) var classicalExecutionTime: TimeInterval = 0.0
+    public private(set) var hybridExecutionTime: TimeInterval = 0.0
+    public private(set) var accuracyImprovement: Double = 0.0
+    public private(set) var currentStatus: HybridStatus = .idle
+    public private(set) var lastOperationTime: Date?
+    public private(set) var systemEfficiency: Double = 0.0
+    
+    // MARK: - System Components
+    private let quantumProcessor = QuantumProcessor()
+    private let classicalProcessor = ClassicalProcessor()
+    private let hybridOrchestrator = HybridOrchestrator()
+    private let performanceMonitor = HybridPerformanceMonitor()
+    
+    // MARK: - Configuration
+    private let hybridThreshold = 0.7 // Threshold for quantum vs classical processing
+    private let maxQuantumQubits = 50 // Maximum qubits for quantum processing
+    private let classicalOptimizationEnabled = true
+    
+    // MARK: - SwiftData Integration
+    private let modelContext: ModelContext
+    private let logger = Logger(subsystem: "com.healthai.quantum", category: "hybrid_engine")
+    
+    // MARK: - Performance Optimization
+    private let hybridQueue = DispatchQueue(label: "com.healthai.quantum.hybrid", qos: .userInitiated, attributes: .concurrent)
+    private let quantumQueue = DispatchQueue(label: "com.healthai.quantum.quantum", qos: .userInitiated)
+    private let classicalQueue = DispatchQueue(label: "com.healthai.quantum.classical", qos: .userInitiated)
+    private let cache = NSCache<NSString, AnyObject>()
+    
+    // MARK: - Error Handling with Modern Swift Error Types
+    public enum HybridEngineError: LocalizedError, CustomStringConvertible {
+        case invalidHealthData(String)
+        case quantumProcessingFailed(String)
+        case classicalProcessingFailed(String)
+        case hybridProcessingFailed(String)
+        case calibrationFailed(String)
+        case optimizationFailed(String)
+        case validationError(String)
+        case memoryError(String)
+        case systemError(String)
+        case dataCorruptionError(String)
+        
+        public var errorDescription: String? {
+            switch self {
+            case .invalidHealthData(let message):
+                return "Invalid health data: \(message)"
+            case .quantumProcessingFailed(let message):
+                return "Quantum processing failed: \(message)"
+            case .classicalProcessingFailed(let message):
+                return "Classical processing failed: \(message)"
+            case .hybridProcessingFailed(let message):
+                return "Hybrid processing failed: \(message)"
+            case .calibrationFailed(let message):
+                return "Calibration failed: \(message)"
+            case .optimizationFailed(let message):
+                return "Optimization failed: \(message)"
+            case .validationError(let message):
+                return "Validation error: \(message)"
+            case .memoryError(let message):
+                return "Memory error: \(message)"
+            case .systemError(let message):
+                return "System error: \(message)"
+            case .dataCorruptionError(let message):
+                return "Data corruption error: \(message)"
+            }
+        }
+        
+        public var description: String {
+            return errorDescription ?? "Unknown error"
+        }
+        
+        public var failureReason: String? {
+            return errorDescription
+        }
+        
+        public var recoverySuggestion: String? {
+            switch self {
+            case .invalidHealthData:
+                return "Please verify the health data format and try again"
+            case .quantumProcessingFailed:
+                return "Quantum processing will be retried with different parameters"
+            case .classicalProcessingFailed:
+                return "Classical processing will be retried with different algorithms"
+            case .hybridProcessingFailed:
+                return "Hybrid processing will be retried with different strategies"
+            case .calibrationFailed:
+                return "System calibration will be reinitialized"
+            case .optimizationFailed:
+                return "Optimization will be retried with different parameters"
+            case .validationError:
+                return "Please check validation data and parameters"
+            case .memoryError:
+                return "Close other applications to free up memory"
+            case .systemError:
+                return "System components will be reinitialized. Please try again"
+            case .dataCorruptionError:
+                return "Data integrity check failed. Please refresh your data"
+            }
+        }
+    }
+    
+    public enum HybridStatus: String, CaseIterable, Sendable {
+        case idle = "idle"
+        case processing = "processing"
+        case quantumProcessing = "quantum_processing"
+        case classicalProcessing = "classical_processing"
+        case hybridProcessing = "hybrid_processing"
+        case calibrating = "calibrating"
+        case optimizing = "optimizing"
+        case error = "error"
+        case maintenance = "maintenance"
+    }
+    
+    public init(modelContext: ModelContext) throws {
+        self.modelContext = modelContext
+        
+        // Initialize hybrid engine with error handling
+        do {
+            setupHybridSystem()
+            calibrateQuantumClassicalInterface()
+            setupCache()
+        } catch {
+            logger.error("Failed to initialize quantum-classical hybrid engine: \(error.localizedDescription)")
+            throw HybridEngineError.systemError("Failed to initialize quantum-classical hybrid engine: \(error.localizedDescription)")
+        }
+        
+        logger.info("QuantumClassicalHybridEngine initialized successfully")
     }
 }
 

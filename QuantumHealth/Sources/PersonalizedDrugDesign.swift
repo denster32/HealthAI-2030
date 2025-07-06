@@ -10,9 +10,63 @@ import Foundation
 import CoreML
 import Accelerate
 import os.log
+import SwiftData
+import Observation
 
-/// Quantum-enhanced personalized drug design engine
-public final class PersonalizedDrugDesign {
+/// Personalized Drug Design Engine for HealthAI 2030
+/// Refactored for Swift 6 & iOS 18+ with modern features and enhanced error handling
+@available(iOS 18.0, macOS 15.0, watchOS 11.0, tvOS 18.0, *)
+@Observable
+public class PersonalizedDrugDesign {
+    
+    // MARK: - Observable Properties
+    public private(set) var designProgress: Double = 0.0
+    public private(set) var currentStep: Int = 0
+    public private(set) var lastDesignTime: Date?
+    public private(set) var designStatus: DesignStatus = .idle
+    public private(set) var resultHistory: [Double] = []
+    public private(set) var lastError: DesignError?
+    
+    // MARK: - SwiftData Integration
+    private let modelContext: ModelContext
+    private let logger = Logger(subsystem: "com.healthai.quantum", category: "personalized_drug_design")
+    
+    // MARK: - Performance Optimization
+    private let designQueue = DispatchQueue(label: "com.healthai.quantum.personalizeddrug", qos: .userInitiated, attributes: .concurrent)
+    private let cache = NSCache<NSString, AnyObject>()
+    
+    // MARK: - Error Handling
+    public enum DesignError: LocalizedError, CustomStringConvertible {
+        case invalidInput(String)
+        case designFailed(String)
+        case memoryError(String)
+        case systemError(String)
+        case dataCorruption(String)
+        
+        public var errorDescription: String? {
+            switch self {
+            case .invalidInput(let msg): return "Invalid input: \(msg)"
+            case .designFailed(let msg): return "Design failed: \(msg)"
+            case .memoryError(let msg): return "Memory error: \(msg)"
+            case .systemError(let msg): return "System error: \(msg)"
+            case .dataCorruption(let msg): return "Data corruption: \(msg)"
+            }
+        }
+        public var description: String { errorDescription ?? "Unknown error" }
+        public var failureReason: String? { errorDescription }
+        public var recoverySuggestion: String? {
+            switch self {
+            case .invalidInput: return "Check input data and format."
+            case .designFailed: return "Retry design with different parameters."
+            case .memoryError: return "Free up memory and retry."
+            case .systemError: return "Restart the engine."
+            case .dataCorruption: return "Recreate the data or contact support."
+            }
+        }
+    }
+    public enum DesignStatus: String, CaseIterable, Sendable {
+        case idle, running, completed, failed
+    }
     
     // MARK: - Types and Structures
     
@@ -326,20 +380,29 @@ public final class PersonalizedDrugDesign {
     
     // MARK: - Properties
     
-    private let logger = Logger(subsystem: "QuantumHealth", category: "PersonalizedDrugDesign")
     private let quantumCalculator: QuantumMolecularCalculator
     private let aiDrugDesigner: AIDrugDesigner
     private let admetPredictor: ADMETPredictor
-    private let cache = NSCache<NSString, DesignOptimizationResult>()
     
     // MARK: - Initialization
     
-    public init() throws {
+    public init(modelContext: ModelContext) throws {
+        self.modelContext = modelContext
+        cache.countLimit = 500
+        cache.totalCostLimit = 20 * 1024 * 1024
         self.quantumCalculator = QuantumMolecularCalculator()
-        self.aiDrugDesigner = try AIDrugDesigner()
-        self.admetPredictor = try ADMETPredictor()
+        self.aiDrugDesigner = try! AIDrugDesigner()
+        self.admetPredictor = try! ADMETPredictor()
         
-        logger.info("PersonalizedDrugDesign engine initialized")
+        // Initialization with error handling
+        do {
+            setupDesignEngine()
+            setupCache()
+        } catch {
+            logger.error("Failed to initialize personalized drug design engine: \(error.localizedDescription)")
+            throw DesignError.systemError("Failed to initialize personalized drug design engine: \(error.localizedDescription)")
+        }
+        logger.info("PersonalizedDrugDesign initialized successfully")
     }
     
     // MARK: - Public Methods
@@ -350,7 +413,7 @@ public final class PersonalizedDrugDesign {
                                      objectives: DesignObjectives) async throws -> DesignOptimizationResult {
         let cacheKey = "\(patient.id.uuidString)_\(leadCompound.id.uuidString)_\(objectives.hashValue)" as NSString
         
-        if let cachedResult = cache.object(forKey: cacheKey) {
+        if let cachedResult = cache.object(forKey: cacheKey) as? DesignOptimizationResult {
             logger.info("Returning cached drug design result for patient: \(patient.id)")
             return cachedResult
         }

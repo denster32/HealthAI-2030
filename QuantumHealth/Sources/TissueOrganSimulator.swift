@@ -1,7 +1,65 @@
 import Foundation
 import simd
+import Accelerate
+import SwiftData
+import os.log
+import Observation
 
+/// Tissue and Organ Simulator for HealthAI 2030
+/// Refactored for Swift 6 & iOS 18+ with modern features and enhanced error handling
+@available(iOS 18.0, macOS 15.0, watchOS 11.0, tvOS 18.0, *)
+@Observable
 public class TissueOrganSimulator {
+    // MARK: - Observable Properties
+    public private(set) var simulationProgress: Double = 0.0
+    public private(set) var currentStep: Int = 0
+    public private(set) var lastSimulationTime: Date?
+    public private(set) var simulationStatus: SimulationStatus = .idle
+    public private(set) var resultHistory: [Double] = []
+    public private(set) var lastError: SimulationError?
+    
+    // MARK: - SwiftData Integration
+    private let modelContext: ModelContext
+    private let logger = Logger(subsystem: "com.healthai.quantum", category: "tissue_organ_simulator")
+    private let cache = NSCache<NSString, AnyObject>()
+    
+    // MARK: - Performance Optimization
+    private let simulationQueue = DispatchQueue(label: "com.healthai.quantum.tissueorgan", qos: .userInitiated, attributes: .concurrent)
+    
+    // MARK: - Error Handling
+    public enum SimulationError: LocalizedError, CustomStringConvertible {
+        case invalidInput(String)
+        case simulationFailed(String)
+        case memoryError(String)
+        case systemError(String)
+        
+        public var errorDescription: String? {
+            switch self {
+            case .invalidInput(let message):
+                return "Invalid input: \(message)"
+            case .simulationFailed(let message):
+                return "Simulation failed: \(message)"
+            case .memoryError(let message):
+                return "Memory error: \(message)"
+            case .systemError(let message):
+                return "System error: \(message)"
+            }
+        }
+        public var description: String { errorDescription ?? "Unknown error" }
+        public var failureReason: String? { errorDescription }
+        public var recoverySuggestion: String? {
+            switch self {
+            case .invalidInput: return "Check input data and format."
+            case .simulationFailed: return "Retry simulation with different parameters."
+            case .memoryError: return "Free up memory and retry."
+            case .systemError: return "Restart the simulator."
+            }
+        }
+    }
+    public enum SimulationStatus: String, CaseIterable, Sendable {
+        case idle, running, completed, failed
+    }
+    
     private let tissueModeler: TissueModeler
     private let organModeler: OrganModeler
     private let systemInteractionModeler: SystemInteractionModeler
@@ -9,7 +67,19 @@ public class TissueOrganSimulator {
     private let treatmentResponseModeler: TreatmentResponseModeler
     private let regenerativeModeler: RegenerativeModeler
     
-    public init() {
+    public init(modelContext: ModelContext) throws {
+        self.modelContext = modelContext
+        // Initialization with error handling
+        do {
+            setupSimulator()
+            setupCache()
+        } catch {
+            logger.error("Failed to initialize tissue organ simulator: \(error.localizedDescription)")
+            throw SimulationError.systemError("Failed to initialize tissue organ simulator: \(error.localizedDescription)")
+        }
+        logger.info("TissueOrganSimulator initialized successfully")
+        cache.countLimit = 500
+        cache.totalCostLimit = 20 * 1024 * 1024
         self.tissueModeler = TissueModeler()
         self.organModeler = OrganModeler()
         self.systemInteractionModeler = SystemInteractionModeler()
