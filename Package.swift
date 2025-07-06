@@ -158,22 +158,22 @@ let package = Package(
         .target(
             name: "HealthAI2030Core",
             dependencies: [],
-            path: "Packages/HealthAI2030Core/Sources/HealthAI2030Core"
+            path: "Frameworks/HealthAI2030Core/Sources/HealthAI2030Core"
         ),
         .target(
             name: "HealthAI2030Networking",
             dependencies: [],
-            path: "Packages/HealthAI2030Networking/Sources/HealthAI2030Networking"
+            path: "Frameworks/HealthAI2030Networking/Sources/HealthAI2030Networking"
         ),
         .target(
             name: "HealthAI2030UI",
             dependencies: [],
-            path: "Packages/HealthAI2030UI/Sources/HealthAI2030UI"
+            path: "Frameworks/HealthAI2030UI/Sources/HealthAI2030UI"
         ),
         .target(
             name: "HealthAI2030Graphics",
             dependencies: [],
-            path: "Packages/HealthAI2030Graphics/Sources/HealthAI2030Graphics",
+            path: "Frameworks/HealthAI2030Graphics/Sources/HealthAI2030Graphics",
             resources: [
                 .process("Shaders")
             ]
@@ -181,112 +181,112 @@ let package = Package(
         .target(
             name: "HealthAI2030ML",
             dependencies: [],
-            path: "Packages/HealthAI2030ML/Sources/HealthAI2030ML"
+            path: "Frameworks/HealthAI2030ML/Sources/HealthAI2030ML"
         ),
         .target(
             name: "HealthAI2030Foundation",
             dependencies: [],
-            path: "Packages/HealthAI2030Foundation/Sources/HealthAI2030Foundation"
+            path: "Frameworks/HealthAI2030Foundation/Sources/HealthAI2030Foundation"
         ),
         .target(
             name: "CardiacHealth",
             dependencies: [],
-            path: "Packages/CardiacHealth/Sources/CardiacHealth"
+            path: "Frameworks/CardiacHealth/Sources/CardiacHealth"
         ),
         .target(
             name: "MentalHealth",
             dependencies: [],
-            path: "Packages/MentalHealth/Sources/MentalHealth"
+            path: "Frameworks/MentalHealth/Sources/MentalHealth"
         ),
         .target(
             name: "iOS18Features",
             dependencies: [],
-            path: "Packages/iOS18Features/Sources/iOS18Features"
+            path: "Frameworks/iOS18Features/Sources/iOS18Features"
         ),
         .target(
             name: "SleepTracking",
             dependencies: [],
-            path: "Packages/SleepTracking/Sources/SleepTracking"
+            path: "Frameworks/SleepTracking/Sources/SleepTracking"
         ),
         .target(
             name: "HealthPrediction",
             dependencies: [],
-            path: "Packages/HealthPrediction/Sources/HealthPrediction"
+            path: "Frameworks/HealthPrediction/Sources/HealthPrediction"
         ),
         .target(
             name: "CopilotSkills",
             dependencies: [],
-            path: "Packages/CopilotSkills/Sources/CopilotSkills"
+            path: "Frameworks/CopilotSkills/Sources/CopilotSkills"
         ),
         .target(
             name: "Metal4",
             dependencies: [],
-            path: "Packages/Metal4/Sources/Metal4"
+            path: "Frameworks/Metal4/Sources/Metal4"
         ),
         .target(
             name: "SmartHome",
             dependencies: [],
-            path: "Packages/SmartHome/Sources/SmartHome"
+            path: "Frameworks/SmartHome/Sources/SmartHome"
         ),
         .target(
             name: "UserScripting",
             dependencies: [],
-            path: "Packages/UserScripting/Sources/UserScripting"
+            path: "Frameworks/UserScripting/Sources/UserScripting"
         ),
         .target(
             name: "Shortcuts",
             dependencies: [],
-            path: "Packages/Shortcuts/Sources/Shortcuts"
+            path: "Frameworks/Shortcuts/Sources/Shortcuts"
         ),
         .target(
             name: "LogWaterIntake",
             dependencies: [],
-            path: "Packages/LogWaterIntake/Sources/LogWaterIntake"
+            path: "Frameworks/LogWaterIntake/Sources/LogWaterIntake"
         ),
         .target(
             name: "StartMeditation",
             dependencies: [],
-            path: "Packages/StartMeditation/Sources/StartMeditation"
+            path: "Frameworks/StartMeditation/Sources/StartMeditation"
         ),
         .target(
             name: "AR",
             dependencies: [],
-            path: "Packages/AR/Sources/AR"
+            path: "Frameworks/AR/Sources/AR"
         ),
         .target(
             name: "Biofeedback",
             dependencies: [],
-            path: "Packages/Biofeedback/Sources/Biofeedback"
+            path: "Frameworks/Biofeedback/Sources/Biofeedback"
         ),
         .target(
             name: "Shared",
             dependencies: [],
-            path: "Packages/Shared/Sources/Shared"
+            path: "Frameworks/Shared/Sources/Shared"
         ),
         .target(
             name: "SharedSettingsModule",
             dependencies: [],
-            path: "Packages/SharedSettingsModule/Sources/SharedSettingsModule"
+            path: "Frameworks/SharedSettingsModule/Sources/SharedSettingsModule"
         ),
         .target(
             name: "HealthAIConversationalEngine",
             dependencies: [],
-            path: "Packages/HealthAIConversationalEngine/Sources/HealthAIConversationalEngine"
+            path: "Frameworks/HealthAIConversationalEngine/Sources/HealthAIConversationalEngine"
         ),
         .target(
             name: "Kit",
             dependencies: [],
-            path: "Packages/Kit/Sources/Kit"
+            path: "Frameworks/Kit/Sources/Kit"
         ),
         .target(
             name: "ML",
             dependencies: [],
-            path: "Packages/ML/Sources/ML"
+            path: "Frameworks/ML/Sources/ML"
         ),
         .target(
             name: "SharedHealthSummary",
             dependencies: [],
-            path: "Packages/SharedHealthSummary/Sources/SharedHealthSummary"
+            path: "Frameworks/SharedHealthSummary/Sources/SharedHealthSummary"
         ),
         .testTarget(
             name: "HealthAI2030Tests",

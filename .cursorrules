@@ -1,0 +1,64 @@
+# HealthAI 2030 - Cursor Configuration
+# Auto-execute configuration for development workflow
+
+## Auto-execute Commands
+# These commands will be executed automatically without manual approval
+
+# Git operations
+- git status
+- git pull
+- git fetch
+- git branch
+- git log --oneline -10
+
+# Build and test commands
+- swift build
+- swift test
+- xcodebuild -list
+- xcodebuild -showBuildSettings
+
+# File operations (read-only)
+- ls
+- dir
+- cat
+- head
+- tail
+- find
+- grep
+
+# Package management
+- swift package resolve
+- swift package update
+
+# Scripts (safe ones)
+- ./Scripts/run_all_tests.sh
+- ./Scripts/validate_release.sh
+
+## Manual Approval Required
+# These commands require manual approval for safety
+
+# File modifications
+- git add
+- git commit
+- git push
+- git merge
+- git rebase
+
+# System operations
+- winget install
+- choco install
+- brew install
+
+# Build operations that modify files
+- xcodebuild build
+- xcodebuild archive
+
+# Scripts that modify the system
+- ./Scripts/release.sh
+- ./Scripts/fix_*.sh
+
+## Project-Specific Rules
+- Always run tests after making changes
+- Follow Apple HIG guidelines for UI changes
+- Ensure all code changes include proper documentation
+- Maintain modular architecture as defined in AGENT_TASK_MANIFEST.md 
