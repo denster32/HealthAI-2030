@@ -8,6 +8,76 @@
 [![macOS Version](https://img.shields.io/badge/macOS-15.0+-blue.svg)](https://developer.apple.com/macos/)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 
+## Project Overview
+HealthAI 2030 is an advanced health intelligence platform leveraging cutting-edge technologies to provide personalized health insights and predictions.
+
+## Documentation
+
+### Documentation Guidelines
+We are committed to maintaining high-quality, comprehensive documentation across our codebase. Please refer to our [Documentation Guidelines](docs/DOCUMENTATION_GUIDELINES.md) for detailed instructions on writing effective DocC comments.
+
+#### Key Documentation Principles
+- All public APIs must have documentation comments
+- Use markdown formatting for enhanced readability
+- Provide clear, concise descriptions
+- Include examples and parameter details
+- Document potential errors and edge cases
+
+### Automated Documentation Validation
+- Our CI/CD pipeline includes automated documentation generation and validation
+- A pre-commit hook checks for documentation comments on public APIs
+- Aim: Maintain at least 80% documentation coverage
+
+## Development Setup
+
+### Git Hooks
+To ensure code quality and documentation standards, we use Git hooks:
+
+```bash
+# Install Git hooks (run from project root)
+./Scripts/setup-git-hooks.sh
+```
+
+#### Pre-Commit Hook Features
+- Validates documentation comments for public APIs
+- Prevents commits with undocumented public declarations
+- Provides helpful error messages and guidance
+
+## Contributing
+
+### Documentation Best Practices
+1. Write DocC comments for all public APIs
+2. Keep documentation up to date with code changes
+3. Use the provided documentation guidelines
+4. Run `./Scripts/docc_generation.sh` to validate documentation
+
+### Example Documentation
+```swift
+/// Calculates a personalized health risk score.
+///
+/// - Parameters:
+///   - medicalHistory: Comprehensive medical history record
+///   - geneticData: Genetic profile information
+///
+/// - Returns: A risk score between 0 and 100
+func calculateHealthRiskScore(
+    medicalHistory: MedicalHistory, 
+    geneticData: GeneticProfile
+) -> RiskScore
+```
+
+## Tools and Resources
+- [Documentation Guidelines](docs/DOCUMENTATION_GUIDELINES.md)
+- DocC Generation Script: `./Scripts/docc_generation.sh`
+- Git Hooks Setup: `./Scripts/setup-git-hooks.sh`
+
+## License
+[Insert License Information]
+
+---
+
+*Last Updated*: [Current Date]
+
 ## 🏥 Enterprise Health AI Platform
 
 **HealthAI 2030** is a proprietary, enterprise-grade artificial intelligence platform for advanced health monitoring, predictive analytics, and personalized healthcare. Built with cutting-edge Swift technologies and quantum computing capabilities, this platform represents the future of AI-powered healthcare.

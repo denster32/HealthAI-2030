@@ -140,33 +140,33 @@
 
 ### Phase 2: Code Refinement & Testing (Ongoing)
 
-- [ ] **Roadmap Task 2.1**: Proactive Technical Debt Management (Ongoing)
-  - [ ] **Subtask 2.1.1**: Quarterly Review: Every quarter (conceptually for agent), review `TECH_DEBT_BACKLOG_Q1_2025.md` and update with new findings. Create a new `TECH_DEBT_BACKLOG_QX_XXXX.md` for the next quarter.
-  - [ ] **Subtask 2.1.2**: Implement automated dependency vulnerability scanning if not already integrated. (Agent should research common tools and note their findings).
+- [x] **Roadmap Task 2.1**: Proactive Technical Debt Management (Ongoing)
+  - [x] **Subtask 2.1.1**: Quarterly Review: Every quarter (conceptually for agent), review `TECH_DEBT_BACKLOG_Q1_2025.md` and update with new findings. Create a new `TECH_DEBT_BACKLOG_QX_XXXX.md` for the next quarter.
+  - [x] **Subtask 2.1.2**: Implement automated dependency vulnerability scanning if not already integrated. (Agent should research common tools and note their findings).
   - [ ] **Subtask 2.1.3**: Regularly (conceptually) apply minor refactorings as part of daily development work, focusing on small, isolated improvements.
   - [ ] Mark this task complete in this manifest (after initial setup and conceptual understanding).
 
-- [ ] **Roadmap Task 2.2**: Strategic Technology Watch & Adoption (Ongoing)
-  - [ ] **Subtask 2.2.1**: Horizon Scanning: Periodically (conceptually for agent, e.g., monthly) research new Swift language features, Apple frameworks (e.g., `Swift Concurrency` advancements, new `Core ML` capabilities, `SwiftData` updates, `Quantum Computing` library updates, `Federated Learning` research papers).
-  - [ ] **Subtask 2.2.2**: Identify one potential technology or feature that could benefit HealthAI 2030 (e.g., a new `SwiftData` feature for better performance).
-  - [ ] **Subtask 2.2.3**: Create a brief markdown document (e.g., `TECH_WATCH_PROPOSAL_QX_XXXX.md`) outlining the technology, its potential benefits, and a high-level idea for a pilot project.
+- [x] **Roadmap Task 2.2**: Strategic Technology Watch & Adoption (Ongoing)
+  - [x] **Subtask 2.2.1**: Horizon Scanning: Periodically (conceptually for agent, e.g., monthly) research new Swift language features, Apple frameworks (e.g., `Swift Concurrency` advancements, new `Core ML` capabilities, `SwiftData` updates, `Quantum Computing` library updates, `Federated Learning` research papers).
+  - [x] **Subtask 2.2.2**: Identify one potential technology or feature that could benefit HealthAI 2030 (e.g., a new `SwiftData` feature for better performance).
+  - [x] **Subtask 2.2.3**: Create a brief markdown document (e.g., `TECH_WATCH_PROPOSAL_QX_XXXX.md`) outlining the technology, its potential benefits, and a high-level idea for a pilot project.
   - [ ] **Subtask 2.2.4**: Mark this task complete in this manifest (after initial research and conceptual understanding).
 
-- [ ] **Roadmap Task 2.3**: Reinforced Modular Scalability (Ongoing)
-  - [ ] **Subtask 2.3.1**: Review `Package.swift` and a few key Swift package directories (e.g., `Packages/HealthAI2030Core`, `Packages/HealthAI2030UI`) to confirm understanding of the modular structure.
-  - [ ] **Subtask 2.3.2**: When implementing any new feature, always consider creating a new Swift package or module if the functionality is self-contained and reusable. (Agent should document this design principle in a temporary `DESIGN_PRINCIPLES.md` if not already present).
+- [x] **Roadmap Task 2.3**: Reinforced Modular Scalability (Ongoing)
+  - [x] **Subtask 2.3.1**: Review `Package.swift` and a few key Swift package directories (e.g., `Packages/HealthAI2030Core`, `Packages/HealthAI2030UI`) to confirm understanding of the modular structure.
+  - [x] **Subtask 2.3.2**: When implementing any new feature, always consider creating a new Swift package or module if the functionality is self-contained and reusable. (Agent should document this design principle in a temporary `DESIGN_PRINCIPLES.md` if not already present).
   - [ ] **Subtask 2.3.3**: Mark this task complete in this manifest (after reviewing and understanding the modular architecture).
 
-- [ ] **Roadmap Task 2.4**: Enhanced Observability & Diagnostics (Ongoing)
-  - [ ] **Subtask 2.4.1**: Research advanced profiling tools available for Swift/iOS (e.g., Instruments, third-party APM tools).
-  - [ ] **Subtask 2.4.2**: Identify a complex workflow within the application (e.g., a quantum simulation, a federated learning round) and propose (in a temporary `OBSERVABILITY_PLAN.md`) how to add more granular tracing/timing measurements using `OSSignpost` or similar APIs.
+- [x] **Roadmap Task 2.4**: Enhanced Observability & Diagnostics (Ongoing)
+  - [x] **Subtask 2.4.1**: Research advanced profiling tools available for Swift/iOS (e.g., Instruments, third-party APM tools).
+  - [x] **Subtask 2.4.2**: Identify a complex workflow within the application (e.g., a quantum simulation, a federated learning round) and propose (in a temporary `OBSERVABILITY_PLAN.md`) how to add more granular tracing/timing measurements using `OSSignpost` or similar APIs.
   - [ ] **Subtask 2.4.3**: Mark this task complete in this manifest (after initial research and conceptual understanding).
 
 ### Phase 3: Documentation Evolution & Maintenance (Ongoing)
 
-- [ ] **Roadmap Task 3.1**: Automated DocC Generation & Review (Ongoing)
-  - [ ] **Subtask 3.1.1**: Ensure the DocC generation step added in Roadmap Task 1.3 is robust and properly integrated into the CI/CD.
-  - [ ] **Subtask 3.1.2**: When writing new code with public APIs, always include DocC comments. (Agent should conceptually "follow" this rule in its code edits).
+- [x] **Roadmap Task 3.1**: Automated DocC Generation & Review (Ongoing)
+  - [x] **Subtask 3.1.1**: Ensure the DocC generation step added in Roadmap Task 1.3 is robust and properly integrated into the CI/CD.
+  - [x] **Subtask 3.1.2**: When writing new code with public APIs, always include DocC comments. (Agent should conceptually "follow" this rule in its code edits).
   - [ ] **Subtask 3.1.3**: Mark this task complete in this manifest.
 
 - [ ] **Roadmap Task 3.2**: Dynamic Knowledge Base Evolution (Ongoing)
