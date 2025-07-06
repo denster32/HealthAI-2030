@@ -261,6 +261,24 @@
       "scale" : "2x",
       "filename" : "app_icon_watch_216.png",
       "role" : "quickLook"
+    },
+    {
+      "idiom" : "tv",
+      "size" : "400x240",
+      "scale" : "1x",
+      "filename" : "app_icon_tv_400x240.png"
+    },
+    {
+      "idiom" : "tv",
+      "size" : "1280x768",
+      "scale" : "1x",
+      "filename" : "app_icon_tv_1280x768.png"
+    },
+    {
+      "idiom" : "tv",
+      "size" : "1920x1080",
+      "scale" : "1x",
+      "filename" : "app_icon_tv_1920x1080.png"
     }
   ],
   "info" : {
