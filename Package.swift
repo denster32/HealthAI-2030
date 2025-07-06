@@ -10,13 +10,14 @@ let package = Package(
         .tvOS(.v18)
     ],
     products: [
-        .library(
-            name: "HealthAI2030",
-            targets: ["HealthAI2030"]
-        ),
+        // MARK: - Core Products (Essential - always included)
         .library(
             name: "HealthAI2030Core",
             targets: ["HealthAI2030Core"]
+        ),
+        .library(
+            name: "HealthAI2030Foundation",
+            targets: ["HealthAI2030Foundation"]
         ),
         .library(
             name: "HealthAI2030Networking",
@@ -26,74 +27,58 @@ let package = Package(
             name: "HealthAI2030UI",
             targets: ["HealthAI2030UI"]
         ),
+        
+        // MARK: - Feature Products (Lazy loaded)
         .library(
-            name: "HealthAI2030Graphics",
-            targets: ["HealthAI2030Graphics"]
+            name: "HealthAI2030Features",
+            targets: [
+                "CardiacHealth",
+                "MentalHealth", 
+                "SleepTracking",
+                "HealthPrediction"
+            ]
         ),
+        
+        // MARK: - Optional Products (On-demand)
         .library(
-            name: "HealthAI2030ML",
-            targets: ["HealthAI2030ML"]
+            name: "HealthAI2030Optional",
+            targets: [
+                "HealthAI2030ML",
+                "HealthAI2030Graphics",
+                "Metal4",
+                "AR",
+                "SmartHome",
+                "UserScripting"
+            ]
         ),
+        
+        // MARK: - Platform-Specific Products
         .library(
-            name: "HealthAI2030Foundation",
-            targets: ["HealthAI2030Foundation"]
-        ),
-        .library(
-            name: "CardiacHealth",
-            targets: ["CardiacHealth"]
-        ),
-        .library(
-            name: "MentalHealth",
-            targets: ["MentalHealth"]
-        ),
-        .library(
-            name: "iOS18Features",
+            name: "HealthAI2030iOS",
             targets: ["iOS18Features"]
         ),
         .library(
-            name: "SleepTracking",
-            targets: ["SleepTracking"]
+            name: "HealthAI2030Widgets",
+            targets: ["HealthAI2030Widgets"]
+        ),
+        
+        // MARK: - Integration Products
+        .library(
+            name: "HealthAI2030Shortcuts",
+            targets: ["Shortcuts", "CopilotSkills"]
         ),
         .library(
-            name: "HealthPrediction",
-            targets: ["HealthPrediction"]
+            name: "HealthAI2030Wellness",
+            targets: ["StartMeditation", "LogWaterIntake", "Biofeedback"]
         ),
+        
+        // MARK: - Main App (Optimized)
         .library(
-            name: "CopilotSkills",
-            targets: ["CopilotSkills"]
+            name: "HealthAI2030",
+            targets: ["HealthAI2030"]
         ),
-        .library(
-            name: "Metal4",
-            targets: ["Metal4"]
-        ),
-        .library(
-            name: "SmartHome",
-            targets: ["SmartHome"]
-        ),
-        .library(
-            name: "UserScripting",
-            targets: ["UserScripting"]
-        ),
-        .library(
-            name: "Shortcuts",
-            targets: ["Shortcuts"]
-        ),
-        .library(
-            name: "LogWaterIntake",
-            targets: ["LogWaterIntake"]
-        ),
-        .library(
-            name: "StartMeditation",
-            targets: ["StartMeditation"]
-        ),
-        .library(
-            name: "AR",
-            targets: ["AR"]
-        ),
-        .library(
-            name: "Biofeedback",
-            targets: ["Biofeedback"]
-        ),
+        
+        // MARK: - Shared Components
         .library(
             name: "Shared",
             targets: ["Shared"]
@@ -110,7 +95,6 @@ let package = Package(
             name: "Kit",
             targets: ["Kit"]
         ),
-
         .library(
             name: "SharedHealthSummary",
             targets: ["SharedHealthSummary"]
@@ -121,62 +105,28 @@ let package = Package(
         .package(path: "Apps/MainApp/Packages/HealthAI2030Analytics")
     ],
     targets: [
+        // MARK: - Main Target (Core Dependencies Only)
         .target(
             name: "HealthAI2030",
             dependencies: [
                 "HealthAI2030Core",
+                "HealthAI2030Foundation",
                 "HealthAI2030Networking",
                 "HealthAI2030UI",
-                "HealthAI2030Graphics",
-                "HealthAI2030ML",
-                "HealthAI2030Foundation",
-                "CardiacHealth",
-                "MentalHealth",
-                "iOS18Features",
-                "SleepTracking",
-                "HealthPrediction",
-                "CopilotSkills",
-                "Metal4",
-                "SmartHome",
-                "UserScripting",
-                "Shortcuts",
-                "LogWaterIntake",
-                "StartMeditation",
-                "AR",
-                "Biofeedback",
                 "Shared",
-                "SharedSettingsModule",
-                "HealthAIConversationalEngine",
-                "Kit",
-                "SharedHealthSummary",
-                .product(name: "HealthAI2030Analytics", package: "HealthAI2030Analytics")
+                "Kit"
             ],
             path: "Sources/HealthAI2030"
         ),
+        
+        // MARK: - Core Targets
         .target(
             name: "HealthAI2030Core",
-            dependencies: [.product(name: "HealthAI2030Analytics", package: "HealthAI2030Analytics")],
+            dependencies: [
+                .product(name: "HealthAI2030Analytics", package: "HealthAI2030Analytics"),
+                "HealthAI2030Foundation"
+            ],
             path: "Packages/HealthAI2030Core/Sources"
-        ),
-        .target(
-            name: "HealthAI2030Networking",
-            dependencies: [],
-            path: "Packages/HealthAI2030Networking/Sources"
-        ),
-        .target(
-            name: "HealthAI2030UI",
-            dependencies: [],
-            path: "Packages/HealthAI2030UI/Sources"
-        ),
-        .target(
-            name: "HealthAI2030Graphics",
-            dependencies: [],
-            path: "Packages/HealthAI2030Graphics/Sources"
-        ),
-        .target(
-            name: "HealthAI2030ML",
-            dependencies: [],
-            path: "Packages/HealthAI2030ML/Sources"
         ),
         .target(
             name: "HealthAI2030Foundation",
@@ -184,75 +134,110 @@ let package = Package(
             path: "Packages/HealthAI2030Foundation/Sources"
         ),
         .target(
+            name: "HealthAI2030Networking",
+            dependencies: ["HealthAI2030Foundation"],
+            path: "Packages/HealthAI2030Networking/Sources"
+        ),
+        .target(
+            name: "HealthAI2030UI",
+            dependencies: ["HealthAI2030Foundation"],
+            path: "Packages/HealthAI2030UI/Sources"
+        ),
+        
+        // MARK: - Feature Targets (Lazy Loaded)
+        .target(
             name: "CardiacHealth",
-            dependencies: [],
+            dependencies: ["HealthAI2030Core"],
             path: "Packages/CardiacHealth/Sources"
         ),
         .target(
             name: "MentalHealth",
-            dependencies: [],
+            dependencies: ["HealthAI2030Core"],
             path: "Packages/MentalHealth/Sources"
         ),
         .target(
-            name: "iOS18Features",
-            dependencies: [],
-            path: "Packages/iOS18Features/Sources"
-        ),
-        .target(
             name: "SleepTracking",
-            dependencies: [],
+            dependencies: ["HealthAI2030Core"],
             path: "Packages/SleepTracking/Sources"
         ),
         .target(
             name: "HealthPrediction",
-            dependencies: [],
+            dependencies: ["HealthAI2030Core"],
             path: "Packages/HealthPrediction/Sources"
         ),
+        
+        // MARK: - Optional Targets (On-Demand)
         .target(
-            name: "CopilotSkills",
-            dependencies: [],
-            path: "Packages/CopilotSkills/Sources"
+            name: "HealthAI2030ML",
+            dependencies: ["HealthAI2030Core"],
+            path: "Packages/HealthAI2030ML/Sources"
+        ),
+        .target(
+            name: "HealthAI2030Graphics",
+            dependencies: ["HealthAI2030Foundation"],
+            path: "Packages/HealthAI2030Graphics/Sources"
         ),
         .target(
             name: "Metal4",
-            dependencies: [],
+            dependencies: ["HealthAI2030Graphics"],
             path: "Packages/Metal4/Sources"
         ),
         .target(
-            name: "SmartHome",
-            dependencies: [],
-            path: "Modules/Features/SmartHome/SmartHome" //Fixed
-        ),
-        .target(
-            name: "UserScripting",
-            dependencies: [],
-            path: "Packages/UserScripting/Sources"
-        ),
-        .target(
-            name: "Shortcuts",
-            dependencies: [],
-            path: "Packages/Shortcuts/Sources"
-        ),
-        .target(
-            name: "LogWaterIntake",
-            dependencies: [],
-            path: "Packages/LogWaterIntake/Sources"
-        ),
-        .target(
-            name: "StartMeditation",
-            dependencies: [],
-            path: "Packages/StartMeditation/Sources"
-        ),
-        .target(
             name: "AR",
-            dependencies: [],
+            dependencies: ["HealthAI2030Graphics"],
             path: "Packages/AR/Sources"
         ),
         .target(
+            name: "SmartHome",
+            dependencies: ["HealthAI2030Core"],
+            path: "Modules/Features/SmartHome/SmartHome"
+        ),
+        .target(
+            name: "UserScripting",
+            dependencies: ["HealthAI2030Core"],
+            path: "Packages/UserScripting/Sources"
+        ),
+        
+        // MARK: - Platform-Specific Targets
+        .target(
+            name: "iOS18Features",
+            dependencies: ["HealthAI2030UI"],
+            path: "Packages/iOS18Features/Sources"
+        ),
+        .target(
+            name: "HealthAI2030Widgets",
+            dependencies: ["HealthAI2030UI"],
+            path: "Packages/HealthAI2030Widgets/Sources"
+        ),
+        
+        // MARK: - Integration Targets
+        .target(
+            name: "Shortcuts",
+            dependencies: ["HealthAI2030Core"],
+            path: "Packages/Shortcuts/Sources"
+        ),
+        .target(
+            name: "CopilotSkills",
+            dependencies: ["HealthAI2030Core"],
+            path: "Packages/CopilotSkills/Sources"
+        ),
+        .target(
+            name: "StartMeditation",
+            dependencies: ["HealthAI2030Core"],
+            path: "Packages/StartMeditation/Sources"
+        ),
+        .target(
+            name: "LogWaterIntake",
+            dependencies: ["HealthAI2030Core"],
+            path: "Packages/LogWaterIntake/Sources"
+        ),
+        .target(
             name: "Biofeedback",
-            dependencies: [],
+            dependencies: ["HealthAI2030Core"],
             path: "Packages/Biofeedback/Sources"
         ),
+        
+        // MARK: - Shared Targets
         .target(
             name: "Shared",
             dependencies: [],
@@ -260,25 +245,26 @@ let package = Package(
         ),
         .target(
             name: "SharedSettingsModule",
-            dependencies: [],
+            dependencies: ["Shared"],
             path: "Packages/SharedSettingsModule/Sources"
         ),
         .target(
             name: "HealthAIConversationalEngine",
-            dependencies: [],
+            dependencies: ["HealthAI2030Core"],
             path: "Packages/HealthAIConversationalEngine/Sources"
         ),
         .target(
             name: "Kit",
-            dependencies: [],
+            dependencies: ["HealthAI2030Foundation"],
             path: "Packages/Kit/Sources"
         ),
-
         .target(
             name: "SharedHealthSummary",
-            dependencies: [],
+            dependencies: ["HealthAI2030Core"],
             path: "Packages/SharedHealthSummary/Sources"
         ),
+        
+        // MARK: - Test Targets
         .testTarget(
             name: "HealthAI2030Tests",
             dependencies: ["HealthAI2030", "HealthAI2030Core"],
