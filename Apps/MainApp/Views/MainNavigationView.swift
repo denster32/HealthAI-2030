@@ -7,9 +7,9 @@ struct MainNavigationView: View {
     @StateObject private var errorHandler = ErrorHandlingService.shared
     @State private var selectedTab: MainTab = .dashboard
     @State private var showingOnboarding = false
-    
+    @State private var showExportProgress = false // State to control export progress sheet
     enum MainTab: String, CaseIterable, Identifiable {
-        case dashboard, health, analytics, settings
+        case dashboard, health, analytics, settings, export // Added export tab
         var id: String { rawValue }
         
         var title: String {
@@ -18,8 +18,8 @@ struct MainNavigationView: View {
             case .health: return "Health"
             case .analytics: return "Analytics"
             case .settings: return "Settings"
+            case .export: return "Export" // Added export case
             }
-        }
         
         var icon: String {
             switch self {
@@ -27,8 +27,8 @@ struct MainNavigationView: View {
             case .health: return "heart.fill"
             case .analytics: return "chart.bar.fill"
             case .settings: return "gearshape.fill"
+            case .export: return "square.and.arrow.up.fill" // Added export case
             }
-        }
     }
     
     var body: some View {
@@ -79,6 +79,22 @@ struct MainNavigationView: View {
                 }
                 .tag(MainTab.settings)
         }
+            ExportConfigurationView() // Added Export View
+                .tabItem {
+                    Label(MainTab.export.title, systemImage: MainTab.export.icon)
+                }
+                .tag(MainTab.export)
+
+            NavigationLink(destination: ExportProgressView(), isActive: $showExportProgress) { // Added navigation to export progress
+                EmptyView()
+            }
+            .hidden() // Keep the link hidden, we'll activate it programmatically
+            .onAppear {
+                showExportProgress = exportManager.isExporting // Show progress if export is already running
+            }
+            .onChange(of: exportManager.isExporting) { isExporting in
+                showExportProgress = isExporting // Update visibility when export state changes
+            }
         .tint(.blue)
         .navigationTitle(selectedTab.title)
         .navigationBarTitleDisplayMode(.inline)
