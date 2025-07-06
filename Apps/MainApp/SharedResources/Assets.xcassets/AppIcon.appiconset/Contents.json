@@ -191,6 +191,76 @@
       "size" : "512x512",
       "scale" : "2x",
       "filename" : "app_icon_mac_1024.png"
+    },
+    {
+      "idiom" : "watch",
+      "size" : "24x24",
+      "scale" : "2x",
+      "filename" : "app_icon_watch_48.png",
+      "role" : "notificationCenter"
+    },
+    {
+      "idiom" : "watch",
+      "size" : "27.5x27.5",
+      "scale" : "2x",
+      "filename" : "app_icon_watch_55.png",
+      "role" : "notificationCenter"
+    },
+    {
+      "idiom" : "watch",
+      "size" : "29x29",
+      "scale" : "2x",
+      "filename" : "app_icon_watch_58.png",
+      "role" : "companionSettings"
+    },
+    {
+      "idiom" : "watch",
+      "size" : "29x29",
+      "scale" : "3x",
+      "filename" : "app_icon_watch_87.png",
+      "role" : "companionSettings"
+    },
+    {
+      "idiom" : "watch",
+      "size" : "40x40",
+      "scale" : "2x",
+      "filename" : "app_icon_watch_80.png",
+      "role" : "appLauncher"
+    },
+    {
+      "idiom" : "watch",
+      "size" : "44x44",
+      "scale" : "2x",
+      "filename" : "app_icon_watch_88.png",
+      "role" : "appLauncher"
+    },
+    {
+      "idiom" : "watch",
+      "size" : "50x50",
+      "scale" : "2x",
+      "filename" : "app_icon_watch_100.png",
+      "role" : "appLauncher"
+    },
+    {
+      "idiom" : "watch",
+      "size" : "86x86",
+      "scale" : "2x",
+      "filename" : "app_icon_watch_172.png",
+      "role" : "quickLook"
+    },
+    {
+      "idiom" : "watch",
+      "size" : "98x98",
+      "scale" : "2x",
+      "filename" : "app_icon_watch_196.png",
+      "role" : "quickLook"
+    },
+    {
+      "idiom" : "watch",
+      "size" : "108x108",
+      "scale" : "2x",
+      "filename" : "app_icon_watch_216.png",
+      "role" : "quickLook"
     }
   ],
   "info" : {
