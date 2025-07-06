@@ -83,30 +83,30 @@ public final class EvolutionSnapshot {
 
 @available(iOS 18.0, macOS 15.0, *)
 public struct LearningAlgorithm: Identifiable, Codable, Equatable {
-    public let id = UUID()
-    public let name: String
-    public let type: AlgorithmType
+        public let id = UUID()
+        public let name: String
+        public let type: AlgorithmType
     public let parameters: [String: String]
-    public let performance: AlgorithmPerformance
-    public let adaptability: Double
-    public let complexity: Complexity
-    
-    public enum AlgorithmType: String, Codable, CaseIterable {
-        case reinforcement = "Reinforcement Learning"
-        case supervised = "Supervised Learning"
-        case unsupervised = "Unsupervised Learning"
-        case federated = "Federated Learning"
-        case meta = "Meta Learning"
-        case transfer = "Transfer Learning"
-        case active = "Active Learning"
-    }
-    
+        public let performance: AlgorithmPerformance
+        public let adaptability: Double
+        public let complexity: Complexity
+        
+        public enum AlgorithmType: String, Codable, CaseIterable {
+            case reinforcement = "Reinforcement Learning"
+            case supervised = "Supervised Learning"
+            case unsupervised = "Unsupervised Learning"
+            case federated = "Federated Learning"
+            case meta = "Meta Learning"
+            case transfer = "Transfer Learning"
+            case active = "Active Learning"
+        }
+        
     public struct AlgorithmPerformance: Codable, Equatable {
-        public let accuracy: Double
-        public let speed: Double
-        public let efficiency: Double
-        public let robustness: Double
-        public let generalization: Double
+            public let accuracy: Double
+            public let speed: Double
+            public let efficiency: Double
+            public let robustness: Double
+            public let generalization: Double
         
         public init(
             accuracy: Double,
@@ -124,11 +124,11 @@ public struct LearningAlgorithm: Identifiable, Codable, Equatable {
     }
     
     public enum Complexity: String, Codable, CaseIterable {
-        case simple = "Simple"
-        case moderate = "Moderate"
-        case complex = "Complex"
-        case veryComplex = "Very Complex"
-    }
+            case simple = "Simple"
+            case moderate = "Moderate"
+            case complex = "Complex"
+            case veryComplex = "Very Complex"
+        }
     
     public init(
         name: String,
@@ -149,27 +149,27 @@ public struct LearningAlgorithm: Identifiable, Codable, Equatable {
 
 @available(iOS 18.0, macOS 15.0, *)
 public struct PerformanceMetric: Identifiable, Codable, Equatable {
-    public let id = UUID()
-    public let name: String
-    public let type: MetricType
-    public let value: Double
-    public let unit: String
-    public let weight: Double
-    public let threshold: Double
-    public let timestamp: Date
-    
-    public enum MetricType: String, Codable, CaseIterable {
-        case accuracy = "Accuracy"
-        case precision = "Precision"
-        case recall = "Recall"
-        case f1Score = "F1 Score"
-        case latency = "Latency"
-        case throughput = "Throughput"
-        case efficiency = "Efficiency"
-        case energy = "Energy Consumption"
-        case memory = "Memory Usage"
-        case robustness = "Robustness"
-    }
+        public let id = UUID()
+        public let name: String
+        public let type: MetricType
+        public let value: Double
+        public let unit: String
+        public let weight: Double
+        public let threshold: Double
+        public let timestamp: Date
+        
+        public enum MetricType: String, Codable, CaseIterable {
+            case accuracy = "Accuracy"
+            case precision = "Precision"
+            case recall = "Recall"
+            case f1Score = "F1 Score"
+            case latency = "Latency"
+            case throughput = "Throughput"
+            case efficiency = "Efficiency"
+            case energy = "Energy Consumption"
+            case memory = "Memory Usage"
+            case robustness = "Robustness"
+        }
     
     public init(
         name: String,
@@ -192,22 +192,22 @@ public struct PerformanceMetric: Identifiable, Codable, Equatable {
 
 @available(iOS 18.0, macOS 15.0, *)
 public struct AdaptationStrategy: Identifiable, Codable, Equatable {
-    public let id = UUID()
-    public let name: String
-    public let type: StrategyType
+        public let id = UUID()
+        public let name: String
+        public let type: StrategyType
     public let parameters: [String: String]
-    public let effectiveness: Double
-    public let cost: Double
-    public let timeToAdapt: TimeInterval
-    
-    public enum StrategyType: String, Codable, CaseIterable {
-        case parameterTuning = "Parameter Tuning"
-        case architectureModification = "Architecture Modification"
-        case algorithmSwitching = "Algorithm Switching"
-        case ensembleLearning = "Ensemble Learning"
-        case transferLearning = "Transfer Learning"
-        case onlineLearning = "Online Learning"
-        case incrementalLearning = "Incremental Learning"
+        public let effectiveness: Double
+        public let cost: Double
+        public let timeToAdapt: TimeInterval
+        
+        public enum StrategyType: String, Codable, CaseIterable {
+            case parameterTuning = "Parameter Tuning"
+            case architectureModification = "Architecture Modification"
+            case algorithmSwitching = "Algorithm Switching"
+            case ensembleLearning = "Ensemble Learning"
+            case transferLearning = "Transfer Learning"
+            case onlineLearning = "Online Learning"
+            case incrementalLearning = "Incremental Learning"
     }
     
     public init(
@@ -229,33 +229,33 @@ public struct AdaptationStrategy: Identifiable, Codable, Equatable {
 
 @available(iOS 18.0, macOS 15.0, *)
 public struct Agent: Identifiable, Codable, Equatable {
-    public let id = UUID()
-    public let name: String
-    public let generation: Int
-    public let genome: Genome
-    public let performance: AgentPerformance
-    public let fitness: Double
-    public let age: TimeInterval
-    public let isAlive: Bool
-    
-    public struct Genome: Codable, Equatable {
-        public let genes: [Gene]
-        public let mutations: [Mutation]
-        public let crossoverHistory: [CrossoverEvent]
+        public let id = UUID()
+        public let name: String
+        public let generation: Int
+        public let genome: Genome
+        public let performance: AgentPerformance
+        public let fitness: Double
+        public let age: TimeInterval
+        public let isAlive: Bool
         
-        public struct Gene: Codable, Equatable {
-            public let name: String
-            public let value: Double
-            public let type: GeneType
-            public let expression: Double
+    public struct Genome: Codable, Equatable {
+            public let genes: [Gene]
+            public let mutations: [Mutation]
+            public let crossoverHistory: [CrossoverEvent]
             
+        public struct Gene: Codable, Equatable {
+                public let name: String
+                public let value: Double
+                public let type: GeneType
+                public let expression: Double
+                
             public enum GeneType: String, Codable, CaseIterable {
-                case learningRate = "Learning Rate"
-                case architecture = "Architecture"
-                case algorithm = "Algorithm"
-                case parameter = "Parameter"
-                case behavior = "Behavior"
-            }
+                    case learningRate = "Learning Rate"
+                    case architecture = "Architecture"
+                    case algorithm = "Algorithm"
+                    case parameter = "Parameter"
+                    case behavior = "Behavior"
+                }
             
             public init(
                 name: String,
@@ -271,18 +271,18 @@ public struct Agent: Identifiable, Codable, Equatable {
         }
         
         public struct Mutation: Codable, Equatable {
-            public let type: MutationType
-            public let gene: String
-            public let oldValue: Double
-            public let newValue: Double
-            public let timestamp: Date
-            
+                public let type: MutationType
+                public let gene: String
+                public let oldValue: Double
+                public let newValue: Double
+                public let timestamp: Date
+                
             public enum MutationType: String, Codable, CaseIterable {
-                case point = "Point Mutation"
-                case insertion = "Insertion"
-                case deletion = "Deletion"
-                case inversion = "Inversion"
-            }
+                    case point = "Point Mutation"
+                    case insertion = "Insertion"
+                    case deletion = "Deletion"
+                    case inversion = "Inversion"
+                }
             
             public init(
                 type: MutationType,
@@ -300,9 +300,9 @@ public struct Agent: Identifiable, Codable, Equatable {
         }
         
         public struct CrossoverEvent: Codable, Equatable {
-            public let partner: UUID
-            public let genes: [String]
-            public let timestamp: Date
+                public let partner: UUID
+                public let genes: [String]
+                public let timestamp: Date
             
             public init(
                 partner: UUID,
@@ -327,11 +327,11 @@ public struct Agent: Identifiable, Codable, Equatable {
     }
     
     public struct AgentPerformance: Codable, Equatable {
-        public let accuracy: Double
-        public let speed: Double
-        public let efficiency: Double
-        public let adaptability: Double
-        public let robustness: Double
+            public let accuracy: Double
+            public let speed: Double
+            public let efficiency: Double
+            public let adaptability: Double
+            public let robustness: Double
         
         public init(
             accuracy: Double,
@@ -432,9 +432,9 @@ public final class AgentEvolutionEngine {
         }
         
         do {
-            self.learningAlgorithms = learningAlgorithms
-            self.performanceMetrics = performanceMetrics
-            self.adaptationStrategies = adaptationStrategies
+        self.learningAlgorithms = learningAlgorithms
+        self.performanceMetrics = performanceMetrics
+        self.adaptationStrategies = adaptationStrategies
             self.evolutionController = try EvolutionController()
             self.fitnessEvaluator = try FitnessEvaluator()
             self.mutationEngine = try MutationEngine()
@@ -579,9 +579,9 @@ public final class AgentEvolutionEngine {
         do {
             // Analyze current performance and learn from it
             let learningData = try await evolutionController.analyzePerformance()
-            
-            // Update learning algorithms based on performance
-            for algorithm in learningAlgorithms {
+        
+        // Update learning algorithms based on performance
+        for algorithm in learningAlgorithms {
                 try await updateLearningAlgorithm(algorithm, with: learningData)
             }
             
@@ -621,17 +621,17 @@ public final class AgentEvolutionEngine {
         logger.debug("🎯 Selecting best agents...")
         
         do {
-            // Select the best performing agents for reproduction
+        // Select the best performing agents for reproduction
             let agents = try await evolutionController.getCurrentAgents()
             
             guard !agents.isEmpty else {
                 throw AgentEvolutionError.agentSelectionFailed("No agents available for selection")
             }
             
-            let sortedAgents = agents.sorted { agent1, agent2 in
-                fitnessScores[agent1.id.uuidString] ?? 0 > fitnessScores[agent2.id.uuidString] ?? 0
-            }
-            
+        let sortedAgents = agents.sorted { agent1, agent2 in
+            fitnessScores[agent1.id.uuidString] ?? 0 > fitnessScores[agent2.id.uuidString] ?? 0
+        }
+        
             // Select top percentage of agents
             let selectionCount = max(1, Int(Double(sortedAgents.count) * selectionPercentage))
             let selectedAgents = Array(sortedAgents.prefix(selectionCount))
@@ -650,29 +650,29 @@ public final class AgentEvolutionEngine {
         
         do {
             var newAgents: [Agent] = []
-            
-            // Keep some of the best agents (elitism)
+        
+        // Keep some of the best agents (elitism)
             let eliteCount = max(1, Int(Double(selectedAgents.count) * elitePercentage))
-            newAgents.append(contentsOf: selectedAgents.prefix(eliteCount))
-            
-            // Create new agents through crossover
+        newAgents.append(contentsOf: selectedAgents.prefix(eliteCount))
+        
+        // Create new agents through crossover
             while newAgents.count < targetPopulationSize {
-                if selectedAgents.count >= 2 {
-                    let parent1 = selectedAgents.randomElement()!
-                    let parent2 = selectedAgents.randomElement()!
-                    
+            if selectedAgents.count >= 2 {
+                let parent1 = selectedAgents.randomElement()!
+                let parent2 = selectedAgents.randomElement()!
+                
                     let child = try await crossoverEngine.crossover(parent1: parent1, parent2: parent2)
-                    newAgents.append(child)
-                } else {
-                    // If not enough parents, create random agent
+                newAgents.append(child)
+            } else {
+                // If not enough parents, create random agent
                     let randomAgent = try await createRandomAgent()
-                    newAgents.append(randomAgent)
-                }
+                newAgents.append(randomAgent)
             }
+        }
             
             logger.debug("✅ New generation created: size=\(newAgents.count)")
-            
-            return newAgents
+        
+        return newAgents
         } catch {
             logger.error("❌ New generation creation failed: \(error.localizedDescription)")
             throw AgentEvolutionError.evolutionCycleFailed("Generation creation failed: \(error.localizedDescription)")
@@ -728,21 +728,21 @@ public final class AgentEvolutionEngine {
         
         do {
             var mutatedAgents: [Agent] = []
+        
+        for agent in agents {
+            let shouldMutate = Double.random(in: 0...1) < mutationRate
             
-            for agent in agents {
-                let shouldMutate = Double.random(in: 0...1) < mutationRate
-                
-                if shouldMutate {
+            if shouldMutate {
                     let mutatedAgent = try await mutationEngine.mutate(agent)
-                    mutatedAgents.append(mutatedAgent)
-                } else {
-                    mutatedAgents.append(agent)
-                }
+                mutatedAgents.append(mutatedAgent)
+            } else {
+                mutatedAgents.append(agent)
             }
+        }
             
             logger.debug("✅ Mutations applied: mutated=\(mutatedAgents.filter { $0.id != $0.id }.count)")
-            
-            return mutatedAgents
+        
+        return mutatedAgents
         } catch {
             logger.error("❌ Mutation application failed: \(error.localizedDescription)")
             throw AgentEvolutionError.mutationFailed("Mutation failed: \(error.localizedDescription)")
@@ -757,10 +757,10 @@ public final class AgentEvolutionEngine {
             
             for (index, agent) in agents.enumerated() {
                 try await evolutionController.adaptAgent(agent, strategies: adaptationStrategies)
-                adaptationProgress = Double(index + 1) / Double(agents.count)
-            }
-            
-            adaptationProgress = 1.0
+            adaptationProgress = Double(index + 1) / Double(agents.count)
+        }
+        
+        adaptationProgress = 1.0
             logger.debug("✅ Adaptation completed")
         } catch {
             logger.error("❌ Adaptation failed: \(error.localizedDescription)")
@@ -778,8 +778,8 @@ public final class AgentEvolutionEngine {
             let diversity = try await calculateDiversity(agents)
             
             let snapshot = EvolutionSnapshot(
-                generation: currentGeneration,
-                metrics: performanceMetrics,
+            generation: currentGeneration,
+            metrics: performanceMetrics,
                 averageFitness: averageFitness,
                 bestFitness: bestFitness,
                 populationSize: agents.count,

@@ -383,7 +383,7 @@ final class NutritionDietOptimizationEngine: ObservableObject {
             return preferences.first ?? UserNutritionPreferences()
         } catch {
             print("Failed to load user preferences: \(error)")
-            return UserNutritionPreferences()
+        return UserNutritionPreferences()
         }
     }
 
@@ -394,7 +394,7 @@ final class NutritionDietOptimizationEngine: ObservableObject {
             return try context.fetch(descriptor)
         } catch {
             print("Failed to load health conditions: \(error)")
-            return []
+        return []
         }
     }
 
@@ -406,7 +406,7 @@ final class NutritionDietOptimizationEngine: ObservableObject {
             return profiles.first ?? UserProfile()
         } catch {
             print("Failed to load user profile: \(error)")
-            return UserProfile()
+        return UserProfile()
         }
     }
 
@@ -419,7 +419,7 @@ final class NutritionDietOptimizationEngine: ObservableObject {
             return try context.fetch(descriptor)
         } catch {
             print("Failed to load nutrition goals: \(error)")
-            return []
+        return []
         }
     }
 
@@ -445,7 +445,7 @@ final class NutritionDietOptimizationEngine: ObservableObject {
             return timeAvailability.first ?? TimeAvailability()
         } catch {
             print("Failed to load time availability: \(error)")
-            return TimeAvailability()
+        return TimeAvailability()
         }
     }
 }
