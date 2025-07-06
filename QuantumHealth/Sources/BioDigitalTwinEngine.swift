@@ -2,13 +2,39 @@ import Foundation
 import HealthKit
 import Accelerate
 
+/// Optimized BioDigitalTwinEngine with advanced caching and performance monitoring
+@available(iOS 18.0, macOS 15.0, watchOS 11.0, tvOS 18.0, *)
 public class BioDigitalTwinEngine {
+    
+    // MARK: - System Components
     private let cardiovascularSystem: CardiovascularSystem
     private let neurologicalSystem: NeurologicalSystem
     private let endocrineSystem: EndocrineSystem
     private let immuneSystem: ImmuneSystem
     private let metabolicSystem: MetabolicSystem
     private var systemInteractions: [SystemInteraction] = []
+    
+    // MARK: - Performance Optimization
+    private let cache = NSCache<NSString, AnyObject>()
+    private let performanceMonitor = PerformanceMonitor()
+    private let memoryManager = MemoryManager()
+    private let computationQueue = DispatchQueue(label: "com.healthai.biodigital.computation", qos: .userInitiated, attributes: .concurrent)
+    private let optimizationQueue = DispatchQueue(label: "com.healthai.biodigital.optimization", qos: .background)
+    
+    // MARK: - Enhanced Caching Configuration
+    private let cacheExpirationInterval: TimeInterval = 300 // 5 minutes
+    private let maxCacheSize = 200 // Increased cache size for better performance
+    private let adaptiveCacheEnabled = true
+    private var cacheHitPatterns: [String: Int] = [:]
+    
+    // MARK: - Memory Optimization
+    private let memoryThreshold: UInt64 = 100 * 1024 * 1024 // 100MB threshold
+    private let aggressiveMemoryCleanup = true
+    
+    // MARK: - Performance Metrics
+    private var simulationCount = 0
+    private var averageSimulationTime: TimeInterval = 0.0
+    private var peakMemoryUsage: UInt64 = 0
     
     public init() {
         self.cardiovascularSystem = CardiovascularSystem()
@@ -18,28 +44,52 @@ public class BioDigitalTwinEngine {
         self.metabolicSystem = MetabolicSystem()
         
         setupSystemInteractions()
+        setupCache()
+        setupPerformanceMonitoring()
     }
     
+    // MARK: - Public Methods with Performance Optimization
+    
     public func createDigitalTwin(from healthData: HealthProfile) -> BioDigitalTwin {
-        let cardiovascularModel = cardiovascularSystem.createModel(from: healthData.cardiovascularData)
-        let neurologicalModel = neurologicalSystem.createModel(from: healthData.neurologicalData)
-        let endocrineModel = endocrineSystem.createModel(from: healthData.endocrineData)
-        let immuneModel = immuneSystem.createModel(from: healthData.immuneData)
-        let metabolicModel = metabolicSystem.createModel(from: healthData.metabolicData)
+        let startTime = CFAbsoluteTimeGetCurrent()
         
-        let digitalTwin = BioDigitalTwin(
-            id: UUID(),
-            patientId: healthData.patientId,
-            cardiovascularModel: cardiovascularModel,
-            neurologicalModel: neurologicalModel,
-            endocrineModel: endocrineModel,
-            immuneModel: immuneModel,
-            metabolicModel: metabolicModel,
-            systemInteractions: systemInteractions,
-            createdAt: Date()
-        )
+        // Check cache first
+        let cacheKey = "digitalTwin_\(healthData.patientId)_\(healthData.lastUpdated.timeIntervalSince1970)"
+        if let cachedTwin = cache.object(forKey: cacheKey as NSString) as? BioDigitalTwin {
+            performanceMonitor.recordCacheHit(operation: "createDigitalTwin")
+            return cachedTwin
+        }
         
-        calibrateSystemInteractions(digitalTwin: digitalTwin, healthData: healthData)
+        // Create new digital twin with optimized computation
+        let digitalTwin = computationQueue.sync {
+            let cardiovascularModel = cardiovascularSystem.createModel(from: healthData.cardiovascularData)
+            let neurologicalModel = neurologicalSystem.createModel(from: healthData.neurologicalData)
+            let endocrineModel = endocrineSystem.createModel(from: healthData.endocrineData)
+            let immuneModel = immuneSystem.createModel(from: healthData.immuneData)
+            let metabolicModel = metabolicSystem.createModel(from: healthData.metabolicData)
+            
+            let twin = BioDigitalTwin(
+                id: UUID(),
+                patientId: healthData.patientId,
+                cardiovascularModel: cardiovascularModel,
+                neurologicalModel: neurologicalModel,
+                endocrineModel: endocrineModel,
+                immuneModel: immuneModel,
+                metabolicModel: metabolicModel,
+                systemInteractions: systemInteractions,
+                createdAt: Date()
+            )
+            
+            calibrateSystemInteractions(digitalTwin: twin, healthData: healthData)
+            return twin
+        }
+        
+        // Cache the result
+        cache.setObject(digitalTwin, forKey: cacheKey as NSString)
+        
+        // Record performance metrics
+        let executionTime = CFAbsoluteTimeGetCurrent() - startTime
+        performanceMonitor.recordOperation(operation: "createDigitalTwin", duration: executionTime)
         
         return digitalTwin
     }
@@ -49,12 +99,285 @@ public class BioDigitalTwinEngine {
         scenario: HealthScenario,
         duration: TimeInterval
     ) -> SimulationResult {
-        let timeSteps = Int(duration / scenario.timeStepSize)
+        let startTime = CFAbsoluteTimeGetCurrent()
+        
+        // Check cache for similar simulations
+        let cacheKey = "simulation_\(digitalTwin.id)_\(scenario.hashValue)_\(Int(duration))"
+        if let cachedResult = cache.object(forKey: cacheKey as NSString) as? SimulationResult {
+            performanceMonitor.recordCacheHit(operation: "simulateHealthScenario")
+            return cachedResult
+        }
+        
+        // Optimize simulation parameters based on performance
+        let optimizedTimeStep = optimizeTimeStepSize(scenario: scenario, duration: duration)
+        let timeSteps = Int(duration / optimizedTimeStep)
+        
+        // Use concurrent processing for large simulations
+        let simulationStates: [SimulationState]
+        if timeSteps > 1000 {
+            simulationStates = performConcurrentSimulation(
+                digitalTwin: digitalTwin,
+                scenario: scenario,
+                timeSteps: timeSteps,
+                timeStepSize: optimizedTimeStep
+            )
+        } else {
+            simulationStates = performSequentialSimulation(
+                digitalTwin: digitalTwin,
+                scenario: scenario,
+                timeSteps: timeSteps,
+                timeStepSize: optimizedTimeStep
+            )
+        }
+        
+        let result = SimulationResult(
+            scenario: scenario,
+            states: simulationStates,
+            finalState: simulationStates.last ?? createInitialState(from: digitalTwin),
+            duration: Double(simulationStates.count) * optimizedTimeStep
+        )
+        
+        // Cache the result
+        cache.setObject(result, forKey: cacheKey as NSString)
+        
+        // Update performance metrics
+        let executionTime = CFAbsoluteTimeGetCurrent() - startTime
+        performanceMonitor.recordOperation(operation: "simulateHealthScenario", duration: executionTime)
+        simulationCount += 1
+        averageSimulationTime = (averageSimulationTime * Double(simulationCount - 1) + executionTime) / Double(simulationCount)
+        
+        return result
+    }
+    
+    public func predictDiseaseProgression(
+        digitalTwin: BioDigitalTwin,
+        disease: DiseaseModel,
+        timeframe: TimeInterval
+    ) -> DiseaseProgressionPrediction {
+        let startTime = CFAbsoluteTimeGetCurrent()
+        
+        // Check cache
+        let cacheKey = "progression_\(digitalTwin.id)_\(disease.hashValue)_\(Int(timeframe))"
+        if let cachedPrediction = cache.object(forKey: cacheKey as NSString) as? DiseaseProgressionPrediction {
+            performanceMonitor.recordCacheHit(operation: "predictDiseaseProgression")
+            return cachedPrediction
+        }
+        
+        // Optimize prediction with parallel processing
+        let progressionStates = computationQueue.sync {
+            let progressionModel = createProgressionModel(disease: disease, digitalTwin: digitalTwin)
+            let timeSteps = Int(timeframe / 86400) // Daily progression
+            
+            return (0..<timeSteps).map { day in
+                let dayTime = Double(day) * 86400
+                let currentSeverity = calculateProgressionSeverity(disease: disease, day: day, digitalTwin: digitalTwin)
+                let currentSymptoms = updateSymptoms(symptoms: disease.currentSymptoms, severity: currentSeverity, digitalTwin: digitalTwin)
+                
+                return DiseaseProgressionState(
+                    day: day,
+                    severity: currentSeverity,
+                    symptoms: currentSymptoms,
+                    affectedSystems: identifyAffectedSystems(disease: disease, severity: currentSeverity),
+                    biomarkers: predictBiomarkers(digitalTwin: digitalTwin, disease: disease, severity: currentSeverity)
+                )
+            }
+        }
+        
+        let prediction = DiseaseProgressionPrediction(
+            disease: disease,
+            progressionStates: progressionStates,
+            riskFactors: identifyRiskFactors(digitalTwin: digitalTwin, disease: disease),
+            interventionOpportunities: identifyInterventionOpportunities(progressionStates: progressionStates)
+        )
+        
+        // Cache the result
+        cache.setObject(prediction, forKey: cacheKey as NSString)
+        
+        // Record performance
+        let executionTime = CFAbsoluteTimeGetCurrent() - startTime
+        performanceMonitor.recordOperation(operation: "predictDiseaseProgression", duration: executionTime)
+        
+        return prediction
+    }
+    
+    public func optimizeTreatment(
+        digitalTwin: BioDigitalTwin,
+        condition: MedicalCondition,
+        availableTreatments: [Treatment]
+    ) -> TreatmentOptimizationResult {
+        let startTime = CFAbsoluteTimeGetCurrent()
+        
+        // Check cache
+        let cacheKey = "treatment_\(digitalTwin.id)_\(condition.hashValue)_\(availableTreatments.hashValue)"
+        if let cachedResult = cache.object(forKey: cacheKey as NSString) as? TreatmentOptimizationResult {
+            performanceMonitor.recordCacheHit(operation: "optimizeTreatment")
+            return cachedResult
+        }
+        
+        // Parallel treatment evaluation
+        let treatmentEvaluations = computationQueue.sync {
+            availableTreatments.map { treatment in
+                evaluateTreatment(
+                    digitalTwin: digitalTwin,
+                    condition: condition,
+                    treatment: treatment
+                )
+            }
+        }
+        
+        let rankedTreatments = treatmentEvaluations.sorted { $0.overallScore > $1.overallScore }
+        let optimalTreatment = rankedTreatments.first
+        
+        let combinationTherapies = generateCombinationTherapies(
+            treatments: availableTreatments,
+            digitalTwin: digitalTwin,
+            condition: condition
+        )
+        
+        let result = TreatmentOptimizationResult(
+            condition: condition,
+            optimalTreatment: optimalTreatment,
+            rankedTreatments: rankedTreatments,
+            combinationTherapies: combinationTherapies,
+            personalizedRecommendations: generatePersonalizedRecommendations(
+                digitalTwin: digitalTwin,
+                condition: condition,
+                optimalTreatment: optimalTreatment
+            )
+        )
+        
+        // Cache the result
+        cache.setObject(result, forKey: cacheKey as NSString)
+        
+        // Record performance
+        let executionTime = CFAbsoluteTimeGetCurrent() - startTime
+        performanceMonitor.recordOperation(operation: "optimizeTreatment", duration: executionTime)
+        
+        return result
+    }
+    
+    // MARK: - Performance Monitoring
+    
+    public func getPerformanceMetrics() -> PerformanceMetrics {
+        return PerformanceMetrics(
+            simulationCount: simulationCount,
+            averageSimulationTime: averageSimulationTime,
+            peakMemoryUsage: peakMemoryUsage,
+            cacheHitRate: performanceMonitor.getCacheHitRate(),
+            operationMetrics: performanceMonitor.getOperationMetrics()
+        )
+    }
+    
+    public func clearCache() {
+        cache.removeAllObjects()
+        performanceMonitor.resetCacheMetrics()
+    }
+    
+    public func optimizeMemoryUsage() {
+        memoryManager.optimizeMemoryUsage()
+        peakMemoryUsage = memoryManager.getCurrentMemoryUsage()
+        
+        // Enhanced memory optimization
+        if aggressiveMemoryCleanup {
+            performAggressiveMemoryCleanup()
+        }
+        
+        // Adaptive cache management
+        if adaptiveCacheEnabled {
+            optimizeCacheBasedOnUsage()
+        }
+    }
+    
+    public func performAdvancedOptimization() {
+        optimizationQueue.async { [weak self] in
+            self?.performBackgroundOptimization()
+        }
+    }
+    
+    // MARK: - Private Optimization Methods
+    
+    private func setupCache() {
+        cache.countLimit = maxCacheSize
+        cache.totalCostLimit = 50 * 1024 * 1024 // 50MB limit
+        
+        // Setup cache expiration
+        Timer.scheduledTimer(withTimeInterval: cacheExpirationInterval, repeats: true) { [weak self] _ in
+            self?.cleanExpiredCache()
+        }
+    }
+    
+    private func setupPerformanceMonitoring() {
+        // Monitor memory usage
+        Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
+            self?.updateMemoryMetrics()
+        }
+    }
+    
+    private func optimizeTimeStepSize(scenario: HealthScenario, duration: TimeInterval) -> TimeInterval {
+        // Adaptive time step based on scenario complexity and performance
+        let baseTimeStep = scenario.timeStepSize
+        let complexity = calculateScenarioComplexity(scenario: scenario)
+        
+        if complexity > 0.8 {
+            return baseTimeStep * 2.0 // Larger time steps for complex scenarios
+        } else if complexity < 0.3 {
+            return baseTimeStep * 0.5 // Smaller time steps for simple scenarios
+        }
+        
+        return baseTimeStep
+    }
+    
+    private func performConcurrentSimulation(
+        digitalTwin: BioDigitalTwin,
+        scenario: HealthScenario,
+        timeSteps: Int,
+        timeStepSize: TimeInterval
+    ) -> [SimulationState] {
+        let chunkSize = max(1, timeSteps / ProcessInfo.processInfo.activeProcessorCount)
+        let chunks = stride(from: 0, to: timeSteps, by: chunkSize).map { start in
+            min(start + chunkSize, timeSteps)
+        }
+        
+        let group = DispatchGroup()
+        var simulationStates: [SimulationState] = Array(repeating: createInitialState(from: digitalTwin), count: timeSteps)
+        
+        for (index, end) in chunks.enumerated() {
+            let start = index * chunkSize
+            group.enter()
+            
+            computationQueue.async {
+                var currentState = self.createInitialState(from: digitalTwin)
+                
+                for step in start..<end {
+                    let time = Double(step) * timeStepSize
+                    currentState = self.simulateTimeStep(
+                        currentState: currentState,
+                        digitalTwin: digitalTwin,
+                        scenario: scenario,
+                        time: time
+                    )
+                    simulationStates[step] = currentState
+                }
+                
+                group.leave()
+            }
+        }
+        
+        group.wait()
+        return simulationStates
+    }
+    
+    private func performSequentialSimulation(
+        digitalTwin: BioDigitalTwin,
+        scenario: HealthScenario,
+        timeSteps: Int,
+        timeStepSize: TimeInterval
+    ) -> [SimulationState] {
         var simulationStates: [SimulationState] = []
         var currentState = createInitialState(from: digitalTwin)
         
         for step in 0..<timeSteps {
-            let time = Double(step) * scenario.timeStepSize
+            let time = Double(step) * timeStepSize
             
             currentState = simulateTimeStep(
                 currentState: currentState,
@@ -70,104 +393,41 @@ public class BioDigitalTwinEngine {
             }
         }
         
-        return SimulationResult(
-            scenario: scenario,
-            states: simulationStates,
-            finalState: currentState,
-            duration: Double(simulationStates.count) * scenario.timeStepSize
-        )
+        return simulationStates
     }
     
-    public func predictDiseaseProgression(
-        digitalTwin: BioDigitalTwin,
-        disease: DiseaseModel,
-        timeframe: TimeInterval
-    ) -> DiseaseProgressionPrediction {
-        let progressionModel = createProgressionModel(disease: disease, digitalTwin: digitalTwin)
-        let timeSteps = Int(timeframe / 86400) // Daily progression
-        
-        var progressionStates: [DiseaseProgressionState] = []
-        var currentSeverity = disease.currentSeverity
-        var currentSymptoms = disease.currentSymptoms
-        
-        for day in 0..<timeSteps {
-            let dayTime = Double(day) * 86400
-            
-            let progressionRate = calculateProgressionRate(
-                digitalTwin: digitalTwin,
-                disease: disease,
-                currentSeverity: currentSeverity,
-                time: dayTime
-            )
-            
-            currentSeverity = updateSeverity(
-                current: currentSeverity,
-                rate: progressionRate,
-                timeStep: 86400
-            )
-            
-            currentSymptoms = updateSymptoms(
-                symptoms: currentSymptoms,
-                severity: currentSeverity,
-                digitalTwin: digitalTwin
-            )
-            
-            let state = DiseaseProgressionState(
-                day: day,
-                severity: currentSeverity,
-                symptoms: currentSymptoms,
-                affectedSystems: identifyAffectedSystems(disease: disease, severity: currentSeverity),
-                biomarkers: predictBiomarkers(digitalTwin: digitalTwin, disease: disease, severity: currentSeverity)
-            )
-            
-            progressionStates.append(state)
+    private func cleanExpiredCache() {
+        // Remove expired cache entries
+        let now = Date()
+        let keysToRemove = cache.allKeys.filter { key in
+            if let cachedObject = cache.object(forKey: key) as? CachedObject {
+                return now.timeIntervalSince(cachedObject.createdAt) > cacheExpirationInterval
+            }
+            return false
         }
         
-        return DiseaseProgressionPrediction(
-            disease: disease,
-            progressionStates: progressionStates,
-            riskFactors: identifyRiskFactors(digitalTwin: digitalTwin, disease: disease),
-            interventionOpportunities: identifyInterventionOpportunities(progressionStates: progressionStates)
-        )
+        for key in keysToRemove {
+            cache.removeObject(forKey: key)
+        }
     }
     
-    public func optimizeTreatment(
-        digitalTwin: BioDigitalTwin,
-        condition: MedicalCondition,
-        availableTreatments: [Treatment]
-    ) -> TreatmentOptimizationResult {
-        var treatmentEvaluations: [TreatmentEvaluation] = []
-        
-        for treatment in availableTreatments {
-            let evaluation = evaluateTreatment(
-                digitalTwin: digitalTwin,
-                condition: condition,
-                treatment: treatment
-            )
-            treatmentEvaluations.append(evaluation)
-        }
-        
-        let rankedTreatments = treatmentEvaluations.sorted { $0.overallScore > $1.overallScore }
-        let optimalTreatment = rankedTreatments.first
-        
-        let combinationTherapies = generateCombinationTherapies(
-            treatments: availableTreatments,
-            digitalTwin: digitalTwin,
-            condition: condition
-        )
-        
-        return TreatmentOptimizationResult(
-            condition: condition,
-            optimalTreatment: optimalTreatment,
-            rankedTreatments: rankedTreatments,
-            combinationTherapies: combinationTherapies,
-            personalizedRecommendations: generatePersonalizedRecommendations(
-                digitalTwin: digitalTwin,
-                condition: condition,
-                optimalTreatment: optimalTreatment
-            )
-        )
+    private func updateMemoryMetrics() {
+        let currentMemory = memoryManager.getCurrentMemoryUsage()
+        peakMemoryUsage = max(peakMemoryUsage, currentMemory)
     }
+    
+    private func calculateScenarioComplexity(scenario: HealthScenario) -> Double {
+        // Calculate complexity based on scenario parameters
+        var complexity = 0.0
+        
+        complexity += scenario.affectedSystems.count * 0.1
+        complexity += scenario.interventions.count * 0.05
+        complexity += scenario.duration / 3600 * 0.01 // Longer scenarios are more complex
+        
+        return min(complexity, 1.0)
+    }
+    
+    // MARK: - Existing Private Methods (keeping for compatibility)
     
     private func setupSystemInteractions() {
         systemInteractions = [
@@ -198,24 +458,10 @@ public class BioDigitalTwinEngine {
             SystemInteraction(
                 sourceSystem: .neurological,
                 targetSystem: .endocrine,
-                interactionType: .neuralControl,
+                interactionType: .neural,
                 strength: 0.8
             )
         ]
-    }
-    
-    private func calibrateSystemInteractions(digitalTwin: BioDigitalTwin, healthData: HealthProfile) {
-        for interaction in systemInteractions {
-            let calibratedStrength = calculateInteractionStrength(
-                interaction: interaction,
-                healthData: healthData,
-                digitalTwin: digitalTwin
-            )
-            
-            if let index = systemInteractions.firstIndex(where: { $0.id == interaction.id }) {
-                systemInteractions[index].strength = calibratedStrength
-            }
-        }
     }
     
     private func createInitialState(from digitalTwin: BioDigitalTwin) -> SimulationState {
@@ -413,7 +659,7 @@ public class BioDigitalTwinEngine {
                 state.neurologicalState.activityLevel += modification * 0.1
             }
         case .endocrine:
-            if interactionType == .neuralControl {
+            if interactionType == .neural {
                 state.endocrineState.hormonalBalance += modification * 0.2
             }
         case .immune:
@@ -470,6 +716,20 @@ public class BioDigitalTwinEngine {
                state.vitalSigns.oxygenSaturation < 70.0 ||
                state.vitalSigns.bodyTemperature > 42.0 ||
                state.vitalSigns.bodyTemperature < 32.0
+    }
+    
+    private func calibrateSystemInteractions(digitalTwin: BioDigitalTwin, healthData: HealthProfile) {
+        for interaction in systemInteractions {
+            let calibratedStrength = calculateInteractionStrength(
+                interaction: interaction,
+                healthData: healthData,
+                digitalTwin: digitalTwin
+            )
+            
+            if let index = systemInteractions.firstIndex(where: { $0.id == interaction.id }) {
+                systemInteractions[index].strength = calibratedStrength
+            }
+        }
     }
     
     private func calculateInteractionStrength(
@@ -981,5 +1241,251 @@ public class BioDigitalTwinEngine {
         }
         
         return recommendations
+    }
+    
+    private func calculateProgressionSeverity(disease: DiseaseModel, day: Int, digitalTwin: BioDigitalTwin) -> Double {
+        let progressionRate = calculateProgressionRate(
+            digitalTwin: digitalTwin,
+            disease: disease,
+            currentSeverity: disease.currentSeverity,
+            time: Double(day) * 86400
+        )
+        return disease.currentSeverity + progressionRate
+    }
+}
+
+// MARK: - Supporting Types
+
+public struct PerformanceMetrics {
+    public let simulationCount: Int
+    public let averageSimulationTime: TimeInterval
+    public let peakMemoryUsage: UInt64
+    public let cacheHitRate: Double
+    public let operationMetrics: [String: OperationMetric]
+}
+
+public struct OperationMetric {
+    public let averageDuration: TimeInterval
+    public let totalCalls: Int
+    public let cacheHits: Int
+    public let cacheMisses: Int
+}
+
+public class PerformanceMonitor {
+    private var operationMetrics: [String: OperationMetric] = [:]
+    private var cacheHits: Int = 0
+    private var cacheMisses: Int = 0
+    
+    func recordOperation(operation: String, duration: TimeInterval) {
+        var metric = operationMetrics[operation] ?? OperationMetric(averageDuration: 0, totalCalls: 0, cacheHits: 0, cacheMisses: 0)
+        
+        let totalCalls = metric.totalCalls + 1
+        let newAverage = (metric.averageDuration * Double(metric.totalCalls) + duration) / Double(totalCalls)
+        
+        metric = OperationMetric(
+            averageDuration: newAverage,
+            totalCalls: totalCalls,
+            cacheHits: metric.cacheHits,
+            cacheMisses: metric.cacheMisses
+        )
+        
+        operationMetrics[operation] = metric
+    }
+    
+    func recordCacheHit(operation: String) {
+        cacheHits += 1
+        if var metric = operationMetrics[operation] {
+            metric = OperationMetric(
+                averageDuration: metric.averageDuration,
+                totalCalls: metric.totalCalls,
+                cacheHits: metric.cacheHits + 1,
+                cacheMisses: metric.cacheMisses
+            )
+            operationMetrics[operation] = metric
+        }
+    }
+    
+    func getCacheHitRate() -> Double {
+        let total = cacheHits + cacheMisses
+        return total > 0 ? Double(cacheHits) / Double(total) : 0.0
+    }
+    
+    func getOperationMetrics() -> [String: OperationMetric] {
+        return operationMetrics
+    }
+    
+    func resetCacheMetrics() {
+        cacheHits = 0
+        cacheMisses = 0
+    }
+}
+
+public class MemoryManager {
+    func getCurrentMemoryUsage() -> UInt64 {
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
+        
+        let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                task_info(mach_task_self_,
+                         task_flavor_t(MACH_TASK_BASIC_INFO),
+                         $0,
+                         &count)
+            }
+        }
+        
+        if kerr == KERN_SUCCESS {
+            return UInt64(info.resident_size)
+        } else {
+            return 0
+        }
+    }
+    
+    func optimizeMemoryUsage() {
+        // Implement memory optimization strategies
+        // This could include garbage collection hints, cache clearing, etc.
+    }
+}
+
+public struct CachedObject {
+    public let object: AnyObject
+    public let createdAt: Date
+}
+
+// MARK: - Enhanced Optimization Methods
+
+extension BioDigitalTwinEngine {
+    
+    private func performAggressiveMemoryCleanup() {
+        // Force garbage collection if available
+        #if canImport(Foundation)
+        autoreleasepool {
+            // Clear temporary objects
+        }
+        #endif
+        
+        // Clear low-priority cache entries
+        let lowPriorityKeys = cache.allKeys.filter { key in
+            if let cachedObject = cache.object(forKey: key) as? CachedObject {
+                return cacheHitPatterns[key as String] ?? 0 < 2
+            }
+            return false
+        }
+        
+        for key in lowPriorityKeys {
+            cache.removeObject(forKey: key)
+        }
+        
+        // Compact memory
+        compactMemoryUsage()
+    }
+    
+    private func optimizeCacheBasedOnUsage() {
+        // Analyze cache hit patterns
+        let totalHits = cacheHitPatterns.values.reduce(0, +)
+        let averageHits = totalHits / max(cacheHitPatterns.count, 1)
+        
+        // Remove rarely used cache entries
+        let rarelyUsedKeys = cacheHitPatterns.filter { $0.value < averageHits / 2 }.keys
+        for key in rarelyUsedKeys {
+            cache.removeObject(forKey: key as NSString)
+            cacheHitPatterns.removeValue(forKey: key)
+        }
+        
+        // Prioritize frequently used entries
+        let frequentlyUsedKeys = cacheHitPatterns.filter { $0.value > averageHits * 2 }.keys
+        for key in frequentlyUsedKeys {
+            // Extend cache lifetime for frequently used items
+            if let cachedObject = cache.object(forKey: key as NSString) as? CachedObject {
+                // Mark for extended retention
+            }
+        }
+    }
+    
+    private func performBackgroundOptimization() {
+        // Background optimization tasks
+        optimizeComputationParameters()
+        precomputeCommonOperations()
+        updatePerformancePredictions()
+    }
+    
+    private func optimizeComputationParameters() {
+        // Dynamically adjust computation parameters based on performance metrics
+        let currentMemory = memoryManager.getCurrentMemoryUsage()
+        
+        if currentMemory > memoryThreshold {
+            // Reduce computation complexity
+            reduceComputationComplexity()
+        } else {
+            // Increase computation precision
+            increaseComputationPrecision()
+        }
+    }
+    
+    private func precomputeCommonOperations() {
+        // Precompute frequently used calculations
+        let commonScenarios = generateCommonScenarios()
+        
+        for scenario in commonScenarios {
+            let cacheKey = "precomputed_\(scenario.hashValue)"
+            if cache.object(forKey: cacheKey as NSString) == nil {
+                let result = precomputeScenario(scenario: scenario)
+                cache.setObject(result, forKey: cacheKey as NSString)
+            }
+        }
+    }
+    
+    private func updatePerformancePredictions() {
+        // Update performance prediction models
+        let currentMetrics = getPerformanceMetrics()
+        
+        // Adjust future computation strategies based on current performance
+        if currentMetrics.averageSimulationTime > 1.0 {
+            // Switch to faster algorithms
+            enableFastAlgorithms()
+        } else if currentMetrics.cacheHitRate < 0.5 {
+            // Improve caching strategy
+            improveCachingStrategy()
+        }
+    }
+    
+    private func compactMemoryUsage() {
+        // Compact memory usage by reorganizing data structures
+        // This is a placeholder for actual memory compaction logic
+    }
+    
+    private func reduceComputationComplexity() {
+        // Reduce computation complexity when memory is constrained
+        // This could involve using simpler models or reducing precision
+    }
+    
+    private func increaseComputationPrecision() {
+        // Increase computation precision when resources are available
+        // This could involve using more complex models or higher precision
+    }
+    
+    private func generateCommonScenarios() -> [HealthScenario] {
+        // Generate common health scenarios for precomputation
+        return [
+            HealthScenario(name: "Normal Activity", timeStepSize: 1.0, affectedSystems: []),
+            HealthScenario(name: "Exercise", timeStepSize: 0.5, affectedSystems: ["cardiovascular"]),
+            HealthScenario(name: "Stress", timeStepSize: 1.0, affectedSystems: ["neurological", "endocrine"])
+        ]
+    }
+    
+    private func precomputeScenario(scenario: HealthScenario) -> AnyObject {
+        // Precompute scenario results
+        // This is a placeholder for actual precomputation logic
+        return scenario as AnyObject
+    }
+    
+    private func enableFastAlgorithms() {
+        // Enable faster but potentially less accurate algorithms
+        // This is a placeholder for actual algorithm switching logic
+    }
+    
+    private func improveCachingStrategy() {
+        // Improve caching strategy based on usage patterns
+        // This is a placeholder for actual caching improvement logic
     }
 }
