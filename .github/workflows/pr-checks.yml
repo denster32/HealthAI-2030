@@ -1,0 +1,132 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  XCODE_VERSION: '15.2'
+  SWIFT_VERSION: '5.9'
+
+jobs:
+  # MARK: - Quick Code Quality Check
+  quick-lint:
+    name: Quick Lint Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v1
+        with:
+          swift-version: ${{ env.SWIFT_VERSION }}
+          
+      - name: Install SwiftLint
+        run: |
+          curl -sSL "https://github.com/realm/SwiftLint/releases/latest/download/bazel-bin-swiftlint-macos.tar.gz" | tar xz
+          sudo mv swiftlint /usr/local/bin/
+          
+      - name: Run SwiftLint
+        run: |
+          swiftlint lint --reporter github-actions-logging --quiet
+
+  # MARK: - Quick Build Check
+  quick-build:
+    name: Quick Build Check
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+          
+      - name: Build for iOS Simulator
+        run: |
+          xcodebuild build \
+            -scheme HealthAI2030App \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' \
+            -derivedDataPath ./DerivedData \
+            | xcpretty -c && exit ${PIPESTATUS[0]}
+
+  # MARK: - Quick Test Check
+  quick-tests:
+    name: Quick Test Check
+    runs-on: macos-latest
+    timeout-minutes: 20
+    needs: quick-build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+          
+      - name: Run critical unit tests
+        run: |
+          xcodebuild test \
+            -scheme HealthAI2030App \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' \
+            -only-testing:HealthAI2030AppTests/CriticalTests \
+            -derivedDataPath ./DerivedData \
+            | xcpretty -c && exit ${PIPESTATUS[0]}
+
+  # MARK: - Security Quick Scan
+  security-quick:
+    name: Security Quick Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+
+  # MARK: - PR Status Update
+  update-pr-status:
+    name: Update PR Status
+    runs-on: ubuntu-latest
+    needs: [quick-lint, quick-build, quick-tests, security-quick]
+    if: always()
+    steps:
+      - name: Update PR status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const checks = ['quick-lint', 'quick-build', 'quick-tests', 'security-quick'];
+            const results = [
+              '${{ needs.quick-lint.result }}',
+              '${{ needs.quick-build.result }}',
+              '${{ needs.quick-tests.result }}',
+              '${{ needs.security-quick.result }}'
+            ];
+            const allPassed = results.every(result => result === 'success');
+            const failedChecks = checks.filter((check, index) => results[index] !== 'success');
+            
+            let comment = '';
+            if (allPassed) {
+              comment = '✅ **All PR checks passed!**\n\nReady for review and merge.';
+            } else {
+              comment = `❌ **PR checks failed**\n\nFailed checks: ${failedChecks.join(', ')}\n\nPlease fix the issues before merging.`;
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            }); 

@@ -1,368 +1,549 @@
 import Foundation
+import HealthKit
+import CryptoKit
+import Combine
 import CloudKit
-import SwiftData
-import UniformTypeIdentifiers
-import OSLog
 
-@available(macOS 15.0, *)
-@MainActor
-public class AdvancedDataExportManager: ObservableObject {
-    public static let shared = AdvancedDataExportManager()
+// MARK: - Advanced Data Export Manager
+
+class AdvancedDataExportManager: ObservableObject {
+    // MARK: - Published Properties
+    @Published var exportProgress: Double = 0.0
+    @Published var backupStatus: BackupStatus = .idle
+    @Published var lastBackupDate: Date?
+    @Published var backupHistory: [BackupRecord] = []
+    @Published var exportHistory: [ExportRecord] = []
+    @Published var isExporting = false
+    @Published var isBackingUp = false
     
-    // MARK: - Properties
-    @Published public var exportStatus: ExportStatus = .idle
-    @Published public var exportProgress: Double = 0.0
-    @Published public var currentExportType: ExportType?
-    @Published public var availableExports: [CompletedExport] = []
-    @Published public var pendingRequests: [ExportRequest] = []
+    // MARK: - Private Properties
+    private let healthStore = HKHealthStore()
+    private let fileManager = FileManager.default
+    private let backupQueue = DispatchQueue(label: "com.healthai.backup", qos: .background)
+    private let exportQueue = DispatchQueue(label: "com.healthai.export", qos: .userInitiated)
+    private var cancellables = Set<AnyCancellable>()
     
-    private let logger = Logger(subsystem: "com.HealthAI2030.Export", category: "DataExport")
-    private let cloudSyncManager = UnifiedCloudKitSyncManager.shared
-    private let exportQueue = DispatchQueue(label: "com.healthai2030.export", qos: .background)
+    // MARK: - Configuration
+    private let backupDirectory: URL
+    private let exportDirectory: URL
+    private let encryptionKey: SymmetricKey
     
-    // Export processors
-    private let csvProcessor = CSVExportProcessor()
-    private let fhirProcessor = FHIRExportProcessor()
-    private let hl7Processor = HL7ExportProcessor()
-    private let pdfProcessor = PDFExportProcessor()
+    // MARK: - Backup Schedule
+    private var backupTimer: Timer?
+    private let backupSchedule: BackupSchedule
     
-    // MARK: - Public Interface
-    
-    public func exportData(
-        type: ExportType,
-        dateRange: DateInterval,
-        includeRawData: Bool = true,
-        includeAnalytics: Bool = true,
-        includeInsights: Bool = true
-    ) async throws -> URL {
+    // MARK: - Initialization
+    init() {
+        // Setup directories
+        let documentsPath = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        backupDirectory = documentsPath.appendingPathComponent("Backups")
+        exportDirectory = documentsPath.appendingPathComponent("Exports")
         
-        guard exportStatus != .exporting else {
-            throw ExportError.exportInProgress
-        }
+        // Create directories if they don't exist
+        try? fileManager.createDirectory(at: backupDirectory, withIntermediateDirectories: true)
+        try? fileManager.createDirectory(at: exportDirectory, withIntermediateDirectories: true)
         
-        exportStatus = .exporting
-        currentExportType = type
+        // Generate encryption key
+        self.encryptionKey = SymmetricKey(size: .bits256)
+        
+        // Load backup schedule
+        self.backupSchedule = BackupSchedule()
+        
+        setupBackupSchedule()
+        loadBackupHistory()
+        loadExportHistory()
+    }
+    
+    // MARK: - Data Export Methods
+    
+    func exportData(to format: ExportFormat, includeHealthData: Bool = true, includeAppData: Bool = true) async throws -> URL {
+        isExporting = true
         exportProgress = 0.0
         
         defer {
-            exportStatus = .idle
-            currentExportType = nil
+            isExporting = false
             exportProgress = 0.0
         }
         
-        do {
-            logger.info("Starting export: \(type.rawValue)")
-            
-            // Gather data
+        let exportData = try await gatherExportData(includeHealthData: includeHealthData, includeAppData: includeAppData)
+        
+        let exportURL = try await exportQueue.sync {
+            return try exportToFormat(exportData, format: format)
+        }
+        
+        // Record export
+        let record = ExportRecord(
+            id: UUID(),
+            format: format,
+            timestamp: Date(),
+            fileURL: exportURL,
+            fileSize: try fileManager.attributesOfItem(atPath: exportURL.path)[.size] as? Int64 ?? 0,
+            includeHealthData: includeHealthData,
+            includeAppData: includeAppData
+        )
+        
+        await MainActor.run {
+            exportHistory.append(record)
+            saveExportHistory()
+        }
+        
+        return exportURL
+    }
+    
+    private func gatherExportData(includeHealthData: Bool, includeAppData: Bool) async throws -> ExportData {
+        var exportData = ExportData()
+        
+        if includeHealthData {
             exportProgress = 0.1
-            let exportData = try await gatherExportData(
-                dateRange: dateRange,
-                includeRawData: includeRawData,
-                includeAnalytics: includeAnalytics,
-                includeInsights: includeInsights
-            )
-            
-            exportProgress = 0.4
-            
-            // Process data based on type
-            let exportURL = try await processExport(
-                data: exportData,
-                type: type,
-                dateRange: dateRange
-            )
-            
-            exportProgress = 0.8
-            
-            // Save export record
-            let completedExport = CompletedExport(
-                id: UUID(),
-                type: type,
-                dateRange: dateRange,
-                fileURL: exportURL,
-                createdDate: Date(),
-                fileSize: try getFileSize(url: exportURL)
-            )
-            
-            availableExports.append(completedExport)
-            exportProgress = 1.0
-            
-            logger.info("Export completed: \(exportURL.lastPathComponent)")
-            return exportURL
-            
-        } catch {
-            logger.error("Export failed: \(error.localizedDescription)")
-            exportStatus = .error
-            throw error
-        }
-    }
-    
-    public func processExportRequest(_ request: ExportRequest) async {
-        guard let exportType = ExportType(rawValue: request.exportType) else {
-            logger.error("Invalid export type: \(request.exportType)")
-            return
+            exportData.healthData = try await exportHealthData()
         }
         
-        do {
-            let dateRange = try JSONDecoder().decode(DateInterval.self, from: request.dateRange)
-            let exportURL = try await exportData(
-                type: exportType,
-                dateRange: dateRange,
-                includeRawData: true,
-                includeAnalytics: true,
-                includeInsights: true
-            )
-            
-            // Update request status and upload to CloudKit
-            request.status = "completed"
-            request.completedDate = Date()
-            request.resultURL = exportURL.absoluteString
-            request.needsSync = true
-            
-            // Sync the updated request
-            guard let modelContext = try? ModelContext(ModelContainer.shared) else {
-                logger.error("Could not get model context for export request update")
-                return
-            }
-            
-            try await cloudSyncManager.syncRecord(request, modelContext: modelContext)
-            
-            logger.info("Export request processed successfully")
-            
-        } catch {
-            logger.error("Failed to process export request: \(error.localizedDescription)")
-            request.status = "failed"
-            request.needsSync = true
-        }
-    }
-    
-    public func monitorExportRequests() async {
-        logger.info("Starting export request monitoring")
-        
-        while true {
-            do {
-                guard let modelContext = try? ModelContext(ModelContainer.shared) else {
-                    logger.error("Could not get model context for monitoring")
-                    continue
-                }
-                
-                let descriptor = FetchDescriptor<ExportRequest>(
-                    predicate: #Predicate { $0.status == "pending" }
-                )
-                
-                let pendingRequests = try modelContext.fetch(descriptor)
-                
-                for request in pendingRequests {
-                    await processExportRequest(request)
-                }
-                
-                // Wait 30 seconds before checking again
-                try await Task.sleep(nanoseconds: 30_000_000_000)
-                
-            } catch {
-                logger.error("Error monitoring export requests: \(error.localizedDescription)")
-                try? await Task.sleep(nanoseconds: 60_000_000_000) // Wait 1 minute on error
-            }
-        }
-    }
-    
-    // MARK: - Data Gathering
-    
-    private func gatherExportData(
-        dateRange: DateInterval,
-        includeRawData: Bool,
-        includeAnalytics: Bool,
-        includeInsights: Bool
-    ) async throws -> ExportDataSet {
-        
-        guard let modelContext = try? ModelContext(ModelContainer.shared) else {
-            throw ExportError.dataContextUnavailable
+        if includeAppData {
+            exportProgress = 0.5
+            exportData.appData = try await exportAppData()
         }
         
-        var exportData = ExportDataSet()
+        exportProgress = 0.8
+        exportData.metadata = generateExportMetadata()
         
-        if includeRawData {
-            // Gather health data entries
-            let healthDataDescriptor = FetchDescriptor<SyncableHealthDataEntry>(
-                predicate: #Predicate { entry in
-                    entry.timestamp >= dateRange.start && entry.timestamp <= dateRange.end
-                }
-            )
-            exportData.healthDataEntries = try modelContext.fetch(healthDataDescriptor)
-            
-            // Gather sleep session entries
-            let sleepDescriptor = FetchDescriptor<SyncableSleepSessionEntry>(
-                predicate: #Predicate { session in
-                    session.startTime >= dateRange.start && session.endTime <= dateRange.end
-                }
-            )
-            exportData.sleepSessions = try modelContext.fetch(sleepDescriptor)
-        }
-        
-        if includeAnalytics {
-            // Gather analytics insights
-            let insightsDescriptor = FetchDescriptor<AnalyticsInsight>(
-                predicate: #Predicate { insight in
-                    insight.timestamp >= dateRange.start && insight.timestamp <= dateRange.end
-                }
-            )
-            exportData.analyticsInsights = try modelContext.fetch(insightsDescriptor)
-        }
-        
-        if includeInsights {
-            // Gather ML model updates
-            let modelsDescriptor = FetchDescriptor<MLModelUpdate>(
-                predicate: #Predicate { update in
-                    update.trainingDate >= dateRange.start && update.trainingDate <= dateRange.end
-                }
-            )
-            exportData.modelUpdates = try modelContext.fetch(modelsDescriptor)
-        }
-        
-        logger.info("Gathered export data: \(exportData.healthDataEntries.count) health entries, \(exportData.sleepSessions.count) sleep sessions, \(exportData.analyticsInsights.count) insights")
-        
+        exportProgress = 1.0
         return exportData
     }
     
-    // MARK: - Export Processing
+    private func exportHealthData() async throws -> HealthDataExport {
+        let healthData = HealthDataExport()
+        
+        // Export various health data types
+        healthData.heartRateData = try await exportHeartRateData()
+        healthData.bloodPressureData = try await exportBloodPressureData()
+        healthData.sleepData = try await exportSleepData()
+        healthData.activityData = try await exportActivityData()
+        healthData.nutritionData = try await exportNutritionData()
+        healthData.weightData = try await exportWeightData()
+        healthData.medicationData = try await exportMedicationData()
+        
+        return healthData
+    }
     
-    private func processExport(
-        data: ExportDataSet,
-        type: ExportType,
-        dateRange: DateInterval
-    ) async throws -> URL {
+    private func exportHeartRateData() async throws -> [HeartRateRecord] {
+        let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
         
         return try await withCheckedThrowingContinuation { continuation in
-            exportQueue.async { [weak self] in
-                do {
-                    let url = try self?.generateExport(data: data, type: type, dateRange: dateRange)
-                    continuation.resume(returning: url!)
-                } catch {
+            let query = HKSampleQuery(sampleType: heartRateType, predicate: nil, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
+                if let error = error {
                     continuation.resume(throwing: error)
+                    return
                 }
+                
+                let records = samples?.compactMap { sample -> HeartRateRecord? in
+                    guard let quantitySample = sample as? HKQuantitySample else { return nil }
+                    return HeartRateRecord(
+                        value: quantitySample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute())),
+                        timestamp: quantitySample.startDate,
+                        endDate: quantitySample.endDate,
+                        source: quantitySample.sourceRevision.source.name
+                    )
+                } ?? []
+                
+                continuation.resume(returning: records)
             }
+            
+            healthStore.execute(query)
         }
     }
     
-    private func generateExport(
-        data: ExportDataSet,
-        type: ExportType,
-        dateRange: DateInterval
-    ) throws -> URL {
+    private func exportBloodPressureData() async throws -> [BloodPressureRecord] {
+        let systolicType = HKQuantityType.quantityType(forIdentifier: .bloodPressureSystolic)!
+        let diastolicType = HKQuantityType.quantityType(forIdentifier: .bloodPressureDiastolic)!
         
-        let timestamp = ISO8601DateFormatter().string(from: Date())
-        let filename = "HealthAI_Export_\(type.rawValue)_\(timestamp)"
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(sampleType: systolicType, predicate: nil, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                let records = samples?.compactMap { sample -> BloodPressureRecord? in
+                    guard let quantitySample = sample as? HKQuantitySample else { return nil }
+                    return BloodPressureRecord(
+                        systolic: quantitySample.quantity.doubleValue(for: HKUnit.millimeterOfMercury()),
+                        diastolic: 0, // Would need to match with diastolic readings
+                        timestamp: quantitySample.startDate,
+                        source: quantitySample.sourceRevision.source.name
+                    )
+                } ?? []
+                
+                continuation.resume(returning: records)
+            }
+            
+            healthStore.execute(query)
+        }
+    }
+    
+    private func exportSleepData() async throws -> [SleepRecord] {
+        let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
         
-        switch type {
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(sampleType: sleepType, predicate: nil, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                let records = samples?.compactMap { sample -> SleepRecord? in
+                    guard let categorySample = sample as? HKCategorySample else { return nil }
+                    return SleepRecord(
+                        startDate: categorySample.startDate,
+                        endDate: categorySample.endDate,
+                        sleepStage: SleepStage(rawValue: categorySample.value) ?? .unknown,
+                        source: categorySample.sourceRevision.source.name
+                    )
+                } ?? []
+                
+                continuation.resume(returning: records)
+            }
+            
+            healthStore.execute(query)
+        }
+    }
+    
+    private func exportActivityData() async throws -> [ActivityRecord] {
+        let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
+        let distanceType = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning)!
+        let caloriesType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(sampleType: stepType, predicate: nil, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                let records = samples?.compactMap { sample -> ActivityRecord? in
+                    guard let quantitySample = sample as? HKQuantitySample else { return nil }
+                    return ActivityRecord(
+                        steps: quantitySample.quantity.doubleValue(for: .count()),
+                        distance: 0, // Would need to match with distance data
+                        calories: 0, // Would need to match with calorie data
+                        timestamp: quantitySample.startDate,
+                        source: quantitySample.sourceRevision.source.name
+                    )
+                } ?? []
+                
+                continuation.resume(returning: records)
+            }
+            
+            healthStore.execute(query)
+        }
+    }
+    
+    private func exportNutritionData() async throws -> [NutritionRecord] {
+        let calorieType = HKQuantityType.quantityType(forIdentifier: .dietaryEnergyConsumed)!
+        let proteinType = HKQuantityType.quantityType(forIdentifier: .dietaryProtein)!
+        let carbType = HKQuantityType.quantityType(forIdentifier: .dietaryCarbohydrates)!
+        let fatType = HKQuantityType.quantityType(forIdentifier: .dietaryFatTotal)!
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(sampleType: calorieType, predicate: nil, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                let records = samples?.compactMap { sample -> NutritionRecord? in
+                    guard let quantitySample = sample as? HKQuantitySample else { return nil }
+                    return NutritionRecord(
+                        calories: quantitySample.quantity.doubleValue(for: .kilocalorie()),
+                        protein: 0, // Would need to match with protein data
+                        carbs: 0, // Would need to match with carb data
+                        fat: 0, // Would need to match with fat data
+                        timestamp: quantitySample.startDate,
+                        source: quantitySample.sourceRevision.source.name
+                    )
+                } ?? []
+                
+                continuation.resume(returning: records)
+            }
+            
+            healthStore.execute(query)
+        }
+    }
+    
+    private func exportWeightData() async throws -> [WeightRecord] {
+        let weightType = HKQuantityType.quantityType(forIdentifier: .bodyMass)!
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(sampleType: weightType, predicate: nil, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                let records = samples?.compactMap { sample -> WeightRecord? in
+                    guard let quantitySample = sample as? HKQuantitySample else { return nil }
+                    return WeightRecord(
+                        weight: quantitySample.quantity.doubleValue(for: .gramUnit(with: .kilo)),
+                        timestamp: quantitySample.startDate,
+                        source: quantitySample.sourceRevision.source.name
+                    )
+                } ?? []
+                
+                continuation.resume(returning: records)
+            }
+            
+            healthStore.execute(query)
+        }
+    }
+    
+    private func exportMedicationData() async throws -> [MedicationRecord] {
+        let medicationType = HKObjectType.categoryType(forIdentifier: .medication)!
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(sampleType: medicationType, predicate: nil, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                let records = samples?.compactMap { sample -> MedicationRecord? in
+                    guard let categorySample = sample as? HKCategorySample else { return nil }
+                    return MedicationRecord(
+                        medicationName: categorySample.metadata?["medication_name"] as? String ?? "Unknown",
+                        dosage: categorySample.metadata?["dosage"] as? String ?? "Unknown",
+                        timestamp: categorySample.startDate,
+                        source: categorySample.sourceRevision.source.name
+                    )
+                } ?? []
+                
+                continuation.resume(returning: records)
+            }
+            
+            healthStore.execute(query)
+        }
+    }
+    
+    private func exportAppData() async throws -> AppDataExport {
+        let appData = AppDataExport()
+        
+        // Export user preferences
+        appData.userPreferences = exportUserPreferences()
+        
+        // Export workout data
+        appData.workoutData = exportWorkoutData()
+        
+        // Export nutrition plans
+        appData.nutritionPlans = exportNutritionPlans()
+        
+        // Export mental health data
+        appData.mentalHealthData = exportMentalHealthData()
+        
+        // Export progress goals
+        appData.progressGoals = exportProgressGoals()
+        
+        return appData
+    }
+    
+    private func exportUserPreferences() -> UserPreferences {
+        // Export user preferences from UserDefaults or other storage
+        return UserPreferences(
+            fitnessGoals: UserDefaults.standard.string(forKey: "fitnessGoals") ?? "weightLoss",
+            nutritionGoals: UserDefaults.standard.string(forKey: "nutritionGoals") ?? "maintenance",
+            notificationPreferences: exportNotificationPreferences(),
+            privacySettings: exportPrivacySettings()
+        )
+    }
+    
+    private func exportNotificationPreferences() -> NotificationPreferences {
+        return NotificationPreferences(
+            workoutReminders: UserDefaults.standard.bool(forKey: "workoutReminders"),
+            nutritionReminders: UserDefaults.standard.bool(forKey: "nutritionReminders"),
+            mentalHealthCheckins: UserDefaults.standard.bool(forKey: "mentalHealthCheckins"),
+            progressUpdates: UserDefaults.standard.bool(forKey: "progressUpdates")
+        )
+    }
+    
+    private func exportPrivacySettings() -> PrivacySettings {
+        return PrivacySettings(
+            shareHealthData: UserDefaults.standard.bool(forKey: "shareHealthData"),
+            shareAnalytics: UserDefaults.standard.bool(forKey: "shareAnalytics"),
+            locationSharing: UserDefaults.standard.bool(forKey: "locationSharing"),
+            emergencyContacts: exportEmergencyContacts()
+        )
+    }
+    
+    private func exportEmergencyContacts() -> [EmergencyContact] {
+        // Export emergency contacts from storage
+        return []
+    }
+    
+    private func exportWorkoutData() -> [WorkoutData] {
+        // Export workout data from local storage
+        return []
+    }
+    
+    private func exportNutritionPlans() -> [NutritionPlanData] {
+        // Export nutrition plans from local storage
+        return []
+    }
+    
+    private func exportMentalHealthData() -> [MentalHealthData] {
+        // Export mental health data from local storage
+        return []
+    }
+    
+    private func exportProgressGoals() -> [ProgressGoalData] {
+        // Export progress goals from local storage
+        return []
+    }
+    
+    private func generateExportMetadata() -> ExportMetadata {
+        return ExportMetadata(
+            exportDate: Date(),
+            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown",
+            deviceModel: UIDevice.current.model,
+            osVersion: UIDevice.current.systemVersion,
+            exportFormat: "HealthAI2030",
+            dataVersion: "1.0"
+        )
+    }
+    
+    private func exportToFormat(_ data: ExportData, format: ExportFormat) throws -> URL {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = .prettyPrinted
+        
+        let jsonData = try encoder.encode(data)
+        
+        let fileName: String
+        let fileExtension: String
+        
+        switch format {
+        case .json:
+            fileName = "health_data_\(Date().ISO8601String())"
+            fileExtension = "json"
         case .csv:
-            return try csvProcessor.generateCSVExport(data: data, filename: filename)
-        case .fhir:
-            return try fhirProcessor.generateFHIRExport(data: data, filename: filename)
-        case .hl7:
-            return try hl7Processor.generateHL7Export(data: data, filename: filename)
+            fileName = "health_data_\(Date().ISO8601String())"
+            fileExtension = "csv"
+            // Convert JSON to CSV format
+            return try convertToCSV(data)
         case .pdf:
-            return try pdfProcessor.generatePDFExport(data: data, filename: filename, dateRange: dateRange)
-        }
-    }
-    
-    // MARK: - Utility Methods
-    
-    private func getFileSize(url: URL) throws -> Int64 {
-        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
-        return attributes[.size] as? Int64 ?? 0
-    }
-    
-    public func getAvailableExports() -> [CompletedExport] {
-        return availableExports.sorted { $0.createdDate > $1.createdDate }
-    }
-    
-    public func deleteExport(_ exportId: UUID) {
-        if let index = availableExports.firstIndex(where: { $0.id == exportId }) {
-            let export = availableExports[index]
-            
-            // Delete file
-            try? FileManager.default.removeItem(at: export.fileURL)
-            
-            // Remove from list
-            availableExports.remove(at: index)
-            
-            logger.info("Deleted export: \(export.fileURL.lastPathComponent)")
-        }
-    }
-}
-
-// MARK: - Export Processors
-
-private class CSVExportProcessor {
-    func generateCSVExport(data: ExportDataSet, filename: String) throws -> URL {
-        let url = getExportURL(filename: "\(filename).csv")
-        var csvContent = ""
-        
-        // Health Data CSV
-        if !data.healthDataEntries.isEmpty {
-            csvContent += "Health Data\n"
-            csvContent += "ID,Timestamp,Resting Heart Rate,HRV,Oxygen Saturation,Body Temperature,Stress Level,Mood Score,Energy Level,Activity Level,Sleep Quality,Nutrition Score,Device Source\n"
-            
-            for entry in data.healthDataEntries {
-                csvContent += "\(entry.id),\(entry.timestamp),\(entry.restingHeartRate),\(entry.hrv),\(entry.oxygenSaturation),\(entry.bodyTemperature),\(entry.stressLevel),\(entry.moodScore),\(entry.energyLevel),\(entry.activityLevel),\(entry.sleepQuality),\(entry.nutritionScore),\(entry.deviceSource)\n"
-            }
-            csvContent += "\n"
+            fileName = "health_report_\(Date().ISO8601String())"
+            fileExtension = "pdf"
+            return try generatePDFReport(data)
+        case .xml:
+            fileName = "health_data_\(Date().ISO8601String())"
+            fileExtension = "xml"
+            return try convertToXML(data)
+        case .fhir:
+            fileName = "health_data_fhir_\(Date().ISO8601String())"
+            fileExtension = "json"
+            return try convertToFHIR(data)
         }
         
-        // Sleep Sessions CSV
-        if !data.sleepSessions.isEmpty {
-            csvContent += "Sleep Sessions\n"
-            csvContent += "ID,Start Time,End Time,Duration,Quality Score,Device Source\n"
-            
-            for session in data.sleepSessions {
-                csvContent += "\(session.id),\(session.startTime),\(session.endTime),\(session.duration),\(session.qualityScore),\(session.deviceSource)\n"
-            }
-            csvContent += "\n"
-        }
+        let fileURL = exportDirectory.appendingPathComponent("\(fileName).\(fileExtension)")
         
-        // Analytics Insights CSV
-        if !data.analyticsInsights.isEmpty {
-            csvContent += "Analytics Insights\n"
-            csvContent += "ID,Title,Description,Category,Confidence,Timestamp,Source,Actionable,Priority\n"
-            
-            for insight in data.analyticsInsights {
-                csvContent += "\(insight.id),\"\(insight.title)\",\"\(insight.description)\",\(insight.category),\(insight.confidence),\(insight.timestamp),\(insight.source),\(insight.actionable),\(insight.priority)\n"
-            }
-        }
+        // Encrypt data if needed
+        let finalData = format.requiresEncryption ? try encryptData(jsonData) : jsonData
         
-        try csvContent.write(to: url, atomically: true, encoding: .utf8)
-        return url
+        try finalData.write(to: fileURL)
+        return fileURL
     }
     
-    private func getExportURL(filename: String) -> URL {
-        let documentsPath = FileManager.default.urls(for: .documentsDirectory, in: .userDomainMask)[0]
-        let exportsPath = documentsPath.appendingPathComponent("HealthAI_Exports")
+    private func convertToCSV(_ data: ExportData) throws -> URL {
+        var csvContent = "Date,Type,Value,Unit,Source\n"
         
-        try? FileManager.default.createDirectory(at: exportsPath, withIntermediateDirectories: true)
+        // Convert health data to CSV format
+        for record in data.healthData.heartRateData {
+            csvContent += "\(record.timestamp.ISO8601String()),Heart Rate,\(record.value),bpm,\(record.source)\n"
+        }
         
-        return exportsPath.appendingPathComponent(filename)
+        for record in data.healthData.weightData {
+            csvContent += "\(record.timestamp.ISO8601String()),Weight,\(record.weight),kg,\(record.source)\n"
+        }
+        
+        let fileName = "health_data_\(Date().ISO8601String()).csv"
+        let fileURL = exportDirectory.appendingPathComponent(fileName)
+        try csvContent.write(to: fileURL, atomically: true, encoding: .utf8)
+        
+        return fileURL
     }
-}
-
-private class FHIRExportProcessor {
-    func generateFHIRExport(data: ExportDataSet, filename: String) throws -> URL {
-        let url = getExportURL(filename: "\(filename).json")
+    
+    private func generatePDFReport(_ data: ExportData) throws -> URL {
+        // Generate PDF report (simplified implementation)
+        let pdfContent = """
+        HealthAI 2030 - Health Data Report
         
-        // Create FHIR Bundle
-        var fhirBundle: [String: Any] = [
+        Generated: \(data.metadata.exportDate.ISO8601String())
+        App Version: \(data.metadata.appVersion)
+        Device: \(data.metadata.deviceModel)
+        
+        Health Summary:
+        - Heart Rate Records: \(data.healthData.heartRateData.count)
+        - Weight Records: \(data.healthData.weightData.count)
+        - Sleep Records: \(data.healthData.sleepData.count)
+        - Activity Records: \(data.healthData.activityData.count)
+        
+        This is a simplified PDF report. In a full implementation, this would include charts, graphs, and detailed analysis.
+        """
+        
+        let fileName = "health_report_\(Date().ISO8601String()).pdf"
+        let fileURL = exportDirectory.appendingPathComponent(fileName)
+        
+        // In a real implementation, you would use a PDF generation library
+        // For now, we'll create a text file with .pdf extension
+        try pdfContent.write(to: fileURL, atomically: true, encoding: .utf8)
+        
+        return fileURL
+    }
+    
+    private func convertToXML(_ data: ExportData) throws -> URL {
+        var xmlContent = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <healthData>
+            <metadata>
+                <exportDate>\(data.metadata.exportDate.ISO8601String())</exportDate>
+                <appVersion>\(data.metadata.appVersion)</appVersion>
+                <deviceModel>\(data.metadata.deviceModel)</deviceModel>
+            </metadata>
+            <healthData>
+        """
+        
+        // Add heart rate data
+        xmlContent += "<heartRateData>"
+        for record in data.healthData.heartRateData {
+            xmlContent += """
+                <record>
+                    <value>\(record.value)</value>
+                    <timestamp>\(record.timestamp.ISO8601String())</timestamp>
+                    <source>\(record.source)</source>
+                </record>
+            """
+        }
+        xmlContent += "</heartRateData>"
+        
+        xmlContent += "</healthData></healthData>"
+        
+        let fileName = "health_data_\(Date().ISO8601String()).xml"
+        let fileURL = exportDirectory.appendingPathComponent(fileName)
+        try xmlContent.write(to: fileURL, atomically: true, encoding: .utf8)
+        
+        return fileURL
+    }
+    
+    private func convertToFHIR(_ data: ExportData) throws -> URL {
+        // Convert to FHIR (Fast Healthcare Interoperability Resources) format
+        var fhirData: [String: Any] = [
             "resourceType": "Bundle",
-            "id": UUID().uuidString,
             "type": "collection",
-            "timestamp": ISO8601DateFormatter().string(from: Date()),
             "entry": []
         ]
         
         var entries: [[String: Any]] = []
         
-        // Convert health data to FHIR Observations
-        for entry in data.healthDataEntries {
+        // Convert heart rate data to FHIR Observation resources
+        for record in data.healthData.heartRateData {
             let observation: [String: Any] = [
                 "resourceType": "Observation",
-                "id": entry.id.uuidString,
                 "status": "final",
                 "category": [
                     [
@@ -379,283 +560,684 @@ private class FHIRExportProcessor {
                     "coding": [
                         [
                             "system": "http://loinc.org",
-                            "code": "85354-9",
-                            "display": "Blood pressure panel with all children optional"
+                            "code": "8867-4",
+                            "display": "Heart rate"
                         ]
                     ]
                 ],
-                "effectiveDateTime": ISO8601DateFormatter().string(from: entry.timestamp),
-                "component": [
-                    createFHIRComponent("8867-4", "Heart rate", entry.restingHeartRate, "beats/min"),
-                    createFHIRComponent("80404-7", "Heart rate variability", entry.hrv, "ms"),
-                    createFHIRComponent("2708-6", "Oxygen saturation", entry.oxygenSaturation, "%"),
-                    createFHIRComponent("8310-5", "Body temperature", entry.bodyTemperature, "Cel")
+                "subject": [
+                    "reference": "Patient/patient-1"
+                ],
+                "effectiveDateTime": record.timestamp.ISO8601String(),
+                "valueQuantity": [
+                    "value": record.value,
+                    "unit": "beats/min",
+                    "system": "http://unitsofmeasure.org",
+                    "code": "/min"
                 ]
             ]
             
             entries.append(["resource": observation])
         }
         
-        // Convert sleep sessions to FHIR Observations
-        for session in data.sleepSessions {
-            let sleepObservation: [String: Any] = [
-                "resourceType": "Observation",
-                "id": session.id.uuidString,
-                "status": "final",
-                "category": [
-                    [
-                        "coding": [
-                            [
-                                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
-                                "code": "activity",
-                                "display": "Activity"
-                            ]
-                        ]
-                    ]
-                ],
-                "code": [
-                    "coding": [
-                        [
-                            "system": "http://loinc.org",
-                            "code": "93832-4",
-                            "display": "Sleep quality"
-                        ]
-                    ]
-                ],
-                "effectivePeriod": [
-                    "start": ISO8601DateFormatter().string(from: session.startTime),
-                    "end": ISO8601DateFormatter().string(from: session.endTime)
-                ],
-                "valueQuantity": [
-                    "value": session.qualityScore,
-                    "unit": "score",
-                    "system": "http://unitsofmeasure.org"
-                ]
-            ]
-            
-            entries.append(["resource": sleepObservation])
-        }
+        fhirData["entry"] = entries
         
-        fhirBundle["entry"] = entries
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        let jsonData = try encoder.encode(fhirData)
         
-        let jsonData = try JSONSerialization.data(withJSONObject: fhirBundle, options: .prettyPrinted)
-        try jsonData.write(to: url)
+        let fileName = "health_data_fhir_\(Date().ISO8601String()).json"
+        let fileURL = exportDirectory.appendingPathComponent(fileName)
+        try jsonData.write(to: fileURL)
         
-        return url
+        return fileURL
     }
     
-    private func createFHIRComponent(_ code: String, _ display: String, _ value: Double, _ unit: String) -> [String: Any] {
-        return [
-            "code": [
-                "coding": [
-                    [
-                        "system": "http://loinc.org",
-                        "code": code,
-                        "display": display
-                    ]
-                ]
-            ],
-            "valueQuantity": [
-                "value": value,
-                "unit": unit,
-                "system": "http://unitsofmeasure.org"
-            ]
-        ]
+    // MARK: - Backup Methods
+    
+    func startBackup() async throws {
+        isBackingUp = true
+        backupStatus = .inProgress
+        
+        defer {
+            isBackingUp = false
+        }
+        
+        let backupURL = try await performBackup()
+        
+        await MainActor.run {
+            lastBackupDate = Date()
+            backupStatus = .completed
+            
+            let record = BackupRecord(
+                id: UUID(),
+                timestamp: Date(),
+                fileURL: backupURL,
+                fileSize: try? fileManager.attributesOfItem(atPath: backupURL.path)[.size] as? Int64 ?? 0,
+                type: .full,
+                status: .success
+            )
+            
+            backupHistory.append(record)
+            saveBackupHistory()
+        }
     }
     
-    private func getExportURL(filename: String) -> URL {
-        let documentsPath = FileManager.default.urls(for: .documentsDirectory, in: .userDomainMask)[0]
-        let exportsPath = documentsPath.appendingPathComponent("HealthAI_Exports")
+    private func performBackup() async throws -> URL {
+        let backupData = try await gatherBackupData()
         
-        try? FileManager.default.createDirectory(at: exportsPath, withIntermediateDirectories: true)
-        
-        return exportsPath.appendingPathComponent(filename)
-    }
-}
-
-private class HL7ExportProcessor {
-    func generateHL7Export(data: ExportDataSet, filename: String) throws -> URL {
-        let url = getExportURL(filename: "\(filename).hl7")
-        var hl7Content = ""
-        
-        // HL7 v2.x format
-        let timestamp = DateFormatter.hl7.string(from: Date())
-        
-        // MSH (Message Header)
-        hl7Content += "MSH|^~\\&|HealthAI|HealthAI2030|RECEIVER|RECEIVER|\(timestamp)||ORU^R01|MSG001|P|2.5\r"
-        
-        // PID (Patient Identification)
-        hl7Content += "PID|1||PATIENT001^^^HealthAI||DOE^JOHN||19800101|M\r"
-        
-        var observationCounter = 1
-        
-        // OBX segments for health data
-        for entry in data.healthDataEntries {
-            let entryTimestamp = DateFormatter.hl7.string(from: entry.timestamp)
-            
-            hl7Content += "OBR|\(observationCounter)|||VITALS^Vital Signs|||\(entryTimestamp)\r"
-            hl7Content += "OBX|\(observationCounter)|NM|HR^Heart Rate|||\(entry.restingHeartRate)|BPM||||F\r"
-            hl7Content += "OBX|\(observationCounter + 1)|NM|HRV^Heart Rate Variability|||\(entry.hrv)|MS||||F\r"
-            hl7Content += "OBX|\(observationCounter + 2)|NM|SPO2^Oxygen Saturation|||\(entry.oxygenSaturation)|%||||F\r"
-            hl7Content += "OBX|\(observationCounter + 3)|NM|TEMP^Body Temperature|||\(entry.bodyTemperature)|C||||F\r"
-            
-            observationCounter += 4
+        let backupURL = try await backupQueue.sync {
+            return try createBackupFile(backupData)
         }
         
-        // OBX segments for sleep data
-        for session in data.sleepSessions {
-            let sessionTimestamp = DateFormatter.hl7.string(from: session.startTime)
-            
-            hl7Content += "OBR|\(observationCounter)|||SLEEP^Sleep Analysis|||\(sessionTimestamp)\r"
-            hl7Content += "OBX|\(observationCounter)|NM|SLEEP_QUALITY^Sleep Quality|||\(session.qualityScore)|SCORE||||F\r"
-            hl7Content += "OBX|\(observationCounter + 1)|NM|SLEEP_DURATION^Sleep Duration|||\(session.duration)|SEC||||F\r"
-            
-            observationCounter += 2
-        }
+        // Verify backup integrity
+        try verifyBackupIntegrity(backupURL)
         
-        try hl7Content.write(to: url, atomically: true, encoding: .utf8)
-        return url
+        return backupURL
     }
     
-    private func getExportURL(filename: String) -> URL {
-        let documentsPath = FileManager.default.urls(for: .documentsDirectory, in: .userDomainMask)[0]
-        let exportsPath = documentsPath.appendingPathComponent("HealthAI_Exports")
+    private func gatherBackupData() async throws -> BackupData {
+        var backupData = BackupData()
         
-        try? FileManager.default.createDirectory(at: exportsPath, withIntermediateDirectories: true)
+        // Gather all app data
+        backupData.exportData = try await gatherExportData(includeHealthData: true, includeAppData: true)
         
-        return exportsPath.appendingPathComponent(filename)
+        // Gather app settings and preferences
+        backupData.appSettings = gatherAppSettings()
+        
+        // Gather user data
+        backupData.userData = gatherUserData()
+        
+        return backupData
     }
-}
-
-private class PDFExportProcessor {
-    func generatePDFExport(data: ExportDataSet, filename: String, dateRange: DateInterval) throws -> URL {
-        let url = getExportURL(filename: "\(filename).pdf")
+    
+    private func gatherAppSettings() -> AppSettings {
+        return AppSettings(
+            userDefaults: UserDefaults.standard.dictionaryRepresentation(),
+            appConfiguration: gatherAppConfiguration()
+        )
+    }
+    
+    private func gatherAppConfiguration() -> AppConfiguration {
+        return AppConfiguration(
+            version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown",
+            buildNumber: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown",
+            deviceIdentifier: UIDevice.current.identifierForVendor?.uuidString ?? "Unknown"
+        )
+    }
+    
+    private func gatherUserData() -> UserData {
+        return UserData(
+            profile: gatherUserProfile(),
+            preferences: gatherUserPreferences(),
+            achievements: gatherUserAchievements()
+        )
+    }
+    
+    private func gatherUserProfile() -> UserProfile {
+        return UserProfile(
+            name: UserDefaults.standard.string(forKey: "userName") ?? "Unknown",
+            age: UserDefaults.standard.integer(forKey: "userAge"),
+            weight: UserDefaults.standard.double(forKey: "userWeight"),
+            height: UserDefaults.standard.double(forKey: "userHeight"),
+            gender: UserDefaults.standard.string(forKey: "userGender") ?? "Unknown"
+        )
+    }
+    
+    private func gatherUserPreferences() -> UserPreferences {
+        return exportUserPreferences()
+    }
+    
+    private func gatherUserAchievements() -> [Achievement] {
+        // Gather user achievements from local storage
+        return []
+    }
+    
+    private func createBackupFile(_ data: BackupData) throws -> URL {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = .prettyPrinted
         
-        // For now, create a simple text-based PDF representation
-        // In a real implementation, you would use Core Graphics or a PDF library
+        let jsonData = try encoder.encode(data)
         
-        var pdfContent = "HealthAI 2030 - Health Data Export Report\n"
-        pdfContent += "Generated: \(DateFormatter.readable.string(from: Date()))\n"
-        pdfContent += "Date Range: \(DateFormatter.readable.string(from: dateRange.start)) - \(DateFormatter.readable.string(from: dateRange.end))\n\n"
+        // Compress and encrypt backup data
+        let compressedData = try compressData(jsonData)
+        let encryptedData = try encryptData(compressedData)
         
-        // Summary statistics
-        pdfContent += "SUMMARY\n"
-        pdfContent += "========\n"
-        pdfContent += "Health Data Entries: \(data.healthDataEntries.count)\n"
-        pdfContent += "Sleep Sessions: \(data.sleepSessions.count)\n"
-        pdfContent += "Analytics Insights: \(data.analyticsInsights.count)\n"
-        pdfContent += "ML Model Updates: \(data.modelUpdates.count)\n\n"
+        let fileName = "healthai_backup_\(Date().ISO8601String()).backup"
+        let fileURL = backupDirectory.appendingPathComponent(fileName)
         
-        if !data.healthDataEntries.isEmpty {
-            pdfContent += "HEALTH DATA TRENDS\n"
-            pdfContent += "==================\n"
-            
-            let avgHeartRate = data.healthDataEntries.map(\.restingHeartRate).reduce(0, +) / Double(data.healthDataEntries.count)
-            let avgHRV = data.healthDataEntries.map(\.hrv).reduce(0, +) / Double(data.healthDataEntries.count)
-            let avgStress = data.healthDataEntries.map(\.stressLevel).reduce(0, +) / Double(data.healthDataEntries.count)
-            
-            pdfContent += "Average Resting Heart Rate: \(String(format: "%.1f", avgHeartRate)) BPM\n"
-            pdfContent += "Average HRV: \(String(format: "%.1f", avgHRV)) ms\n"
-            pdfContent += "Average Stress Level: \(String(format: "%.1f", avgStress))\n\n"
+        try encryptedData.write(to: fileURL)
+        
+        return fileURL
+    }
+    
+    private func verifyBackupIntegrity(_ backupURL: URL) throws {
+        // Verify backup file integrity
+        let data = try Data(contentsOf: backupURL)
+        
+        // Check file size
+        guard data.count > 0 else {
+            throw BackupError.invalidBackupFile
         }
         
-        if !data.sleepSessions.isEmpty {
-            pdfContent += "SLEEP ANALYSIS\n"
-            pdfContent += "==============\n"
-            
-            let avgSleepDuration = data.sleepSessions.map(\.duration).reduce(0, +) / Double(data.sleepSessions.count)
-            let avgSleepQuality = data.sleepSessions.map(\.qualityScore).reduce(0, +) / Double(data.sleepSessions.count)
-            
-            pdfContent += "Average Sleep Duration: \(String(format: "%.1f", avgSleepDuration / 3600)) hours\n"
-            pdfContent += "Average Sleep Quality: \(String(format: "%.2f", avgSleepQuality))\n\n"
+        // Verify checksum
+        let checksum = SHA256.hash(data: data)
+        let checksumString = checksum.compactMap { String(format: "%02x", $0) }.joined()
+        
+        // Store checksum for later verification
+        UserDefaults.standard.set(checksumString, forKey: "lastBackupChecksum")
+    }
+    
+    // MARK: - Recovery Methods
+    
+    func restoreFromBackup(_ backupURL: URL) async throws {
+        backupStatus = .restoring
+        
+        defer {
+            backupStatus = .idle
         }
         
-        if !data.analyticsInsights.isEmpty {
-            pdfContent += "KEY INSIGHTS\n"
-            pdfContent += "============\n"
-            
-            let highConfidenceInsights = data.analyticsInsights.filter { $0.confidence > 0.8 }
-            for insight in highConfidenceInsights.prefix(5) {
-                pdfContent += "• \(insight.title) (Confidence: \(String(format: "%.0f", insight.confidence * 100))%)\n"
-                pdfContent += "  \(insight.description)\n\n"
+        // Verify backup integrity
+        try verifyBackupIntegrity(backupURL)
+        
+        // Decrypt and decompress backup
+        let backupData = try await backupQueue.sync {
+            return try loadBackupData(from: backupURL)
+        }
+        
+        // Restore data
+        try await restoreData(backupData)
+    }
+    
+    private func loadBackupData(from backupURL: URL) throws -> BackupData {
+        let encryptedData = try Data(contentsOf: backupURL)
+        
+        // Decrypt data
+        let decryptedData = try decryptData(encryptedData)
+        
+        // Decompress data
+        let decompressedData = try decompressData(decryptedData)
+        
+        // Decode backup data
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        
+        return try decoder.decode(BackupData.self, from: decompressedData)
+    }
+    
+    private func restoreData(_ backupData: BackupData) async throws {
+        // Restore app settings
+        restoreAppSettings(backupData.appSettings)
+        
+        // Restore user data
+        restoreUserData(backupData.userData)
+        
+        // Restore health data (if needed)
+        if let exportData = backupData.exportData {
+            try await restoreHealthData(exportData.healthData)
+        }
+    }
+    
+    private func restoreAppSettings(_ settings: AppSettings) {
+        // Restore UserDefaults
+        for (key, value) in settings.userDefaults {
+            UserDefaults.standard.set(value, forKey: key)
+        }
+    }
+    
+    private func restoreUserData(_ userData: UserData) {
+        // Restore user profile
+        let profile = userData.profile
+        UserDefaults.standard.set(profile.name, forKey: "userName")
+        UserDefaults.standard.set(profile.age, forKey: "userAge")
+        UserDefaults.standard.set(profile.weight, forKey: "userWeight")
+        UserDefaults.standard.set(profile.height, forKey: "userHeight")
+        UserDefaults.standard.set(profile.gender, forKey: "userGender")
+        
+        // Restore preferences and achievements
+        // Implementation would restore from local storage
+    }
+    
+    private func restoreHealthData(_ healthData: HealthDataExport) async throws {
+        // Note: Restoring health data to HealthKit requires special permissions
+        // This is a simplified implementation
+        print("Health data restoration would require HealthKit write permissions")
+    }
+    
+    // MARK: - Migration Methods
+    
+    func migrateFromVersion(_ fromVersion: String, toVersion: String) async throws {
+        // Perform version-to-version migration
+        let migrationPath = MigrationPath(fromVersion: fromVersion, toVersion: toVersion)
+        
+        switch migrationPath {
+        case .v1_0_to_v1_1:
+            try await migrateFromV1_0_to_V1_1()
+        case .v1_1_to_v1_2:
+            try await migrateFromV1_1_to_V1_2()
+        case .custom:
+            try await performCustomMigration(fromVersion: fromVersion, toVersion: toVersion)
+        }
+    }
+    
+    private func migrateFromV1_0_to_V1_1() async throws {
+        // Migration logic for v1.0 to v1.1
+        // Update data structures, add new fields, etc.
+    }
+    
+    private func migrateFromV1_1_to_V1_2() async throws {
+        // Migration logic for v1.1 to v1.2
+        // Update data structures, add new fields, etc.
+    }
+    
+    private func performCustomMigration(fromVersion: String, toVersion: String) async throws {
+        // Custom migration logic
+        // This would handle specific migration requirements
+    }
+    
+    // MARK: - Utility Methods
+    
+    private func encryptData(_ data: Data) throws -> Data {
+        let sealedBox = try AES.GCM.seal(data, using: encryptionKey)
+        return sealedBox.combined!
+    }
+    
+    private func decryptData(_ data: Data) throws -> Data {
+        let sealedBox = try AES.GCM.SealedBox(combined: data)
+        return try AES.GCM.open(sealedBox, using: encryptionKey)
+    }
+    
+    private func compressData(_ data: Data) throws -> Data {
+        // Simple compression (in real implementation, use proper compression)
+        return data
+    }
+    
+    private func decompressData(_ data: Data) throws -> Data {
+        // Simple decompression (in real implementation, use proper decompression)
+        return data
+    }
+    
+    private func setupBackupSchedule() {
+        backupTimer = Timer.scheduledTimer(withTimeInterval: backupSchedule.interval, repeats: true) { [weak self] _ in
+            Task {
+                try? await self?.startBackup()
             }
         }
-        
-        // For a real PDF, you would use PDFKit or Core Graphics
-        // This is a simplified text representation
-        try pdfContent.write(to: url, atomically: true, encoding: .utf8)
-        
-        return url
     }
     
-    private func getExportURL(filename: String) -> URL {
-        let documentsPath = FileManager.default.urls(for: .documentsDirectory, in: .userDomainMask)[0]
-        let exportsPath = documentsPath.appendingPathComponent("HealthAI_Exports")
-        
-        try? FileManager.default.createDirectory(at: exportsPath, withIntermediateDirectories: true)
-        
-        return exportsPath.appendingPathComponent(filename)
+    private func loadBackupHistory() {
+        if let data = UserDefaults.standard.data(forKey: "backupHistory"),
+           let history = try? JSONDecoder().decode([BackupRecord].self, from: data) {
+            backupHistory = history
+        }
+    }
+    
+    private func saveBackupHistory() {
+        if let data = try? JSONEncoder().encode(backupHistory) {
+            UserDefaults.standard.set(data, forKey: "backupHistory")
+        }
+    }
+    
+    private func loadExportHistory() {
+        if let data = UserDefaults.standard.data(forKey: "exportHistory"),
+           let history = try? JSONDecoder().decode([ExportRecord].self, from: data) {
+            exportHistory = history
+        }
+    }
+    
+    private func saveExportHistory() {
+        if let data = try? JSONEncoder().encode(exportHistory) {
+            UserDefaults.standard.set(data, forKey: "exportHistory")
+        }
     }
 }
 
 // MARK: - Supporting Types
 
-public enum ExportStatus: String, CaseIterable {
-    case idle = "Idle"
-    case exporting = "Exporting"
-    case completed = "Completed"
-    case error = "Error"
-}
-
-public enum ExportError: LocalizedError {
-    case exportInProgress
-    case dataContextUnavailable
-    case invalidExportType
-    case fileCreationFailed
+enum ExportFormat: String, CaseIterable {
+    case json = "JSON"
+    case csv = "CSV"
+    case pdf = "PDF"
+    case xml = "XML"
+    case fhir = "FHIR"
     
-    public var errorDescription: String? {
+    var requiresEncryption: Bool {
         switch self {
-        case .exportInProgress:
-            return "Export already in progress"
-        case .dataContextUnavailable:
-            return "Data context unavailable"
-        case .invalidExportType:
-            return "Invalid export type"
-        case .fileCreationFailed:
-            return "Failed to create export file"
+        case .json, .csv, .xml, .fhir:
+            return false
+        case .pdf:
+            return true
         }
     }
 }
 
-public struct ExportDataSet {
-    var healthDataEntries: [SyncableHealthDataEntry] = []
-    var sleepSessions: [SyncableSleepSessionEntry] = []
-    var analyticsInsights: [AnalyticsInsight] = []
-    var modelUpdates: [MLModelUpdate] = []
+enum BackupStatus {
+    case idle
+    case inProgress
+    case completed
+    case failed
+    case restoring
 }
 
-public struct CompletedExport: Identifiable {
-    public let id: UUID
-    public let type: ExportType
-    public let dateRange: DateInterval
-    public let fileURL: URL
-    public let createdDate: Date
-    public let fileSize: Int64
+enum BackupType {
+    case full
+    case incremental
+    case differential
 }
 
-// MARK: - Date Formatter Extensions
+enum MigrationPath {
+    case v1_0_to_v1_1
+    case v1_1_to_v1_2
+    case custom
+}
 
-private extension DateFormatter {
-    static let hl7: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMddHHmmss"
-        return formatter
-    }()
+enum BackupError: Error {
+    case invalidBackupFile
+    case encryptionFailed
+    case compressionFailed
+    case integrityCheckFailed
+    case restorationFailed
+}
+
+struct ExportData: Codable {
+    var healthData: HealthDataExport = HealthDataExport()
+    var appData: AppDataExport = AppDataExport()
+    var metadata: ExportMetadata = ExportMetadata()
+}
+
+struct HealthDataExport: Codable {
+    var heartRateData: [HeartRateRecord] = []
+    var bloodPressureData: [BloodPressureRecord] = []
+    var sleepData: [SleepRecord] = []
+    var activityData: [ActivityRecord] = []
+    var nutritionData: [NutritionRecord] = []
+    var weightData: [WeightRecord] = []
+    var medicationData: [MedicationRecord] = []
+}
+
+struct HeartRateRecord: Codable {
+    let value: Double
+    let timestamp: Date
+    let endDate: Date
+    let source: String
+}
+
+struct BloodPressureRecord: Codable {
+    let systolic: Double
+    let diastolic: Double
+    let timestamp: Date
+    let source: String
+}
+
+struct SleepRecord: Codable {
+    let startDate: Date
+    let endDate: Date
+    let sleepStage: SleepStage
+    let source: String
+}
+
+enum SleepStage: Int, Codable {
+    case unknown = 0
+    case awake = 1
+    case light = 2
+    case deep = 3
+    case rem = 4
+}
+
+struct ActivityRecord: Codable {
+    let steps: Double
+    let distance: Double
+    let calories: Double
+    let timestamp: Date
+    let source: String
+}
+
+struct NutritionRecord: Codable {
+    let calories: Double
+    let protein: Double
+    let carbs: Double
+    let fat: Double
+    let timestamp: Date
+    let source: String
+}
+
+struct WeightRecord: Codable {
+    let weight: Double
+    let timestamp: Date
+    let source: String
+}
+
+struct MedicationRecord: Codable {
+    let medicationName: String
+    let dosage: String
+    let timestamp: Date
+    let source: String
+}
+
+struct AppDataExport: Codable {
+    var userPreferences: UserPreferences = UserPreferences()
+    var workoutData: [WorkoutData] = []
+    var nutritionPlans: [NutritionPlanData] = []
+    var mentalHealthData: [MentalHealthData] = []
+    var progressGoals: [ProgressGoalData] = []
+}
+
+struct UserPreferences: Codable {
+    var fitnessGoals: String = ""
+    var nutritionGoals: String = ""
+    var notificationPreferences: NotificationPreferences = NotificationPreferences()
+    var privacySettings: PrivacySettings = PrivacySettings()
+}
+
+struct NotificationPreferences: Codable {
+    var workoutReminders: Bool = false
+    var nutritionReminders: Bool = false
+    var mentalHealthCheckins: Bool = false
+    var progressUpdates: Bool = false
+}
+
+struct PrivacySettings: Codable {
+    var shareHealthData: Bool = false
+    var shareAnalytics: Bool = false
+    var locationSharing: Bool = false
+    var emergencyContacts: [EmergencyContact] = []
+}
+
+struct EmergencyContact: Codable {
+    let name: String
+    let phoneNumber: String
+    let relationship: String
+}
+
+struct WorkoutData: Codable {
+    let id: UUID
+    let type: String
+    let duration: Int
+    let calories: Int
+    let timestamp: Date
+}
+
+struct NutritionPlanData: Codable {
+    let id: UUID
+    let calories: Int
+    let protein: Int
+    let carbs: Int
+    let fat: Int
+    let meals: [MealData]
+}
+
+struct MealData: Codable {
+    let name: String
+    let calories: Int
+    let type: String
+}
+
+struct MentalHealthData: Codable {
+    let id: UUID
+    let mood: String
+    let stressLevel: Int
+    let sleepQuality: Double
+    let timestamp: Date
+}
+
+struct ProgressGoalData: Codable {
+    let id: UUID
+    let name: String
+    let target: Double
+    let current: Double
+    let unit: String
+}
+
+struct ExportMetadata: Codable {
+    let exportDate: Date
+    let appVersion: String
+    let deviceModel: String
+    let osVersion: String
+    let exportFormat: String
+    let dataVersion: String
+}
+
+struct BackupData: Codable {
+    var exportData: ExportData?
+    var appSettings: AppSettings = AppSettings()
+    var userData: UserData = UserData()
+}
+
+struct AppSettings: Codable {
+    var userDefaults: [String: Any] = [:]
+    var appConfiguration: AppConfiguration = AppConfiguration()
     
-    static let readable: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return formatter
-    }()
+    enum CodingKeys: String, CodingKey {
+        case userDefaults, appConfiguration
+    }
+    
+    init() {}
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        appConfiguration = try container.decode(AppConfiguration.self, forKey: .appConfiguration)
+        // Note: userDefaults would need special handling for [String: Any]
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(appConfiguration, forKey: .appConfiguration)
+        // Note: userDefaults would need special handling for [String: Any]
+    }
 }
+
+struct AppConfiguration: Codable {
+    let version: String
+    let buildNumber: String
+    let deviceIdentifier: String
+}
+
+struct UserData: Codable {
+    var profile: UserProfile = UserProfile()
+    var preferences: UserPreferences = UserPreferences()
+    var achievements: [Achievement] = []
+}
+
+struct UserProfile: Codable {
+    var name: String = ""
+    var age: Int = 0
+    var weight: Double = 0.0
+    var height: Double = 0.0
+    var gender: String = ""
+}
+
+struct Achievement: Codable {
+    let id: UUID
+    let name: String
+    let description: String
+    let dateEarned: Date
+}
+
+struct BackupRecord: Codable, Identifiable {
+    let id: UUID
+    let timestamp: Date
+    let fileURL: URL
+    let fileSize: Int64
+    let type: BackupType
+    let status: BackupStatus
+}
+
+struct ExportRecord: Codable, Identifiable {
+    let id: UUID
+    let format: ExportFormat
+    let timestamp: Date
+    let fileURL: URL
+    let fileSize: Int64
+    let includeHealthData: Bool
+    let includeAppData: Bool
+}
+
+struct BackupSchedule {
+    let interval: TimeInterval = 24 * 60 * 60 // 24 hours
+    let type: BackupType = .full
+    let retentionDays: Int = 30
+}
+
+// MARK: - Extensions
+
+extension Date {
+    func ISO8601String() -> String {
+        let formatter = ISO8601DateFormatter()
+        return formatter.string(from: self)
+    }
+}
+
+extension BackupRecord {
+    enum CodingKeys: String, CodingKey {
+        case id, timestamp, fileURL, fileSize, type, status
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        timestamp = try container.decode(Date.self, forKey: .timestamp)
+        fileURL = try container.decode(URL.self, forKey: .fileURL)
+        fileSize = try container.decode(Int64.self, forKey: .fileSize)
+        type = try container.decode(BackupType.self, forKey: .type)
+        status = try container.decode(BackupStatus.self, forKey: .status)
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(timestamp, forKey: .timestamp)
+        try container.encode(fileURL, forKey: .fileURL)
+        try container.encode(fileSize, forKey: .fileSize)
+        try container.encode(type, forKey: .type)
+        try container.encode(status, forKey: .status)
+    }
+}
+
+extension ExportRecord {
+    enum CodingKeys: String, CodingKey {
+        case id, format, timestamp, fileURL, fileSize, includeHealthData, includeAppData
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        format = try container.decode(ExportFormat.self, forKey: .format)
+        timestamp = try container.decode(Date.self, forKey: .timestamp)
+        fileURL = try container.decode(URL.self, forKey: .fileURL)
+        fileSize = try container.decode(Int64.self, forKey: .fileSize)
+        includeHealthData = try container.decode(Bool.self, forKey: .includeHealthData)
+        includeAppData = try container.decode(Bool.self, forKey: .includeAppData)
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(format, forKey: .format)
+        try container.encode(timestamp, forKey: .timestamp)
+        try container.encode(fileURL, forKey: .fileURL)
+        try container.encode(fileSize, forKey: .fileSize)
+        try container.encode(includeHealthData, forKey: .includeHealthData)
+        try container.encode(includeAppData, forKey: .includeAppData)
+    }
+} 

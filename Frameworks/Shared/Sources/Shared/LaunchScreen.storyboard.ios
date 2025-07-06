@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SomnaSync Pro - Advanced AI Sleep Optimization App
+  LaunchScreen.storyboard - App launch screen interface
+  
+  This storyboard defines the launch screen that appears when the app is starting up.
+  Features:
+  - Dark theme optimized for sleep apps
+  - SomnaSync Pro branding with sleep-themed visuals
+  - Smooth gradient background
+  - Loading indicator for AI systems initialization
+  - Minimal design to reduce blue light exposure
+-->
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="19455" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeArea="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
+    <device id="retina6_1" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="19454"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="System colors in document" minToolsVersion="11.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <!--View Controller-->
+        <scene sceneID="EHf-IW-A2E">
+            <objects>
+                <viewController id="01J-lp-oVM" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
+                        <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <!-- Background Gradient View -->
+                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="gradient-background">
+                                <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
+                                <color key="backgroundColor" red="0.04" green="0.04" blue="0.04" alpha="1" colorSpace="calibratedRGB"/>
+                            </view>
+                            
+                            <!-- Main Content Container -->
+                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="content-container">
+                                <rect key="frame" x="50" y="200" width="314" height="496"/>
+                                <subviews>
+                                    <!-- App Logo/Icon Placeholder -->
+                                    <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="logo-container">
+                                        <rect key="frame" x="107" y="50" width="100" height="100"/>
+                                        <subviews>
+                                            <!-- Sleep Wave Animation Placeholder -->
+                                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="sleep-wave-1">
+                                                <rect key="frame" x="10" y="30" width="80" height="3"/>
+                                                <color key="backgroundColor" red="0.39" green="0.4" blue="0.96" alpha="0.8" colorSpace="calibratedRGB"/>
+                                            </view>
+                                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="sleep-wave-2">
+                                                <rect key="frame" x="10" y="45" width="80" height="2"/>
+                                                <color key="backgroundColor" red="0.55" green="0.47" blue="0.91" alpha="0.6" colorSpace="calibratedRGB"/>
+                                            </view>
+                                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="sleep-wave-3">
+                                                <rect key="frame" x="10" y="57" width="80" height="2"/>
+                                                <color key="backgroundColor" red="0.39" green="0.4" blue="0.96" alpha="0.4" colorSpace="calibratedRGB"/>
+                                            </view>
+                                            
+                                            <!-- Central Sleep Symbol -->
+                                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="sleep-symbol">
+                                                <rect key="frame" x="35" y="35" width="30" height="30"/>
+                                                <color key="backgroundColor" red="0.39" green="0.4" blue="0.96" alpha="1" colorSpace="calibratedRGB"/>
+                                            </view>
+                                        </subviews>
+                                        <color key="backgroundColor" systemColor="clearColor"/>
+                                        <constraints>
+                                            <constraint firstAttribute="width" constant="100" id="logo-width"/>
+                                            <constraint firstAttribute="height" constant="100" id="logo-height"/>
+                                            
+                                            <!-- Sleep Waves Constraints -->
+                                            <constraint firstItem="sleep-wave-1" firstAttribute="leading" secondItem="logo-container" secondAttribute="leading" constant="10" id="wave1-leading"/>
+                                            <constraint firstItem="sleep-wave-1" firstAttribute="trailing" secondItem="logo-container" secondAttribute="trailing" constant="-10" id="wave1-trailing"/>
+                                            <constraint firstItem="sleep-wave-1" firstAttribute="top" secondItem="logo-container" secondAttribute="top" constant="30" id="wave1-top"/>
+                                            <constraint firstItem="sleep-wave-1" firstAttribute="height" constant="3" id="wave1-height"/>
+                                            
+                                            <constraint firstItem="sleep-wave-2" firstAttribute="leading" secondItem="logo-container" secondAttribute="leading" constant="10" id="wave2-leading"/>
+                                            <constraint firstItem="sleep-wave-2" firstAttribute="trailing" secondItem="logo-container" secondAttribute="trailing" constant="-10" id="wave2-trailing"/>
+                                            <constraint firstItem="sleep-wave-2" firstAttribute="top" secondItem="sleep-wave-1" secondAttribute="bottom" constant="12" id="wave2-top"/>
+                                            <constraint firstItem="sleep-wave-2" firstAttribute="height" constant="2" id="wave2-height"/>
+                                            
+                                            <constraint firstItem="sleep-wave-3" firstAttribute="leading" secondItem="logo-container" secondAttribute="leading" constant="10" id="wave3-leading"/>
+                                            <constraint firstItem="sleep-wave-3" firstAttribute="trailing" secondItem="logo-container" secondAttribute="trailing" constant="-10" id="wave3-trailing"/>
+                                            <constraint firstItem="sleep-wave-3" firstAttribute="top" secondItem="sleep-wave-2" secondAttribute="bottom" constant="10" id="wave3-top"/>
+                                            <constraint firstItem="sleep-wave-3" firstAttribute="height" constant="2" id="wave3-height"/>
+                                            
+                                            <!-- Central Symbol Constraints -->
+                                            <constraint firstItem="sleep-symbol" firstAttribute="centerX" secondItem="logo-container" secondAttribute="centerX" id="symbol-centerX"/>
+                                            <constraint firstItem="sleep-symbol" firstAttribute="centerY" secondItem="logo-container" secondAttribute="centerY" id="symbol-centerY"/>
+                                            <constraint firstItem="sleep-symbol" firstAttribute="width" constant="30" id="symbol-width"/>
+                                            <constraint firstItem="sleep-symbol" firstAttribute="height" constant="30" id="symbol-height"/>
+                                        </constraints>
+                                    </view>
+                                    
+                                    <!-- App Name Label -->
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="SomnaSync" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="app-name-label">
+                                        <rect key="frame" x="50" y="200" width="214" height="36"/>
+                                        <fontDescription key="fontDescription" type="system" weight="semibold" pointSize="30"/>
+                                        <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
+                                    
+                                    <!-- Pro Badge Label -->
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="PRO" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="pro-badge-label">
+                                        <rect key="frame" x="130" y="245" width="54" height="20"/>
+                                        <fontDescription key="fontDescription" type="system" weight="medium" pointSize="16"/>
+                                        <color key="textColor" red="0.55" green="0.47" blue="0.91" alpha="1" colorSpace="calibratedRGB"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
+                                    
+                                    <!-- AI Enhancement Subtitle -->
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="AI-Enhanced Sleep Optimization" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="subtitle-label">
+                                        <rect key="frame" x="20" y="285" width="274" height="18"/>
+                                        <fontDescription key="fontDescription" type="system" weight="light" pointSize="15"/>
+                                        <color key="textColor" white="0.7" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
+                                    
+                                    <!-- Loading Indicator -->
+                                    <activityIndicatorView opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" animating="YES" style="medium" translatesAutoresizingMaskIntoConstraints="NO" id="loading-indicator">
+                                        <rect key="frame" x="147" y="350" width="20" height="20"/>
+                                        <color key="color" red="0.39" green="0.4" blue="0.96" alpha="1" colorSpace="calibratedRGB"/>
+                                    </activityIndicatorView>
+                                    
+                                    <!-- Loading Status Label -->
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Initializing AI Systems..." textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="loading-status-label">
+                                        <rect key="frame" x="50" y="385" width="214" height="16"/>
+                                        <fontDescription key="fontDescription" type="system" weight="light" pointSize="13"/>
+                                        <color key="textColor" white="0.5" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
+                                </subviews>
+                                <color key="backgroundColor" systemColor="clearColor"/>
+                                <constraints>
+                                    <!-- Logo Container Constraints -->
+                                    <constraint firstItem="logo-container" firstAttribute="centerX" secondItem="content-container" secondAttribute="centerX" id="logo-centerX"/>
+                                    <constraint firstItem="logo-container" firstAttribute="top" secondItem="content-container" secondAttribute="top" constant="50" id="logo-top"/>
+                                    
+                                    <!-- App Name Label Constraints -->
+                                    <constraint firstItem="app-name-label" firstAttribute="centerX" secondItem="content-container" secondAttribute="centerX" id="name-centerX"/>
+                                    <constraint firstItem="app-name-label" firstAttribute="top" secondItem="logo-container" secondAttribute="bottom" constant="50" id="name-top"/>
+                                    <constraint firstItem="app-name-label" firstAttribute="leading" secondItem="content-container" secondAttribute="leading" constant="50" id="name-leading"/>
+                                    <constraint firstItem="app-name-label" firstAttribute="trailing" secondItem="content-container" secondAttribute="trailing" constant="-50" id="name-trailing"/>
+                                    
+                                    <!-- Pro Badge Constraints -->
+                                    <constraint firstItem="pro-badge-label" firstAttribute="centerX" secondItem="content-container" secondAttribute="centerX" id="badge-centerX"/>
+                                    <constraint firstItem="pro-badge-label" firstAttribute="top" secondItem="app-name-label" secondAttribute="bottom" constant="9" id="badge-top"/>
+                                    
+                                    <!-- Subtitle Constraints -->
+                                    <constraint firstItem="subtitle-label" firstAttribute="centerX" secondItem="content-container" secondAttribute="centerX" id="subtitle-centerX"/>
+                                    <constraint firstItem="subtitle-label" firstAttribute="top" secondItem="pro-badge-label" secondAttribute="bottom" constant="20" id="subtitle-top"/>
+                                    <constraint firstItem="subtitle-label" firstAttribute="leading" secondItem="content-container" secondAttribute="leading" constant="20" id="subtitle-leading"/>
+                                    <constraint firstItem="subtitle-label" firstAttribute="trailing" secondItem="content-container" secondAttribute="trailing" constant="-20" id="subtitle-trailing"/>
+                                    
+                                    <!-- Loading Indicator Constraints -->
+                                    <constraint firstItem="loading-indicator" firstAttribute="centerX" secondItem="content-container" secondAttribute="centerX" id="loading-centerX"/>
+                                    <constraint firstItem="loading-indicator" firstAttribute="top" secondItem="subtitle-label" secondAttribute="bottom" constant="47" id="loading-top"/>
+                                    
+                                    <!-- Loading Status Label Constraints -->
+                                    <constraint firstItem="loading-status-label" firstAttribute="centerX" secondItem="content-container" secondAttribute="centerX" id="status-centerX"/>
+                                    <constraint firstItem="loading-status-label" firstAttribute="top" secondItem="loading-indicator" secondAttribute="bottom" constant="15" id="status-top"/>
+                                    <constraint firstItem="loading-status-label" firstAttribute="leading" secondItem="content-container" secondAttribute="leading" constant="50" id="status-leading"/>
+                                    <constraint firstItem="loading-status-label" firstAttribute="trailing" secondItem="content-container" secondAttribute="trailing" constant="-50" id="status-trailing"/>
+                                </constraints>
+                            </view>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
+                        <color key="backgroundColor" red="0.04" green="0.04" blue="0.04" alpha="1" colorSpace="calibratedRGB"/>
+                        <constraints>
+                            <!-- Background Gradient Constraints -->
+                            <constraint firstItem="gradient-background" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="bg-leading"/>
+                            <constraint firstItem="gradient-background" firstAttribute="trailing" secondItem="Ze5-6b-2t3" secondAttribute="trailing" id="bg-trailing"/>
+                            <constraint firstItem="gradient-background" firstAttribute="top" secondItem="Ze5-6b-2t3" secondAttribute="top" id="bg-top"/>
+                            <constraint firstItem="gradient-background" firstAttribute="bottom" secondItem="Ze5-6b-2t3" secondAttribute="bottom" id="bg-bottom"/>
+                            
+                            <!-- Content Container Constraints -->
+                            <constraint firstItem="content-container" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="content-centerX"/>
+                            <constraint firstItem="content-container" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="content-centerY"/>
+                            <constraint firstItem="content-container" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="50" id="content-leading"/>
+                            <constraint firstItem="content-container" firstAttribute="trailing" secondItem="6Tk-OE-BBY" secondAttribute="trailing" constant="-50" id="content-trailing"/>
+                        </constraints>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="53" y="375"/>
+        </scene>
+    </scenes>
+    <resources>
+        <systemColor name="clearColor">
+            <color white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+        </systemColor>
+    </resources>
+</document>

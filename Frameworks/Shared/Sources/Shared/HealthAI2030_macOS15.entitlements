@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- CloudKit Configuration with macOS 15+ Features -->
+    <key>com.apple.developer.icloud-services</key>
+    <array>
+        <string>CloudKit</string>
+        <string>CloudDocuments</string>
+    </array>
+    <key>com.apple.developer.icloud-container-identifiers</key>
+    <array>
+        <string>iCloud.com.healthai2030.HealthAI2030</string>
+    </array>
+    <key>com.apple.developer.icloud-container-development-container-identifiers</key>
+    <array>
+        <string>iCloud.com.healthai2030.HealthAI2030.development</string>
+    </array>
+
+    <!-- Enhanced App Groups for macOS 15+ -->
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>group.com.healthai2030.shared</string>
+        <string>group.com.healthai2030.ml</string>
+        <string>group.com.healthai2030.graphics</string>
+        <string>group.com.healthai2030.analytics</string>
+        <string>group.com.healthai2030.privacy</string>
+        <string>group.com.healthai2030.extensions</string>
+    </array>
+
+    <!-- Enhanced Keychain Sharing -->
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)com.healthai2030.HealthAI2030</string>
+        <string>$(AppIdentifierPrefix)group.com.healthai2030.shared</string>
+        <string>$(AppIdentifierPrefix)group.com.healthai2030.ml</string>
+        <string>$(AppIdentifierPrefix)group.com.healthai2030.analytics</string>
+        <string>$(AppIdentifierPrefix)group.com.healthai2030.privacy</string>
+    </array>
+
+    <!-- macOS 15+ Enhanced App Sandbox -->
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+    
+    <!-- Network Permissions -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <key>com.apple.security.network.server</key>
+    <true/>
+    
+    <!-- File System Access -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+    <key>com.apple.security.files.bookmarks.app-scope</key>
+    <true/>
+    <key>com.apple.security.files.bookmarks.document-scope</key>
+    <true/>
+    
+    <!-- Camera and Microphone for Health Analysis -->
+    <key>com.apple.security.device.camera</key>
+    <true/>
+    <key>com.apple.security.device.microphone</key>
+    <true/>
+    
+    <!-- USB and External Device Access -->
+    <key>com.apple.security.device.usb</key>
+    <true/>
+    <key>com.apple.security.device.bluetooth</key>
+    <true/>
+    
+    <!-- Location Services -->
+    <key>com.apple.security.personal-information.location</key>
+    <true/>
+    
+    <!-- Contacts for Emergency Features -->
+    <key>com.apple.security.personal-information.addressbook</key>
+    <true/>
+    
+    <!-- Calendar for Health Scheduling -->
+    <key>com.apple.security.personal-information.calendars</key>
+    <true/>
+
+    <!-- Enhanced Background Processing for macOS 15+ -->
+    <key>com.apple.developer.background-modes</key>
+    <array>
+        <string>background-fetch</string>
+        <string>background-processing</string>
+        <string>remote-notification</string>
+        <string>background-app-refresh</string>
+        <string>background-task</string>
+    </array>
+
+    <!-- Push Notifications -->
+    <key>com.apple.developer.aps-environment</key>
+    <string>development</string>
+
+    <!-- Enhanced Core ML and Neural Engine Access -->
+    <key>com.apple.developer.coreml.private-model-access</key>
+    <true/>
+    <key>com.apple.developer.coreml.allow-model-execution</key>
+    <true/>
+    
+    <!-- Metal Performance Shaders with macOS 15+ -->
+    <key>com.apple.developer.metal</key>
+    <true/>
+    <key>com.apple.developer.metal.performance-shaders.graph</key>
+    <true/>
+
+    <!-- Network Extensions -->
+    <key>com.apple.developer.networking.networkextension</key>
+    <array>
+        <string>app-proxy-provider</string>
+        <string>content-filter-provider</string>
+        <string>packet-tunnel-provider</string>
+    </array>
+
+    <!-- Associated Domains -->
+    <key>com.apple.developer.associated-domains</key>
+    <array>
+        <string>applinks:healthai2030.com</string>
+        <string>applinks:sync.healthai2030.com</string>
+        <string>applinks:api.healthai2030.com</string>
+        <string>webcredentials:healthai2030.com</string>
+        <string>activitycontinuation:healthai2030.com</string>
+    </array>
+
+    <!-- Enhanced System Extensions for macOS 15+ -->
+    <key>com.apple.developer.system-extension.install</key>
+    <true/>
+    
+    <!-- Driver Extensions -->
+    <key>com.apple.developer.driverkit</key>
+    <true/>
+    
+    <!-- Endpoint Security -->
+    <key>com.apple.developer.endpoint-security.client</key>
+    <true/>
+
+    <!-- Enhanced Hardened Runtime for macOS 15+ -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+    <key>com.apple.security.cs.disable-executable-page-protection</key>
+    <true/>
+
+    <!-- macOS 15+ Automation and AppleScript -->
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
+    
+    <!-- Screen Recording for Health Monitoring -->
+    <key>com.apple.security.device.desktop-folder</key>
+    <true/>
+    
+    <!-- Document Folder Access -->
+    <key>com.apple.security.device.documents-folder</key>
+    <true/>
+    
+    <!-- Pictures Folder Access -->
+    <key>com.apple.security.device.pictures-folder</key>
+    <true/>
+    
+    <!-- Movies Folder Access -->
+    <key>com.apple.security.device.movies-folder</key>
+    <true/>
+    
+    <!-- Music Folder Access -->
+    <key>com.apple.security.device.music-folder</key>
+    <true/>
+
+    <!-- Enhanced File Access Paths -->
+    <key>com.apple.security.temporary-exception.files.absolute-path.read-write</key>
+    <array>
+        <string>/Users/</string>
+        <string>/tmp/</string>
+        <string>/Library/Application Support/</string>
+        <string>/System/Library/Frameworks/</string>
+    </array>
+
+    <!-- macOS 15+ App Store Connect API -->
+    <key>com.apple.developer.storekit.external-purchase-link</key>
+    <true/>
+
+    <!-- macOS 15+ WeatherKit -->
+    <key>com.apple.developer.weatherkit</key>
+    <true/>
+
+    <!-- macOS 15+ Maps Integration -->
+    <key>com.apple.developer.maps</key>
+    <true/>
+
+    <!-- macOS 15+ Enhanced Privacy -->
+    <key>com.apple.developer.usernotifications.time-sensitive</key>
+    <true/>
+    
+    <key>com.apple.developer.usernotifications.critical-alerts</key>
+    <true/>
+
+    <!-- macOS 15+ App Attest -->
+    <key>com.apple.developer.devicecheck.appattest-environment</key>
+    <string>development</string>
+
+    <!-- macOS 15+ Enhanced Networking -->
+    <key>com.apple.developer.networking.wifi-info</key>
+    <true/>
+    
+    <key>com.apple.developer.networking.multicast</key>
+    <true/>
+
+    <!-- macOS 15+ System Information Access -->
+    <key>com.apple.security.print</key>
+    <true/>
+    
+    <!-- macOS 15+ Accessibility -->
+    <key>com.apple.security.device.accessibility</key>
+    <true/>
+
+    <!-- macOS 15+ Speech Recognition -->
+    <key>com.apple.developer.speech-recognition</key>
+    <true/>
+
+    <!-- macOS 15+ Enhanced Audio -->
+    <key>com.apple.developer.avfoundation.multichannelaudiosessionmode</key>
+    <true/>
+
+    <!-- macOS 15+ Game Center -->
+    <key>com.apple.developer.game-center</key>
+    <true/>
+
+    <!-- macOS 15+ ClassKit -->
+    <key>com.apple.developer.ClassKit-environment</key>
+    <string>development</string>
+
+    <!-- macOS 15+ HomeKit -->
+    <key>com.apple.developer.homekit</key>
+    <true/>
+    
+    <!-- macOS 15+ Matter Support -->
+    <key>com.apple.developer.matter.allow-setup-payload</key>
+    <true/>
+
+    <!-- macOS 15+ Enhanced Performance -->
+    <key>com.apple.developer.kernel.increased-memory-limit</key>
+    <true/>
+    
+    <!-- macOS 15+ Background Task Scheduler -->
+    <key>com.apple.developer.background-task-scheduler</key>
+    <true/>
+
+    <!-- macOS 15+ System Preferences -->
+    <key>com.apple.security.automation.settings</key>
+    <true/>
+</dict>
+</plist>

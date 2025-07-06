@@ -158,135 +158,135 @@ let package = Package(
         .target(
             name: "HealthAI2030Core",
             dependencies: [],
-            path: "Packages/HealthAI2030Core/Sources/HealthAI2030Core"
+            path: "Packages/HealthAI2030Core/Sources"
         ),
         .target(
             name: "HealthAI2030Networking",
             dependencies: [],
-            path: "Packages/HealthAI2030Networking/Sources/HealthAI2030Networking"
+            path: "Packages/HealthAI2030Networking/Sources"
         ),
         .target(
             name: "HealthAI2030UI",
             dependencies: [],
-            path: "Packages/HealthAI2030UI/Sources/HealthAI2030UI"
+            path: "Packages/HealthAI2030UI/Sources"
         ),
         .target(
             name: "HealthAI2030Graphics",
             dependencies: [],
-            path: "Packages/HealthAI2030Graphics/Sources/HealthAI2030Graphics",
+            path: "Packages/HealthAI2030Graphics/Sources",
             resources: [
-                .process("Shaders")
+                .process("Resources/Shaders")
             ]
         ),
         .target(
             name: "HealthAI2030ML",
             dependencies: [],
-            path: "Packages/HealthAI2030ML/Sources/HealthAI2030ML"
+            path: "Packages/HealthAI2030ML/Sources"
         ),
         .target(
             name: "HealthAI2030Foundation",
             dependencies: [],
-            path: "Packages/HealthAI2030Foundation/Sources/HealthAI2030Foundation"
+            path: "Packages/HealthAI2030Foundation/Sources"
         ),
         .target(
             name: "CardiacHealth",
             dependencies: [],
-            path: "Packages/CardiacHealth/Sources/CardiacHealth"
+            path: "Packages/CardiacHealth/Sources"
         ),
         .target(
             name: "MentalHealth",
             dependencies: [],
-            path: "Packages/MentalHealth/Sources/MentalHealth"
+            path: "Packages/MentalHealth/Sources"
         ),
         .target(
             name: "iOS18Features",
             dependencies: [],
-            path: "Packages/iOS18Features/Sources/iOS18Features"
+            path: "Packages/iOS18Features/Sources"
         ),
         .target(
             name: "SleepTracking",
             dependencies: [],
-            path: "Packages/SleepTracking/Sources/SleepTracking"
+            path: "Packages/SleepTracking/Sources"
         ),
         .target(
             name: "HealthPrediction",
             dependencies: [],
-            path: "Packages/HealthPrediction/Sources/HealthPrediction"
+            path: "Packages/HealthPrediction/Sources"
         ),
         .target(
             name: "CopilotSkills",
             dependencies: [],
-            path: "Packages/CopilotSkills/Sources/CopilotSkills"
+            path: "Packages/CopilotSkills/Sources"
         ),
         .target(
             name: "Metal4",
             dependencies: [],
-            path: "Packages/Metal4/Sources/Metal4"
+            path: "Packages/Metal4/Sources"
         ),
         .target(
             name: "SmartHome",
             dependencies: [],
-            path: "Packages/SmartHome/Sources/SmartHome"
+            path: "Modules/Features/SmartHome/SmartHome" //Fixed
         ),
         .target(
             name: "UserScripting",
             dependencies: [],
-            path: "Packages/UserScripting/Sources/UserScripting"
+            path: "Packages/UserScripting/Sources"
         ),
         .target(
             name: "Shortcuts",
             dependencies: [],
-            path: "Packages/Shortcuts/Sources/Shortcuts"
+            path: "Packages/Shortcuts/Sources"
         ),
         .target(
             name: "LogWaterIntake",
             dependencies: [],
-            path: "Packages/LogWaterIntake/Sources/LogWaterIntake"
+            path: "Packages/LogWaterIntake/Sources"
         ),
         .target(
             name: "StartMeditation",
             dependencies: [],
-            path: "Packages/StartMeditation/Sources/StartMeditation"
+            path: "Packages/StartMeditation/Sources"
         ),
         .target(
             name: "AR",
             dependencies: [],
-            path: "Packages/AR/Sources/AR"
+            path: "Packages/AR/Sources"
         ),
         .target(
             name: "Biofeedback",
             dependencies: [],
-            path: "Packages/Biofeedback/Sources/Biofeedback"
+            path: "Packages/Biofeedback/Sources"
         ),
         .target(
             name: "Shared",
             dependencies: [],
-            path: "Packages/Shared/Sources/Shared"
+            path: "Packages/Shared/Sources"
         ),
         .target(
             name: "SharedSettingsModule",
             dependencies: [],
-            path: "Packages/SharedSettingsModule/Sources/SharedSettingsModule"
+            path: "Packages/SharedSettingsModule/Sources"
         ),
         .target(
             name: "HealthAIConversationalEngine",
             dependencies: [],
-            path: "Packages/HealthAIConversationalEngine/Sources/HealthAIConversationalEngine"
+            path: "Packages/HealthAIConversationalEngine/Sources"
         ),
         .target(
             name: "Kit",
             dependencies: [],
-            path: "Packages/Kit/Sources/Kit"
+            path: "Modules/Kit/Kit" //Fixed
         ),
         .target(
             name: "ML",
             dependencies: [],
-            path: "Packages/ML/Sources/ML"
+            path: "Modules/ML/ML"  //Fixed
         ),
         .target(
             name: "SharedHealthSummary",
             dependencies: [],
-            path: "Packages/SharedHealthSummary/Sources/SharedHealthSummary"
+            path: "Modules/SharedHealthSummary/SharedHealthSummary" //Fixed
         ),
         .testTarget(
             name: "HealthAI2030Tests",
