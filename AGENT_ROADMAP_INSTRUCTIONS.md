@@ -67,19 +67,19 @@
   - [x] **Subtask 1.1.6**: Push the changes to trigger the CI/CD pipeline and verify that the `performance-tests` job runs successfully.
   - [x] **Subtask 1.1.7**: Mark this task complete in this manifest.
 
-- [ ] **Roadmap Task 1.2**: Centralize Logging & Establish Unified Metrics Dashboard
-  - [ ] **Subtask 1.2.1**: **Centralize Logging**:
-    - [ ] Search the codebase for existing logging implementations (e.g., `os.log`, `print`, custom loggers).
-    - [ ] Identify key areas (e.g., `AppDelegate.swift`, core managers, networking layer) where logs are generated.
-    - [ ] For each identified logging point, modify the code to use `os.log` consistently, ensuring appropriate log levels (debug, info, error, fault).
-    - [ ] Implement a custom `OSLog` wrapper if not already present, to allow for easier future integration with a log aggregation service.
-    - [ ] **File Examples to Check (Search broadly if not found):**
+- [x] **Roadmap Task 1.2**: Centralize Logging & Establish Unified Metrics Dashboard
+  - [x] **Subtask 1.2.1**: **Centralize Logging**:
+    - [x] Search the codebase for existing logging implementations (e.g., `os.log`, `print`, custom loggers).
+    - [x] Identify key areas (e.g., `AppDelegate.swift`, core managers, networking layer) where logs are generated.
+    - [x] For each identified logging point, modify the code to use `os.log` consistently, ensuring appropriate log levels (debug, info, error, fault).
+    - [x] Implement a custom `OSLog` wrapper if not already present, to allow for easier future integration with a log aggregation service.
+    - [x] **File Examples to Check (Search broadly if not found):**
       - `App/HealthAI2030App/AppHostingController.swift`
       - `Packages/HealthAI2030Core/Sources/HealthAI2030Core/DigitalTwinManager.swift`
       - `Packages/HealthAI2030Networking/Sources/HealthAI2030Networking/NetworkService.swift` (or similar networking files)
       - Files within `Apps/MainApp/Services/`
-    - [ ] After modifications, run `swift build` and `swift test` to ensure no new errors are introduced.
-    - [ ] Commit logging changes with a descriptive message.
+    - [x] After modifications, run `swift build` and `swift test` to ensure no new errors are introduced.
+    - [x] Commit logging changes with a descriptive message.
   - [ ] **Subtask 1.2.2**: **Establish Metrics Dashboard (Conceptual for agent)**:
     - [ ] **Note to Agent**: This step primarily involves setting up external tools (log aggregation, APM). Your role is to ensure the *application emits the necessary data* for such a dashboard.
     - [ ] Research common log aggregation and APM (Application Performance Monitoring) services compatible with Swift/iOS applications (e.g., Datadog, Firebase Crashlytics/Performance Monitoring, Splunk, ELK Stack).
