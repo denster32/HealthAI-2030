@@ -207,11 +207,25 @@ struct DeviceInsightsCard: View {
     
     private func loadInsights() {
         Task {
-            // Load recent insights from SwiftData
-            await MainActor.run {
-                // Placeholder implementation
-                insights = []
-                isLoading = false
+            do {
+                // Load recent insights from SwiftData
+                let context = ModelContainer.shared.mainContext
+                let descriptor = FetchDescriptor<AnalyticsInsight>(
+                    sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+                )
+                descriptor.fetchLimit = 10
+                
+                let fetchedInsights = try context.fetch(descriptor)
+                
+                await MainActor.run {
+                    insights = fetchedInsights
+                    isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    insights = []
+                    isLoading = false
+                }
             }
         }
     }
@@ -381,11 +395,25 @@ struct RecentAnalyticsCard: View {
     
     private func loadRecentAnalytics() {
         Task {
-            // Load recent analytics from Mac
-            await MainActor.run {
-                // Placeholder implementation
-                recentAnalytics = []
-                isLoading = false
+            do {
+                // Load recent analytics from Mac companion
+                let context = ModelContainer.shared.mainContext
+                let descriptor = FetchDescriptor<CompletedAnalysis>(
+                    sortBy: [SortDescriptor(\.endTime, order: .reverse)]
+                )
+                descriptor.fetchLimit = 5
+                
+                let fetchedAnalytics = try context.fetch(descriptor)
+                
+                await MainActor.run {
+                    recentAnalytics = fetchedAnalytics
+                    isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    recentAnalytics = []
+                    isLoading = false
+                }
             }
         }
     }

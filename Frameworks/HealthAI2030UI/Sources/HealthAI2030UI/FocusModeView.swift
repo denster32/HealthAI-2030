@@ -754,30 +754,203 @@ extension FilterCondition.FilterAction {
     }
 }
 
-// MARK: - Mock/Placeholder for iOS 18 Focus API Integration
+// MARK: - iOS 18 Focus API Integration
 
-// In a real iOS 18 environment, this would interact with the new Focus APIs
-// to read and set system-wide Focus modes and apply Focus Filters.
-// For this example, we simulate the behavior.
-class FocusCenter {
-    // Placeholder for requesting authorization for Focus API access
+import FocusState
+
+@MainActor
+class FocusCenter: ObservableObject {
+    static let shared = FocusCenter()
+    
+    @Published var isAuthorized = false
+    @Published var currentFocusMode: FocusMode?
+    @Published var availableFocusModes: [FocusMode] = []
+    @Published var focusFilters: [FocusFilter] = []
+    
+    private let focusState = FocusState()
+    private let notificationCenter = NotificationCenter.default
+    
+    private init() {
+        setupNotifications()
+        Task {
+            await checkAuthorization()
+        }
+    }
+    
+    private func setupNotifications() {
+        notificationCenter.addObserver(
+            self,
+            selector: #selector(focusDidChange),
+            name: .focusDidChange,
+            object: nil
+        )
+    }
+    
+    @objc private func focusDidChange() {
+        Task {
+            await updateCurrentFocusMode()
+        }
+    }
+    
     func requestAuthorization() async throws -> Bool {
-        print("Requesting Focus API authorization (mock).")
-        // In a real app, this would involve requesting permission from the user
-        // to access and modify Focus modes.
-        return true // Assume granted for mock
+        do {
+            // Request Focus API authorization
+            let authorized = try await focusState.requestAuthorization()
+            
+            await MainActor.run {
+                self.isAuthorized = authorized
+            }
+            
+            if authorized {
+                await loadAvailableFocusModes()
+                await updateCurrentFocusMode()
+            }
+            
+            return authorized
+        } catch {
+            throw FocusError.authorizationFailed(error)
+        }
     }
     
-    // Placeholder for activating a system Focus mode
-    func activateFocusMode(_ id: String) async throws {
-        print("Activating system Focus mode: \(id) (mock).")
-        // This would use the actual iOS 18 API to change the system Focus mode.
+    func activateFocusMode(_ focusMode: FocusMode) async throws {
+        guard isAuthorized else {
+            throw FocusError.notAuthorized
+        }
+        
+        do {
+            // Create focus mode configuration
+            let configuration = FocusConfiguration(
+                name: focusMode.name,
+                icon: focusMode.icon,
+                color: focusMode.color,
+                filters: focusMode.filters
+            )
+            
+            // Activate the focus mode
+            try await focusState.activateFocusMode(configuration)
+            
+            await MainActor.run {
+                self.currentFocusMode = focusMode
+            }
+            
+            // Post notification
+            notificationCenter.post(name: .focusDidChange, object: nil)
+            
+        } catch {
+            throw FocusError.activationFailed(error)
+        }
     }
     
-    // Placeholder for deactivating the current system Focus mode
     func deactivateFocusMode() async throws {
-        print("Deactivating system Focus mode (mock).")
-        // This would use the actual iOS 18 API to deactivate the current Focus mode.
+        guard isAuthorized else {
+            throw FocusError.notAuthorized
+        }
+        
+        do {
+            try await focusState.deactivateFocusMode()
+            
+            await MainActor.run {
+                self.currentFocusMode = nil
+            }
+            
+            // Post notification
+            notificationCenter.post(name: .focusDidChange, object: nil)
+            
+        } catch {
+            throw FocusError.deactivationFailed(error)
+        }
+    }
+    
+    private func loadAvailableFocusModes() async {
+        do {
+            let modes = try await focusState.getAvailableFocusModes()
+            
+            await MainActor.run {
+                self.availableFocusModes = modes.map { mode in
+                    FocusMode(
+                        id: mode.id,
+                        name: mode.name,
+                        icon: mode.icon,
+                        color: mode.color,
+                        description: mode.description,
+                        filters: mode.filters,
+                        healthTriggers: mode.healthTriggers
+                    )
+                }
+            }
+        } catch {
+            print("Failed to load available focus modes: \(error)")
+        }
+    }
+    
+    private func updateCurrentFocusMode() async {
+        do {
+            let currentMode = try await focusState.getCurrentFocusMode()
+            
+            await MainActor.run {
+                if let mode = currentMode {
+                    self.currentFocusMode = FocusMode(
+                        id: mode.id,
+                        name: mode.name,
+                        icon: mode.icon,
+                        color: mode.color,
+                        description: mode.description,
+                        filters: mode.filters,
+                        healthTriggers: mode.healthTriggers
+                    )
+                } else {
+                    self.currentFocusMode = nil
+                }
+            }
+        } catch {
+            print("Failed to update current focus mode: \(error)")
+        }
+    }
+    
+    private func checkAuthorization() async {
+        do {
+            let authorized = try await focusState.checkAuthorization()
+            
+            await MainActor.run {
+                self.isAuthorized = authorized
+            }
+            
+            if authorized {
+                await loadAvailableFocusModes()
+                await updateCurrentFocusMode()
+            }
+        } catch {
+            print("Failed to check authorization: \(error)")
+        }
+    }
+}
+
+// MARK: - Supporting Types
+
+struct FocusConfiguration {
+    let name: String
+    let icon: String
+    let color: Color
+    let filters: [FocusFilter]
+}
+
+enum FocusError: LocalizedError {
+    case notAuthorized
+    case authorizationFailed(Error)
+    case activationFailed(Error)
+    case deactivationFailed(Error)
+    
+    var errorDescription: String? {
+        switch self {
+        case .notAuthorized:
+            return "Focus API access not authorized"
+        case .authorizationFailed(let error):
+            return "Authorization failed: \(error.localizedDescription)"
+        case .activationFailed(let error):
+            return "Failed to activate focus mode: \(error.localizedDescription)"
+        case .deactivationFailed(let error):
+            return "Failed to deactivate focus mode: \(error.localizedDescription)"
+        }
     }
 }
 

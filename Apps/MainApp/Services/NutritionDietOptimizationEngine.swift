@@ -376,33 +376,77 @@ final class NutritionDietOptimizationEngine: ObservableObject {
 
     // MARK: - User Preferences & Data
     private func getUserPreferences() -> UserNutritionPreferences {
-        // TODO: Load from user settings
-        return UserNutritionPreferences()
+        do {
+            let context = ModelContainer.shared.mainContext
+            let descriptor = FetchDescriptor<UserNutritionPreferences>()
+            let preferences = try context.fetch(descriptor)
+            return preferences.first ?? UserNutritionPreferences()
+        } catch {
+            print("Failed to load user preferences: \(error)")
+            return UserNutritionPreferences()
+        }
     }
 
     private func getUserHealthConditions() -> [HealthCondition] {
-        // TODO: Load from user health profile
-        return []
+        do {
+            let context = ModelContainer.shared.mainContext
+            let descriptor = FetchDescriptor<HealthCondition>()
+            return try context.fetch(descriptor)
+        } catch {
+            print("Failed to load health conditions: \(error)")
+            return []
+        }
     }
 
     private func getUserProfile() -> UserProfile {
-        // TODO: Load from user profile
-        return UserProfile()
+        do {
+            let context = ModelContainer.shared.mainContext
+            let descriptor = FetchDescriptor<UserProfile>()
+            let profiles = try context.fetch(descriptor)
+            return profiles.first ?? UserProfile()
+        } catch {
+            print("Failed to load user profile: \(error)")
+            return UserProfile()
+        }
     }
 
     private func getUserGoals() -> [NutritionGoal] {
-        // TODO: Load from user goals
-        return []
+        do {
+            let context = ModelContainer.shared.mainContext
+            let descriptor = FetchDescriptor<NutritionGoal>(
+                sortBy: [SortDescriptor(\.deadline)]
+            )
+            return try context.fetch(descriptor)
+        } catch {
+            print("Failed to load nutrition goals: \(error)")
+            return []
+        }
     }
 
     private func getUserHydrationTarget() -> Double {
-        // TODO: Load from user settings
+        do {
+            let context = ModelContainer.shared.mainContext
+            let descriptor = FetchDescriptor<UserNutritionPreferences>()
+            let preferences = try context.fetch(descriptor)
+            if let hydrationTarget = preferences.first?.hydrationTarget {
+                return hydrationTarget
+            }
+        } catch {
+            print("Failed to load hydration target: \(error)")
+        }
         return 2000.0 // Default 2L
     }
 
     private func getUserAvailableTime() -> TimeAvailability {
-        // TODO: Load from user schedule
-        return TimeAvailability()
+        do {
+            let context = ModelContainer.shared.mainContext
+            let descriptor = FetchDescriptor<TimeAvailability>()
+            let timeAvailability = try context.fetch(descriptor)
+            return timeAvailability.first ?? TimeAvailability()
+        } catch {
+            print("Failed to load time availability: \(error)")
+            return TimeAvailability()
+        }
     }
 }
 
@@ -670,15 +714,215 @@ class NutritionPersistenceManager {
     private init() {}
     
     func saveMealEntry(_ entry: MealEntry) async throws {
-        // TODO: Implement persistence
+        let context = ModelContainer.shared.mainContext
+        
+        // Create a new meal entry entity
+        let mealEntry = MealEntryEntity()
+        mealEntry.id = entry.id
+        mealEntry.timestamp = entry.timestamp
+        mealEntry.mealType = entry.mealType.rawValue
+        mealEntry.name = entry.name
+        mealEntry.calories = entry.calories
+        mealEntry.protein = entry.protein
+        mealEntry.carbs = entry.carbs
+        mealEntry.fat = entry.fat
+        mealEntry.fiber = entry.fiber
+        mealEntry.sugar = entry.sugar
+        mealEntry.sodium = entry.sodium
+        mealEntry.ingredients = entry.ingredients
+        mealEntry.notes = entry.notes
+        
+        context.insert(mealEntry)
+        try context.save()
     }
     
     func saveHydrationEntry(_ entry: HydrationEntry) async throws {
-        // TODO: Implement persistence
+        let context = ModelContainer.shared.mainContext
+        
+        // Create a new hydration entry entity
+        let hydrationEntry = HydrationEntryEntity()
+        hydrationEntry.id = entry.id
+        hydrationEntry.timestamp = entry.timestamp
+        hydrationEntry.amount = entry.amount
+        hydrationEntry.type = entry.type.rawValue
+        hydrationEntry.notes = entry.notes
+        
+        context.insert(hydrationEntry)
+        try context.save()
     }
     
     func loadNutritionData() async throws -> NutritionData {
-        // TODO: Implement loading
-        return NutritionData()
+        let context = ModelContainer.shared.mainContext
+        
+        // Load meal entries
+        let mealDescriptor = FetchDescriptor<MealEntryEntity>(
+            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+        )
+        let mealEntities = try context.fetch(mealDescriptor)
+        let mealEntries = mealEntities.map { entity in
+            MealEntry(
+                timestamp: entity.timestamp,
+                mealType: MealType(rawValue: entity.mealType) ?? .snack,
+                name: entity.name,
+                calories: entity.calories,
+                protein: entity.protein,
+                carbs: entity.carbs,
+                fat: entity.fat,
+                fiber: entity.fiber,
+                sugar: entity.sugar,
+                sodium: entity.sodium,
+                ingredients: entity.ingredients,
+                notes: entity.notes
+            )
+        }
+        
+        // Load hydration entries
+        let hydrationDescriptor = FetchDescriptor<HydrationEntryEntity>(
+            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+        )
+        let hydrationEntities = try context.fetch(hydrationDescriptor)
+        let hydrationEntries = hydrationEntities.map { entity in
+            HydrationEntry(
+                timestamp: entity.timestamp,
+                amount: entity.amount,
+                type: HydrationType(rawValue: entity.type) ?? .water,
+                notes: entity.notes
+            )
+        }
+        
+        // Calculate daily totals
+        let today = Calendar.current.startOfDay(for: Date())
+        let todayMeals = mealEntries.filter { Calendar.current.isDate($0.timestamp, inSameDayAs: today) }
+        let todayHydration = hydrationEntries.filter { Calendar.current.isDate($0.timestamp, inSameDayAs: today) }
+        
+        let dailyCalories = todayMeals.reduce(0) { $0 + $1.calories }
+        let dailyProtein = todayMeals.reduce(0) { $0 + $1.protein }
+        let dailyCarbs = todayMeals.reduce(0) { $0 + $1.carbs }
+        let dailyFat = todayMeals.reduce(0) { $0 + $1.fat }
+        let dailyFiber = todayMeals.reduce(0) { $0 + $1.fiber }
+        let dailySugar = todayMeals.reduce(0) { $0 + $1.sugar }
+        let dailySodium = todayMeals.reduce(0) { $0 + $1.sodium }
+        let dailyWaterIntake = todayHydration.reduce(0) { $0 + $1.amount }
+        
+        return NutritionData(
+            dailyCalories: dailyCalories,
+            dailyProtein: dailyProtein,
+            dailyCarbs: dailyCarbs,
+            dailyFat: dailyFat,
+            dailyFiber: dailyFiber,
+            dailySugar: dailySugar,
+            dailySodium: dailySodium,
+            dailyWaterIntake: dailyWaterIntake,
+            calorieNeeds: calculateCalorieNeeds(),
+            mealHistory: mealEntries,
+            hydrationHistory: hydrationEntries,
+            healthCorrelations: calculateHealthCorrelations(meals: mealEntries, hydration: hydrationEntries),
+            nutritionGoals: getUserGoals()
+        )
+    }
+    
+    private func calculateCalorieNeeds() -> Double {
+        // Basic BMR calculation using Harris-Benedict equation
+        let profile = getUserProfile()
+        let age = profile.age
+        let weight = profile.weight // in kg
+        let height = profile.height // in cm
+        let gender = profile.gender
+        
+        let bmr: Double
+        if gender == .male {
+            bmr = 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * Double(age))
+        } else {
+            bmr = 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * Double(age))
+        }
+        
+        // Apply activity level multiplier
+        let activityMultiplier: Double
+        switch profile.activityLevel {
+        case .sedentary: activityMultiplier = 1.2
+        case .lightlyActive: activityMultiplier = 1.375
+        case .moderatelyActive: activityMultiplier = 1.55
+        case .veryActive: activityMultiplier = 1.725
+        case .extremelyActive: activityMultiplier = 1.9
+        }
+        
+        return bmr * activityMultiplier
+    }
+    
+    private func calculateHealthCorrelations(meals: [MealEntry], hydration: [HydrationEntry]) -> NutritionHealthCorrelations {
+        // Calculate correlations between nutrition and health metrics
+        // This is a simplified implementation - in a real app, you'd use more sophisticated analysis
+        
+        let totalCalories = meals.reduce(0) { $0 + $1.calories }
+        let totalProtein = meals.reduce(0) { $0 + $1.protein }
+        let totalHydration = hydration.reduce(0) { $0 + $1.amount }
+        
+        // Simplified correlation calculations
+        let weightCorrelation = min(1.0, max(-1.0, (totalCalories - 2000) / 1000))
+        let energyCorrelation = min(1.0, max(-1.0, (totalProtein - 50) / 50))
+        let moodCorrelation = min(1.0, max(-1.0, (totalHydration - 2000) / 1000))
+        let sleepCorrelation = min(1.0, max(-1.0, (totalCalories - 2000) / 1000))
+        
+        let overallHealthScore = (weightCorrelation + energyCorrelation + moodCorrelation + sleepCorrelation) / 4.0
+        
+        return NutritionHealthCorrelations(
+            weightCorrelation: weightCorrelation,
+            energyCorrelation: energyCorrelation,
+            moodCorrelation: moodCorrelation,
+            sleepCorrelation: sleepCorrelation,
+            overallHealthScore: overallHealthScore
+        )
+    }
+}
+
+// MARK: - SwiftData Entities
+
+@Model
+class MealEntryEntity {
+    var id: UUID
+    var timestamp: Date
+    var mealType: String
+    var name: String
+    var calories: Double
+    var protein: Double
+    var carbs: Double
+    var fat: Double
+    var fiber: Double
+    var sugar: Double
+    var sodium: Double
+    var ingredients: [String]
+    var notes: String?
+    
+    init() {
+        self.id = UUID()
+        self.timestamp = Date()
+        self.mealType = ""
+        self.name = ""
+        self.calories = 0.0
+        self.protein = 0.0
+        self.carbs = 0.0
+        self.fat = 0.0
+        self.fiber = 0.0
+        self.sugar = 0.0
+        self.sodium = 0.0
+        self.ingredients = []
+        self.notes = nil
+    }
+}
+
+@Model
+class HydrationEntryEntity {
+    var id: UUID
+    var timestamp: Date
+    var amount: Double
+    var type: String
+    var notes: String?
+    
+    init() {
+        self.id = UUID()
+        self.timestamp = Date()
+        self.amount = 0.0
+        self.type = ""
+        self.notes = nil
     }
 } 
