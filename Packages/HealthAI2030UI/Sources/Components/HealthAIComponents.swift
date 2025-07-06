@@ -115,12 +115,12 @@ public struct HealthAICard<Content: View>: View {
 }
 
 // MARK: - HealthAIProgressView
-public struct HealthAIProgressView: View {
+public struct HealthAIProgressView<Style: ProgressViewStyle>: View {
     let progress: Double?
-    let style: ProgressViewStyle
+    let style: Style
     let text: String?
     
-    public init(progress: Double? = nil, style: ProgressViewStyle = .circular, text: String? = nil) {
+    public init(progress: Double? = nil, style: Style = CircularProgressViewStyle() as! Style, text: String? = nil) {
         self.progress = progress
         self.style = style
         self.text = text
@@ -132,7 +132,6 @@ public struct HealthAIProgressView: View {
                 ProgressView(value: progress)
                     .progressViewStyle(style)
                     .tint(HealthAIDesignSystem.Color.healthPrimary)
-                    .accessibilityValue(Text("\(Int(progress * 100)) percent complete"))
             } else {
                 ProgressView()
                     .progressViewStyle(style)
@@ -146,7 +145,7 @@ public struct HealthAIProgressView: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(text ?? "Loading"))
+        .accessibilityLabel(text ?? "Loading")
     }
 }
 
@@ -157,25 +156,19 @@ public struct HealthAITextField: View {
     let label: String?
     let errorMessage: String?
     let isSecure: Bool
-    let keyboardType: UIKeyboardType
-    let textContentType: UITextContentType?
     
     public init(
         text: Binding<String>,
         placeholder: String,
         label: String? = nil,
         errorMessage: String? = nil,
-        isSecure: Bool = false,
-        keyboardType: UIKeyboardType = .default,
-        textContentType: UITextContentType? = nil
+        isSecure: Bool = false
     ) {
         self._text = text
         self.placeholder = placeholder
         self.label = label
         self.errorMessage = errorMessage
         self.isSecure = isSecure
-        self.keyboardType = keyboardType
-        self.textContentType = textContentType
     }
     
     public var body: some View {
@@ -186,7 +179,6 @@ public struct HealthAITextField: View {
                     .fontWeight(.medium)
                     .foregroundColor(HealthAIDesignSystem.Color.textPrimary)
             }
-            
             Group {
                 if isSecure {
                     SecureField(placeholder, text: $text)
@@ -201,8 +193,6 @@ public struct HealthAITextField: View {
                 RoundedRectangle(cornerRadius: HealthAIDesignSystem.Layout.cornerRadius)
                     .stroke(borderColor, lineWidth: HealthAIDesignSystem.Layout.borderWidth)
             )
-            .keyboardType(keyboardType)
-            .textContentType(textContentType)
             .accessibilityLabel(Text(label ?? placeholder))
             .accessibilityHint(Text(accessibilityHint))
             

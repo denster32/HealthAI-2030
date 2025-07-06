@@ -27,7 +27,7 @@ public class BiofeedbackEngine: ObservableObject {
     private let targetHeartRate: ClosedRange<Double> = 60...100
     private let targetHRV: ClosedRange<Double> = 20...100
     private let targetBreathingRate: ClosedRange<Double> = 12...20
-    private let sessionDuration: TimeInterval = 300 // 5 minutes
+    private let maxSessionDuration: TimeInterval = 300 // 5 minutes
     
     // MARK: - Biofeedback Protocols
     private var currentProtocol: BiofeedbackProtocol?
@@ -41,10 +41,10 @@ public class BiofeedbackEngine: ObservableObject {
     // MARK: - Public Methods
     
     /// Start a biofeedback session with specified protocol
-    public func startSession(protocol: BiofeedbackProtocol) {
+    public func startSession(protocolType: BiofeedbackProtocol) {
         guard biofeedbackStatus == .idle else { return }
         
-        currentProtocol = `protocol`
+        currentProtocol = protocolType
         biofeedbackStatus = .active
         sessionDuration = 0.0
         progress = 0.0
@@ -144,7 +144,7 @@ public class BiofeedbackEngine: ObservableObject {
             guard let samples = samples as? [HKQuantitySample], let lastSample = samples.last else { return }
             
             DispatchQueue.main.async {
-                self?.currentHeartRate = lastSample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute())))
+                self?.currentHeartRate = lastSample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
             }
         }
         
@@ -158,7 +158,7 @@ public class BiofeedbackEngine: ObservableObject {
             guard let samples = samples as? [HKQuantitySample], let lastSample = samples.last else { return }
             
             DispatchQueue.main.async {
-                self?.currentHRV = lastSample.quantity.doubleValue(for: .secondUnit(with: .milli)))
+                self?.currentHRV = lastSample.quantity.doubleValue(for: .secondUnit(with: .milli))
             }
         }
         
@@ -172,7 +172,7 @@ public class BiofeedbackEngine: ObservableObject {
             guard let samples = samples as? [HKQuantitySample], let lastSample = samples.last else { return }
             
             DispatchQueue.main.async {
-                self?.currentBreathingRate = lastSample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute())))
+                self?.currentBreathingRate = lastSample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
             }
         }
         
@@ -219,7 +219,7 @@ public class BiofeedbackEngine: ObservableObject {
     
     private func updateSessionProgress() {
         sessionDuration += 1.0
-        progress = min(sessionDuration / self.sessionDuration, 1.0)
+        progress = min(sessionDuration / self.maxSessionDuration, 1.0)
         
         if progress >= 1.0 {
             stopSession()
@@ -227,9 +227,9 @@ public class BiofeedbackEngine: ObservableObject {
     }
     
     private func beginProtocolIntervention() {
-        guard let protocol = currentProtocol else { return }
+        guard let currentProtocol = currentProtocol else { return }
         
-        switch protocol {
+        switch currentProtocol {
         case .heartRateVariability:
             beginHRVTraining()
         case .breathing:
@@ -270,7 +270,7 @@ public class BiofeedbackEngine: ObservableObject {
             averageHRV: currentHRV,
             averageBreathingRate: currentBreathingRate,
             averageStressLevel: currentStressLevel,
-            protocol: currentProtocol?.rawValue ?? "unknown"
+            protocolType: currentProtocol?.rawValue ?? "unknown"
         )
         
         // Save to HealthKit
@@ -313,7 +313,7 @@ public struct BiofeedbackSessionData {
     public let averageHRV: Double
     public let averageBreathingRate: Double
     public let averageStressLevel: Double
-    public let protocol: String
+    public let protocolType: String
 }
 
 // MARK: - Unified Biofeedback Session Types
@@ -324,14 +324,14 @@ public struct BiofeedbackSession {
     public let name: String
     public let duration: TimeInterval
     public let sessionType: BiofeedbackSessionType
-    public let protocol: BiofeedbackProtocol
+    public let protocolType: BiofeedbackProtocol
     
-    public init(id: UUID = UUID(), name: String, duration: TimeInterval, sessionType: BiofeedbackSessionType, protocol: BiofeedbackProtocol) {
+    public init(id: UUID = UUID(), name: String, duration: TimeInterval, sessionType: BiofeedbackSessionType, protocolType: BiofeedbackProtocol) {
         self.id = id
         self.name = name
         self.duration = duration
         self.sessionType = sessionType
-        self.protocol = protocol
+        self.protocolType = protocolType
     }
 }
 

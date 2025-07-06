@@ -219,11 +219,11 @@ public struct HealthBarChart: View {
                     }
                 }
             }
-            .frame(height: 200)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text(accessibilityLabel))
-            .accessibilityValue(Text(accessibilityValue))
         }
+        .frame(height: 200)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(accessibilityValue)
     }
     
     private var accessibilityLabel: String {

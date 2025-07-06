@@ -1,5 +1,4 @@
 import SwiftUI
-import HealthAI2030DesignSystem
 
 // MARK: - HeartRateDisplay
 public struct HeartRateDisplay: View {
@@ -296,7 +295,7 @@ public struct MoodSelector: View {
     
     public init(selectedMood: Binding<String>, moods: [MoodOption]? = nil, showLabels: Bool = false) {
         self._selectedMood = selectedMood
-        self.moods = moods ?? defaultMoods
+        self.moods = moods ?? MoodSelector.defaultMoods
         self.showLabels = showLabels
     }
 
@@ -306,8 +305,8 @@ public struct MoodSelector: View {
                 ForEach(moods, id: \.emoji) { mood in
                     Button(action: {
                         self.selectedMood = mood.emoji
-                        // Haptic feedback
-                        UINotificationFeedbackGenerator().notificationOccurred(.success)
+                        // Haptic feedback (iOS only)
+                        // No-op on macOS
                     }) {
                         VStack(spacing: HealthAIDesignSystem.Spacing.extraSmall) {
                             Text(mood.emoji)

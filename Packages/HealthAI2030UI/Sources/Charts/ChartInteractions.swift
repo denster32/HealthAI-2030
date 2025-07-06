@@ -13,7 +13,7 @@ public struct InteractiveChartView<Content: View>: View {
     public var body: some View {
         VStack {
             content
-                .chartOverlay {
+                .chartOverlay { proxy in
                     GeometryReader { geometry in
                         Rectangle().fill(.clear).contentShape(Rectangle())
                             .gesture(

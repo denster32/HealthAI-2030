@@ -9,11 +9,11 @@ public struct HealthAIDesignSystem {
         public static let warningRed = SwiftUI.Color("warningRed")
         public static let successGreen = SwiftUI.Color("successGreen")
         public static let infoBlue = SwiftUI.Color("infoBlue")
-        public static let background = SwiftUI.Color(uiColor: .systemBackground)
-        public static let surface = SwiftUI.Color(uiColor: .secondarySystemBackground)
-        public static let textPrimary = SwiftUI.Color(uiColor: .label)
-        public static let textSecondary = SwiftUI.Color(uiColor: .secondaryLabel)
-        public static let border = SwiftUI.Color(uiColor: .separator)
+        public static let background = SwiftUI.Color.white
+        public static let surface = SwiftUI.Color.gray.opacity(0.1)
+        public static let textPrimary = SwiftUI.Color.black
+        public static let textSecondary = SwiftUI.Color.gray
+        public static let border = SwiftUI.Color.gray.opacity(0.3)
         public static let accent = SwiftUI.Color.accentColor
     }
 
@@ -57,13 +57,13 @@ public struct HealthAIDesignSystem {
     }
 
     // MARK: - Accessibility Helpers
-    public struct Accessibility {
+        public struct Accessibility {
         public static func highContrastEnabled() -> Bool {
-            UIAccessibility.isDarkerSystemColorsEnabled
+            false // Placeholder implementation
         }
-
+        
         public static func reduceMotionEnabled() -> Bool {
-            UIAccessibility.isReduceMotionEnabled
+            false // Placeholder implementation
         }
     }
 }

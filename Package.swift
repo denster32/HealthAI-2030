@@ -110,10 +110,7 @@ let package = Package(
             name: "Kit",
             targets: ["Kit"]
         ),
-        .library(
-            name: "ML",
-            targets: ["ML"]
-        ),
+
         .library(
             name: "SharedHealthSummary",
             targets: ["SharedHealthSummary"]
@@ -150,7 +147,6 @@ let package = Package(
                 "SharedSettingsModule",
                 "HealthAIConversationalEngine",
                 "Kit",
-                "ML",
                 "SharedHealthSummary"
             ],
             path: "Sources/HealthAI2030"
@@ -173,10 +169,7 @@ let package = Package(
         .target(
             name: "HealthAI2030Graphics",
             dependencies: [],
-            path: "Packages/HealthAI2030Graphics/Sources",
-            resources: [
-                .process("Resources/Shaders")
-            ]
+            path: "Packages/HealthAI2030Graphics/Sources"
         ),
         .target(
             name: "HealthAI2030ML",
@@ -276,17 +269,13 @@ let package = Package(
         .target(
             name: "Kit",
             dependencies: [],
-            path: "Modules/Kit/Kit" //Fixed
+            path: "Packages/Kit/Sources"
         ),
-        .target(
-            name: "ML",
-            dependencies: [],
-            path: "Modules/ML/ML"  //Fixed
-        ),
+
         .target(
             name: "SharedHealthSummary",
             dependencies: [],
-            path: "Modules/SharedHealthSummary/SharedHealthSummary" //Fixed
+            path: "Packages/SharedHealthSummary/Sources"
         ),
         .testTarget(
             name: "HealthAI2030Tests",
