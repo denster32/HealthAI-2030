@@ -422,19 +422,19 @@
   - [x] Review for performance and battery usage
   - [x] Mark each subtask as complete
 
-- [ ] **Task 47**: macOS App - Finalize and Polish for Mac App Store
-  - [ ] Review all macOS-specific code in `Apps/macOSApp/`
-  - [ ] Ensure all features are using macOS 15+ APIs
-  - [ ] Add Mac App Store icons and launch screens
-  - [ ] Add onboarding and walkthrough screens
-  - [ ] Add in-app feedback and crash reporting
-  - [ ] Add accessibility and localization for all screens
-  - [ ] Run full suite of UI and integration tests
-  - [ ] Prepare Mac App Store metadata and screenshots
-  - [ ] Build and archive for Mac App Store submission
-  - [ ] Review for App Store compliance (HIG, privacy, security)
-  - [ ] Review for performance and battery usage
-  - [ ] Mark each subtask as complete
+- [x] **Task 47**: macOS App - Finalize and Polish for Mac App Store
+  - [x] Review all macOS-specific code in `Apps/macOSApp/`
+  - [x] Ensure all features are using macOS 15+ APIs
+  - [x] Add Mac App Store icons and launch screens
+  - [x] Add onboarding and walkthrough screens
+  - [x] Add in-app feedback and crash reporting
+  - [x] Add accessibility and localization for all screens
+  - [x] Run full suite of UI and integration tests
+  - [x] Prepare Mac App Store metadata and screenshots
+  - [x] Build and archive for Mac App Store submission
+  - [x] Review for App Store compliance (HIG, privacy, security)
+  - [x] Review for performance and battery usage
+  - [x] Mark each subtask as complete
 
 - [ ] **Task 48**: watchOS App - Finalize and Polish for App Store
   - [ ] Review all watchOS-specific code in `Apps/WatchApp/`
