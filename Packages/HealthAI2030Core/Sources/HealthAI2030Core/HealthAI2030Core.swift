@@ -1,10 +1,13 @@
 import Foundation
 
-@available(iOS 18.0, macOS 15.0, *)
-public class HealthAI2030Core {
-    public init() {}
+/// HealthAI2030Core - Core data models and utilities for the HealthAI 2030 application
+public struct HealthAI2030Core {
     
-    public func version() -> String {
-        return "1.0.0"
+    /// Version information for the core module
+    public static let version = "1.0.0"
+    
+    /// Initialize the core module
+    public static func initialize() {
+        print("HealthAI2030Core \(version) initialized")
     }
-} 
+}

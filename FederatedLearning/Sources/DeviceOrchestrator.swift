@@ -594,63 +594,63 @@ public class HealthMonitor {
         return .healthy
     }
 }
-
-// MARK: - Smart Device
+    
+    // MARK: - Smart Device
 @available(iOS 18.0, macOS 15.0, *)
 public struct SmartDevice: Identifiable, Codable, Equatable {
-    public let id = UUID()
-    public let name: String
-    public let type: DeviceType
-    public let capabilities: [DeviceCapability]
-    public let status: DeviceStatus
-    public let performance: DevicePerformance
-    public let health: DeviceHealth
-    public let location: String
-    public let lastSeen: Date
-    
-    public enum DeviceType: String, Codable, CaseIterable {
-        case smartphone = "Smartphone"
-        case tablet = "Tablet"
-        case laptop = "Laptop"
-        case desktop = "Desktop"
-        case smartwatch = "Smartwatch"
-        case smartSpeaker = "Smart Speaker"
-        case iotDevice = "IoT Device"
-        case edgeServer = "Edge Server"
-        case cloudServer = "Cloud Server"
-    }
-    
-    public enum DeviceCapability: String, Codable, CaseIterable {
-        case computation = "Computation"
-        case storage = "Storage"
-        case networking = "Networking"
-        case sensors = "Sensors"
-        case ml = "Machine Learning"
-        case gpu = "GPU"
-        case fpga = "FPGA"
-        case battery = "Battery"
-        case display = "Display"
-        case audio = "Audio"
-    }
-    
+        public let id = UUID()
+        public let name: String
+        public let type: DeviceType
+        public let capabilities: [DeviceCapability]
+        public let status: DeviceStatus
+        public let performance: DevicePerformance
+        public let health: DeviceHealth
+        public let location: String
+        public let lastSeen: Date
+        
+        public enum DeviceType: String, Codable, CaseIterable {
+            case smartphone = "Smartphone"
+            case tablet = "Tablet"
+            case laptop = "Laptop"
+            case desktop = "Desktop"
+            case smartwatch = "Smartwatch"
+            case smartSpeaker = "Smart Speaker"
+            case iotDevice = "IoT Device"
+            case edgeServer = "Edge Server"
+            case cloudServer = "Cloud Server"
+        }
+        
+        public enum DeviceCapability: String, Codable, CaseIterable {
+            case computation = "Computation"
+            case storage = "Storage"
+            case networking = "Networking"
+            case sensors = "Sensors"
+            case ml = "Machine Learning"
+            case gpu = "GPU"
+            case fpga = "FPGA"
+            case battery = "Battery"
+            case display = "Display"
+            case audio = "Audio"
+        }
+        
     public enum DeviceStatus: String, Codable, CaseIterable {
-        case online = "Online"
-        case offline = "Offline"
-        case busy = "Busy"
-        case idle = "Idle"
-        case error = "Error"
-        case maintenance = "Maintenance"
-    }
-    
+            case online = "Online"
+            case offline = "Offline"
+            case busy = "Busy"
+            case idle = "Idle"
+            case error = "Error"
+            case maintenance = "Maintenance"
+        }
+        
     public struct DevicePerformance: Codable, Equatable {
-        public let cpuUsage: Double
-        public let memoryUsage: Double
-        public let storageUsage: Double
-        public let networkUsage: Double
-        public let batteryLevel: Double
-        public let temperature: Double
-        public let responseTime: TimeInterval
-        public let throughput: Double
+            public let cpuUsage: Double
+            public let memoryUsage: Double
+            public let storageUsage: Double
+            public let networkUsage: Double
+            public let batteryLevel: Double
+            public let temperature: Double
+            public let responseTime: TimeInterval
+            public let throughput: Double
         
         public init(
             cpuUsage: Double,
@@ -674,18 +674,18 @@ public struct SmartDevice: Identifiable, Codable, Equatable {
     }
     
     public struct DeviceHealth: Codable, Equatable {
-        public let status: HealthStatus
-        public let uptime: TimeInterval
-        public let lastCheck: Date
-        public let issues: [String]
-        public let warnings: [String]
-        
+            public let status: HealthStatus
+            public let uptime: TimeInterval
+            public let lastCheck: Date
+            public let issues: [String]
+            public let warnings: [String]
+            
         public enum HealthStatus: String, Codable, CaseIterable {
-            case healthy = "Healthy"
-            case degraded = "Degraded"
-            case unhealthy = "Unhealthy"
-            case critical = "Critical"
-        }
+                case healthy = "Healthy"
+                case degraded = "Degraded"
+                case unhealthy = "Unhealthy"
+                case critical = "Critical"
+            }
         
         public init(
             status: HealthStatus,
@@ -720,31 +720,31 @@ public struct SmartDevice: Identifiable, Codable, Equatable {
         self.health = health
         self.location = location
         self.lastSeen = lastSeen
+        }
     }
-}
-
-// MARK: - Orchestration Status
+    
+    // MARK: - Orchestration Status
 @available(iOS 18.0, macOS 15.0, *)
 public enum OrchestrationStatus: String, Codable, CaseIterable {
-    case idle = "Idle"
-    case discovering = "Discovering"
-    case coordinating = "Coordinating"
-    case balancing = "Load Balancing"
-    case recovering = "Recovering"
-    case optimizing = "Optimizing"
-    case completed = "Completed"
-    case failed = "Failed"
-}
-
-// MARK: - Load Distribution
+        case idle = "Idle"
+        case discovering = "Discovering"
+        case coordinating = "Coordinating"
+        case balancing = "Load Balancing"
+        case recovering = "Recovering"
+        case optimizing = "Optimizing"
+        case completed = "Completed"
+        case failed = "Failed"
+    }
+    
+    // MARK: - Load Distribution
 @available(iOS 18.0, macOS 15.0, *)
 public struct LoadDistribution: Codable, Equatable {
-    public let totalLoad: Double
-    public let distributedLoad: Double
-    public let deviceLoads: [String: Double]
-    public let balanceScore: Double
-    public let bottlenecks: [String]
-    public let recommendations: [String]
+        public let totalLoad: Double
+        public let distributedLoad: Double
+        public let deviceLoads: [String: Double]
+        public let balanceScore: Double
+        public let bottlenecks: [String]
+        public let recommendations: [String]
     
     public init(
         totalLoad: Double,
@@ -761,29 +761,29 @@ public struct LoadDistribution: Codable, Equatable {
         self.bottlenecks = bottlenecks
         self.recommendations = recommendations
     }
-}
-
-// MARK: - Fault Status
+    }
+    
+    // MARK: - Fault Status
 @available(iOS 18.0, macOS 15.0, *)
 public enum FaultStatus: String, Codable, CaseIterable {
-    case healthy = "Healthy"
-    case warning = "Warning"
-    case degraded = "Degraded"
-    case critical = "Critical"
-    case recovering = "Recovering"
-}
-
-// MARK: - Performance Metrics
+        case healthy = "Healthy"
+        case warning = "Warning"
+        case degraded = "Degraded"
+        case critical = "Critical"
+        case recovering = "Recovering"
+    }
+    
+    // MARK: - Performance Metrics
 @available(iOS 18.0, macOS 15.0, *)
 public struct PerformanceMetrics: Codable, Equatable {
-    public let overallEfficiency: Double
-    public let averageResponseTime: TimeInterval
-    public let throughput: Double
-    public let resourceUtilization: Double
-    public let energyEfficiency: Double
-    public let networkEfficiency: Double
-    public let faultTolerance: Double
-    public let scalability: Double
+        public let overallEfficiency: Double
+        public let averageResponseTime: TimeInterval
+        public let throughput: Double
+        public let resourceUtilization: Double
+        public let energyEfficiency: Double
+        public let networkEfficiency: Double
+        public let faultTolerance: Double
+        public let scalability: Double
     
     public init(
         overallEfficiency: Double,
@@ -804,45 +804,45 @@ public struct PerformanceMetrics: Codable, Equatable {
         self.faultTolerance = faultTolerance
         self.scalability = scalability
     }
-}
-
-// MARK: - Task
+    }
+    
+    // MARK: - Task
 @available(iOS 18.0, macOS 15.0, *)
 public struct Task: Identifiable, Codable, Equatable {
-    public let id = UUID()
-    public let name: String
-    public let type: TaskType
-    public let priority: Priority
-    public let requirements: TaskRequirements
-    public let assignedDevice: UUID?
-    public let status: TaskStatus
-    public let createdAt: Date
-    public let startedAt: Date?
-    public let completedAt: Date?
-    
+        public let id = UUID()
+        public let name: String
+        public let type: TaskType
+        public let priority: Priority
+        public let requirements: TaskRequirements
+        public let assignedDevice: UUID?
+        public let status: TaskStatus
+        public let createdAt: Date
+        public let startedAt: Date?
+        public let completedAt: Date?
+        
     public enum TaskType: String, Codable, CaseIterable {
-        case computation = "Computation"
-        case dataProcessing = "Data Processing"
-        case modelTraining = "Model Training"
-        case inference = "Inference"
-        case communication = "Communication"
-        case storage = "Storage"
-    }
-    
+            case computation = "Computation"
+            case dataProcessing = "Data Processing"
+            case modelTraining = "Model Training"
+            case inference = "Inference"
+            case communication = "Communication"
+            case storage = "Storage"
+        }
+        
     public enum Priority: String, Codable, CaseIterable {
-        case low = "Low"
-        case normal = "Normal"
-        case high = "High"
-        case critical = "Critical"
-    }
-    
+            case low = "Low"
+            case normal = "Normal"
+            case high = "High"
+            case critical = "Critical"
+        }
+        
     public struct TaskRequirements: Codable, Equatable {
-        public let cpuCores: Int
-        public let memoryGB: Double
-        public let storageGB: Double
-        public let networkMbps: Double
-        public let gpuRequired: Bool
-        public let batteryRequired: Bool
+            public let cpuCores: Int
+            public let memoryGB: Double
+            public let storageGB: Double
+            public let networkMbps: Double
+            public let gpuRequired: Bool
+            public let batteryRequired: Bool
         
         public init(
             cpuCores: Int,
@@ -862,12 +862,12 @@ public struct Task: Identifiable, Codable, Equatable {
     }
     
     public enum TaskStatus: String, Codable, CaseIterable {
-        case pending = "Pending"
-        case assigned = "Assigned"
-        case running = "Running"
-        case completed = "Completed"
-        case failed = "Failed"
-        case cancelled = "Cancelled"
+            case pending = "Pending"
+            case assigned = "Assigned"
+            case running = "Running"
+            case completed = "Completed"
+            case failed = "Failed"
+            case cancelled = "Cancelled"
     }
     
     public init(

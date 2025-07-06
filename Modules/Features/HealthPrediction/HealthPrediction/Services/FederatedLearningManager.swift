@@ -159,14 +159,14 @@ public class FederatedLearningManager: ObservableObject {
             if abs(lossImprovement) < session.configuration.convergenceThreshold {
                 convergenceCount += 1
                 if convergenceCount >= 3 { // Require 3 consecutive rounds of convergence
-                    analytics.logEvent("federated_learning_converged", parameters: [
-                        "session_id": session.id,
-                        "rounds": currentRound,
+                analytics.logEvent("federated_learning_converged", parameters: [
+                    "session_id": session.id,
+                    "rounds": currentRound,
                         "final_loss": currentLoss,
                         "convergence_count": convergenceCount
-                    ])
+                ])
                     logger.info("Federated learning converged after \(currentRound) rounds")
-                    break
+                break
                 }
             } else {
                 convergenceCount = 0
@@ -220,11 +220,11 @@ public class FederatedLearningManager: ObservableObject {
                         let batchLabels = labels[batchStart..<batchEnd]
                         
                         return try await self.trainBatchWithOptimization(
-                            model: model,
+                model: model,
                             features: batchFeatures,
                             labels: batchLabels,
-                            learningRate: configuration.learningRate
-                        )
+                learningRate: configuration.learningRate
+            )
                     }
                 }
                 

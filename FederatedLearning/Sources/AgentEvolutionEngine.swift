@@ -577,7 +577,7 @@ public final class AgentEvolutionEngine {
         logger.debug("📚 Learning from performance...")
         
         do {
-            // Analyze current performance and learn from it
+        // Analyze current performance and learn from it
             let learningData = try await evolutionController.analyzePerformance()
         
         // Update learning algorithms based on performance
@@ -649,7 +649,7 @@ public final class AgentEvolutionEngine {
         logger.debug("👶 Creating new generation...")
         
         do {
-            var newAgents: [Agent] = []
+        var newAgents: [Agent] = []
         
         // Keep some of the best agents (elitism)
             let eliteCount = max(1, Int(Double(selectedAgents.count) * elitePercentage))
@@ -727,7 +727,7 @@ public final class AgentEvolutionEngine {
         logger.debug("🧬 Applying mutations...")
         
         do {
-            var mutatedAgents: [Agent] = []
+        var mutatedAgents: [Agent] = []
         
         for agent in agents {
             let shouldMutate = Double.random(in: 0...1) < mutationRate

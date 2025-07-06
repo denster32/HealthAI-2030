@@ -279,7 +279,7 @@ let package = Package(
         ),
         .testTarget(
             name: "HealthAI2030Tests",
-            dependencies: ["HealthAI2030"],
+            dependencies: ["HealthAI2030", "HealthAI2030Core"],
             path: "Tests/HealthAI2030Tests"
         ),
         .testTarget(

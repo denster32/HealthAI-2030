@@ -192,28 +192,28 @@ public final class EnhancedPrivacyAuditor: PrivacyAuditor {
             let reidentificationRisk = try await calculateReidentificationRisk(data: data)
             let sensitivityScore = try await calculateDataSensitivity(data: data)
             let exposureRisk = try await calculateExposureRisk(data: data)
-            
-            // Weighted privacy impact score
-            let privacyImpact = (reidentificationRisk * 0.4 + sensitivityScore * 0.4 + exposureRisk * 0.2)
+        
+        // Weighted privacy impact score
+        let privacyImpact = (reidentificationRisk * 0.4 + sensitivityScore * 0.4 + exposureRisk * 0.2)
             
             // Update performance metrics
             let endTime = CFAbsoluteTimeGetCurrent()
             let assessmentTime = endTime - startTime
             await updatePerformanceMetrics(assessmentTime: assessmentTime)
-            
-            // Log assessment with detailed information
+        
+        // Log assessment with detailed information
             let dataHash = try await hashData(data: data)
             let auditEntry = try await generateAuditLog(
-                operation: "privacy_assessment",
-                dataHash: dataHash,
-                timestamp: Date()
-            )
+            operation: "privacy_assessment",
+            dataHash: dataHash,
+            timestamp: Date()
+        )
             await logAuditEntry(auditEntry)
-            
-            // Log detailed privacy metrics
+        
+        // Log detailed privacy metrics
             logger.info("Privacy assessment completed: reidentificationRisk=\(reidentificationRisk, privacy: .private), sensitivityScore=\(sensitivityScore, privacy: .private), exposureRisk=\(exposureRisk, privacy: .private), finalImpact=\(privacyImpact, privacy: .private), assessmentTime=\(assessmentTime)")
-            
-            return privacyImpact
+        
+        return privacyImpact
         } catch {
             logger.error("Privacy assessment failed: \(error.localizedDescription)")
             throw PrivacyAuditorError.privacyViolationDetected("Assessment failed: \(error.localizedDescription)")
@@ -238,8 +238,8 @@ public final class EnhancedPrivacyAuditor: PrivacyAuditor {
             let anomalies = try await detectAnomalousAccess(data: data)
             let unauthorizedSharing = try await detectUnauthorizedSharing(data: data)
             let networkAnomalies = try await detectNetworkAnomalies(data: data)
-            
-            let leakageDetected = patterns || anomalies || unauthorizedSharing || networkAnomalies
+        
+        let leakageDetected = patterns || anomalies || unauthorizedSharing || networkAnomalies
             
             // Update performance metrics
             let endTime = CFAbsoluteTimeGetCurrent()
@@ -249,20 +249,20 @@ public final class EnhancedPrivacyAuditor: PrivacyAuditor {
             if leakageDetected {
                 performanceMetrics.totalViolationsDetected += 1
             }
-            
-            // Log detection attempt with detailed analysis
+        
+        // Log detection attempt with detailed analysis
             let dataHash = try await hashData(data: data)
             let auditEntry = try await generateAuditLog(
-                operation: "leakage_detection",
-                dataHash: dataHash,
-                timestamp: Date()
-            )
+            operation: "leakage_detection",
+            dataHash: dataHash,
+            timestamp: Date()
+        )
             await logAuditEntry(auditEntry)
-            
-            // Log detailed leakage analysis
+        
+        // Log detailed leakage analysis
             logger.warning("Data leakage detection: patterns=\(patterns), anomalies=\(anomalies), unauthorizedSharing=\(unauthorizedSharing), networkAnomalies=\(networkAnomalies), leakageDetected=\(leakageDetected), detectionTime=\(detectionTime)")
-            
-            return leakageDetected
+        
+        return leakageDetected
         } catch {
             logger.error("Data leakage detection failed: \(error.localizedDescription)")
             throw PrivacyAuditorError.privacyViolationDetected("Detection failed: \(error.localizedDescription)")
@@ -291,27 +291,27 @@ public final class EnhancedPrivacyAuditor: PrivacyAuditor {
             let auditTrail = try await validateAuditTrail(data: data)
             let consentValidation = try await validateConsent(data: data)
             let dataRetention = try await validateDataRetention(data: data, regulation: regulation)
-            
-            let isCompliant = complianceChecks && auditTrail && consentValidation && dataRetention
+        
+        let isCompliant = complianceChecks && auditTrail && consentValidation && dataRetention
             
             // Update performance metrics
             let endTime = CFAbsoluteTimeGetCurrent()
             let complianceTime = endTime - startTime
             await updatePerformanceMetrics(assessmentTime: complianceTime)
-            
-            // Log compliance check with detailed results
+        
+        // Log compliance check with detailed results
             let dataHash = try await hashData(data: data)
             let auditEntry = try await generateAuditLog(
-                operation: "compliance_check_\(regulation)",
-                dataHash: dataHash,
-                timestamp: Date()
-            )
+            operation: "compliance_check_\(regulation)",
+            dataHash: dataHash,
+            timestamp: Date()
+        )
             await logAuditEntry(auditEntry)
-            
-            // Log detailed compliance analysis
+        
+        // Log detailed compliance analysis
             logger.info("Compliance monitoring for \(regulation): complianceChecks=\(complianceChecks), auditTrail=\(auditTrail), consentValidation=\(consentValidation), dataRetention=\(dataRetention), isCompliant=\(isCompliant), complianceTime=\(complianceTime)")
-            
-            return isCompliant
+        
+        return isCompliant
         } catch {
             logger.error("Compliance monitoring failed: \(error.localizedDescription)")
             throw PrivacyAuditorError.complianceCheckFailed("Compliance check failed: \(error.localizedDescription)")
@@ -335,20 +335,20 @@ public final class EnhancedPrivacyAuditor: PrivacyAuditor {
             let leakageRisk = try await detectDataLeakage(data: data) ? 0.3 : 0.0
             let complianceScore = try await calculateComplianceScore(data: data)
             let encryptionScore = try await calculateEncryptionScore(data: data)
-            
-            // Convert to 0-100 scale with enhanced scoring
-            let baseScore = Int((1.0 - privacyImpact - leakageRisk) * 100)
-            let finalScore = min(max(baseScore + complianceScore + encryptionScore, 0), 100)
+        
+        // Convert to 0-100 scale with enhanced scoring
+        let baseScore = Int((1.0 - privacyImpact - leakageRisk) * 100)
+        let finalScore = min(max(baseScore + complianceScore + encryptionScore, 0), 100)
             
             // Update performance metrics
             let endTime = CFAbsoluteTimeGetCurrent()
             let calculationTime = endTime - startTime
             await updatePerformanceMetrics(assessmentTime: calculationTime)
-            
-            // Log privacy score calculation
+        
+        // Log privacy score calculation
             logger.info("Privacy score calculation: privacyImpact=\(privacyImpact, privacy: .private), leakageRisk=\(leakageRisk, privacy: .private), complianceScore=\(complianceScore), encryptionScore=\(encryptionScore), finalScore=\(finalScore), calculationTime=\(calculationTime)")
-            
-            return finalScore
+        
+        return finalScore
         } catch {
             logger.error("Privacy score calculation failed: \(error.localizedDescription)")
             throw PrivacyAuditorError.privacyViolationDetected("Score calculation failed: \(error.localizedDescription)")
@@ -458,9 +458,9 @@ public final class EnhancedPrivacyAuditor: PrivacyAuditor {
         
         do {
             let auditEntry = AuditLogEntry(
-                operation: operation,
-                dataHash: dataHash,
-                timestamp: timestamp,
+            operation: operation,
+            dataHash: dataHash,
+            timestamp: timestamp,
                 deviceId: try await getDeviceIdentifier(),
                 sessionId: try await getCurrentSessionId(),
                 securityLevel: try await getCurrentSecurityLevel(),
@@ -491,16 +491,16 @@ public final class EnhancedPrivacyAuditor: PrivacyAuditor {
         
         do {
             let actualHash = try await hashData(data: data)
-            let isValid = actualHash == expectedHash
-            
-            // Log integrity validation
-            logger.info("Data integrity validation: isValid=\(isValid), expectedHash=\(expectedHash.prefix(8))..., actualHash=\(actualHash.prefix(8))...")
+        let isValid = actualHash == expectedHash
+        
+        // Log integrity validation
+        logger.info("Data integrity validation: isValid=\(isValid), expectedHash=\(expectedHash.prefix(8))..., actualHash=\(actualHash.prefix(8))...")
             
             if !isValid {
                 throw PrivacyAuditorError.dataIntegrityViolation("Data integrity check failed")
             }
-            
-            return isValid
+        
+        return isValid
         } catch {
             logger.error("Data integrity validation failed: \(error.localizedDescription)")
             throw PrivacyAuditorError.dataIntegrityViolation("Validation failed: \(error.localizedDescription)")
@@ -597,10 +597,10 @@ public final class EnhancedPrivacyAuditor: PrivacyAuditor {
         do {
             let noise = try await generateLaplaceNoise(scale: sensitivity / differentialPrivacyEpsilon)
             let noisyData = try await addNoiseToData(data: data, noise: noise)
-            
-            logger.info("Applied differential privacy: epsilon=\(differentialPrivacyEpsilon, privacy: .private), sensitivity=\(sensitivity, privacy: .private)")
-            
-            return noisyData
+        
+        logger.info("Applied differential privacy: epsilon=\(differentialPrivacyEpsilon, privacy: .private), sensitivity=\(sensitivity, privacy: .private)")
+        
+        return noisyData
         } catch {
             logger.error("Differential privacy application failed: \(error.localizedDescription)")
             throw PrivacyAuditorError.privacyViolationDetected("Differential privacy failed: \(error.localizedDescription)")
@@ -617,21 +617,21 @@ public final class EnhancedPrivacyAuditor: PrivacyAuditor {
         }
         
         do {
-            // Implement homomorphic encryption (simplified version)
+        // Implement homomorphic encryption (simplified version)
             let keyPair = try await generateHomomorphicKeyPair()
-            let encryptedData = HomomorphicEncryptedData(
-                encryptedValue: data,
+        let encryptedData = HomomorphicEncryptedData(
+            encryptedValue: data,
                 publicKey: keyPair.publicKey,
                 metadata: HomomorphicEncryptedData.HomomorphicMetadata(
-                    algorithm: "RSA",
-                    keySize: 2048,
-                    timestamp: Date()
-                )
+                algorithm: "RSA",
+                keySize: 2048,
+                timestamp: Date()
             )
-            
-            logger.info("Homomorphic encryption performed: keySize=2048, algorithm=RSA")
-            
-            return encryptedData
+        )
+        
+        logger.info("Homomorphic encryption performed: keySize=2048, algorithm=RSA")
+        
+        return encryptedData
         } catch {
             logger.error("Homomorphic encryption failed: \(error.localizedDescription)")
             throw PrivacyAuditorError.encryptionFailed("Homomorphic encryption failed: \(error.localizedDescription)")
@@ -654,16 +654,16 @@ public final class EnhancedPrivacyAuditor: PrivacyAuditor {
         
         do {
             let shares = try await generateSecretShares(data: data, participants: participants)
-            let mpcResult = MPCResult(
-                shares: shares,
-                participants: participants,
-                computationType: "federated_learning",
-                timestamp: Date()
-            )
-            
-            logger.info("Secure MPC performed: participants=\(participants.count), computationType=federated_learning")
-            
-            return mpcResult
+        let mpcResult = MPCResult(
+            shares: shares,
+            participants: participants,
+            computationType: "federated_learning",
+            timestamp: Date()
+        )
+        
+        logger.info("Secure MPC performed: participants=\(participants.count), computationType=federated_learning")
+        
+        return mpcResult
         } catch {
             logger.error("Secure MPC failed: \(error.localizedDescription)")
             throw PrivacyAuditorError.privacyViolationDetected("MPC failed: \(error.localizedDescription)")
@@ -897,5 +897,5 @@ public struct PBKDF2 {
         // Implement PBKDF2 key derivation
         return Data()
     }
-}
+    }
 }

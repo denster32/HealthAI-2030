@@ -103,8 +103,8 @@ struct PluginSubmissionView: View {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
-                        Text(status)
-                            .foregroundColor(.green)
+                    Text(status)
+                        .foregroundColor(.green)
                     }
                 }
             }
@@ -114,7 +114,7 @@ struct PluginSubmissionView: View {
             Button("OK") { }
         } message: {
             Text(errorMessage)
-        }
+            }
         }
         .navigationTitle("Submit Plugin")
     }
@@ -258,7 +258,7 @@ enum PluginSubmissionError: LocalizedError {
             return "Plugin code contains potentially dangerous imports"
         }
     }
-}
+    }
 }
 
 #Preview {
