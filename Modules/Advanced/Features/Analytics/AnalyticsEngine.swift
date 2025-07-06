@@ -319,7 +319,7 @@ public struct ProcessedAnalyticsData: Codable {
     public let temperatureData: MetricData
     public let timestamp: Date
     
-    public init(heartRateData: MetricData, stepsData: MetricData, sleepData: MetricData, bloodPressureData: MetricData, temperatureData: MetricData, timestamp: Date = Date()) {
+    public init(heartRateData: MetricData = MetricData(values: []), stepsData: MetricData = MetricData(values: []), sleepData: MetricData = MetricData(values: []), bloodPressureData: MetricData = MetricData(values: []), temperatureData: MetricData = MetricData(values: []), timestamp: Date = Date()) {
         self.heartRateData = heartRateData
         self.stepsData = stepsData
         self.sleepData = sleepData
