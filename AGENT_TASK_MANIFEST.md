@@ -32,6 +32,54 @@
 - Try: `git push origin feature/task-X-description`
 - If still fails, save work locally and notify user
 
+**🚨 CRITICAL: If Agent Gets Stuck or Confused**
+
+**DO NOT STOP WORKING - Follow these steps:**
+
+1. **Immediate Action (30 seconds):**
+   - [ ] Create a note file: `AGENT_CONFUSION_LOG.md` in the root directory
+   - [ ] Add timestamp and current task number
+   - [ ] Briefly describe what's confusing you
+   - [ ] **CONTINUE WITH THE TASK** - don't wait for help
+
+2. **Document the Issue (2 minutes):**
+   - [ ] In `AGENT_CONFUSION_LOG.md`, add:
+     - [ ] What you were trying to do
+     - [ ] What error or confusion occurred
+     - [ ] What you tried to fix it
+     - [ ] Current status of the task
+
+3. **Continue Working (Keep going):**
+   - [ ] **SKIP the confusing part** and move to the next step
+   - [ ] **MAKE A NOTE** of what you skipped
+   - [ ] **COMPLETE the rest of the task** as best you can
+   - [ ] **DO NOT WAIT** for clarification
+
+4. **Alternative Approaches:**
+   - [ ] If a specific file can't be created, create a placeholder with TODO comments
+   - [ ] If a feature is too complex, implement a basic version
+   - [ ] If testing fails, create the test structure with TODO comments
+   - [ ] If documentation is unclear, create a basic version
+
+5. **Task Completion:**
+   - [ ] **ALWAYS complete the GitHub integration steps**
+   - [ ] **ALWAYS mark the task as complete** in this file
+   - [ ] **ALWAYS create the PR** even if some parts are incomplete
+   - [ ] **ADD a note** in the PR description about what was skipped
+
+**Example AGENT_CONFUSION_LOG.md entry:**
+```markdown
+## Task 27 - Performance Benchmarking (2024-01-15 14:30)
+
+**Issue:** Could not find existing PerformanceOptimizationManager.swift file
+**Action Taken:** Created new file with basic structure
+**Skipped:** Advanced performance metrics (will need review)
+**Status:** Task completed with basic implementation
+**Next Steps:** Need to review and enhance performance monitoring
+```
+
+**Remember:** It's better to complete 80% of a task than to get stuck and do 0%. Keep moving forward!
+
 ---
 
 ## ✅ COMPLETED TASKS (26/26) - PRODUCTION READY
@@ -80,6 +128,12 @@
 
 ## 🚀 NEW TASKS FOR AGENT (5 Hours Worth)
 
+**⚠️ IMPORTANT: For ALL tasks below, if you get confused or stuck:**
+1. **DO NOT STOP** - Create a note in `AGENT_CONFUSION_LOG.md`
+2. **SKIP** the confusing part and continue with the next step
+3. **COMPLETE** the task with basic implementation if needed
+4. **ALWAYS** finish GitHub integration and mark task complete
+
 ### Phase 1: Production Optimization (2 Hours)
 
 #### Task 27: Performance Benchmarking & Optimization
@@ -124,6 +178,12 @@
   - [ ] Push: `git push --set-upstream origin feature/task-27-performance-benchmarking`
   - [ ] Create PR on GitHub with title: "Task 27: Performance Benchmarking & Optimization"
   - [ ] Mark task as complete in this file: `[x]` instead of `[ ]`
+
+**🚨 If Confused or Stuck:**
+- [ ] Create note in `AGENT_CONFUSION_LOG.md` with issue details
+- [ ] Skip confusing part and continue with next step
+- [ ] Complete task with basic implementation if needed
+- [ ] Add note in PR description about what was skipped
 
 **Files to Create/Update:**
 - `Apps/MainApp/Services/PerformanceBenchmarkingManager.swift`
@@ -199,6 +259,12 @@
   - [ ] Push: `git push --set-upstream origin feature/task-28-advanced-sleep-mitigation`
   - [ ] Create PR on GitHub with title: "Task 28: Advanced Sleep Mitigation Engine Enhancement"
   - [ ] Mark task as complete in this file: `[x]` instead of `[ ]`
+
+**🚨 If Confused or Stuck:**
+- [ ] Create note in `AGENT_CONFUSION_LOG.md` with issue details
+- [ ] Skip confusing part and continue with next step
+- [ ] Complete task with basic implementation if needed
+- [ ] Add note in PR description about what was skipped
 
 **Files to Create/Update:**
 - `Apps/MainApp/Services/AdvancedSleepMitigationEngine.swift`
