@@ -311,6 +311,9 @@ public class MachineLearningIntegrationManager: ObservableObject {
         let retrainingInterval: TimeInterval
         let inputFeatures: [String]
         let outputFeatures: [String]
+        let supportsNeuralEngine: Bool
+        let requiresPeriodicUpdate: Bool
+        let updateFrequency: UpdateFrequency
     }
     
     private struct TrainingTask {
@@ -551,7 +554,10 @@ public class MachineLearningIntegrationManager: ObservableObject {
                 performanceThreshold: 0.8,
                 retrainingInterval: 7 * 24 * 3600, // 1 week
                 inputFeatures: ["age", "weight", "activity_level", "sleep_quality", "stress_level"],
-                outputFeatures: ["predicted_heart_rate"]
+                outputFeatures: ["predicted_heart_rate"],
+                supportsNeuralEngine: true,
+                requiresPeriodicUpdate: true,
+                updateFrequency: .weekly
             ),
             "anomalyDetector": ModelConfiguration(
                 modelType: .anomalyDetection,
@@ -560,7 +566,10 @@ public class MachineLearningIntegrationManager: ObservableObject {
                 performanceThreshold: 0.85,
                 retrainingInterval: 14 * 24 * 3600, // 2 weeks
                 inputFeatures: ["heart_rate", "blood_pressure", "sleep_duration", "activity_level"],
-                outputFeatures: ["anomaly_score", "severity"]
+                outputFeatures: ["anomaly_score", "severity"],
+                supportsNeuralEngine: true,
+                requiresPeriodicUpdate: true,
+                updateFrequency: .monthly
             ),
             "recommendationEngine": ModelConfiguration(
                 modelType: .recommendationEngine,
@@ -569,7 +578,10 @@ public class MachineLearningIntegrationManager: ObservableObject {
                 performanceThreshold: 0.75,
                 retrainingInterval: 30 * 24 * 3600, // 1 month
                 inputFeatures: ["user_profile", "health_data", "goals", "preferences"],
-                outputFeatures: ["recommendation_type", "confidence", "priority"]
+                outputFeatures: ["recommendation_type", "confidence", "priority"],
+                supportsNeuralEngine: true,
+                requiresPeriodicUpdate: true,
+                updateFrequency: .monthly
             )
         ]
     }
@@ -829,4 +841,109 @@ private struct MLExportData: Codable {
     let modelPerformance: [String: MachineLearningIntegrationManager.ModelPerformance]
     let lastTrainingDate: Date?
     let exportDate: Date
+}
+
+// MARK: - Initialization
+
+init() {
+    setupModelConfigurations()
+    loadModels()
+    setupPerformanceMonitoring()
+}
+
+private func setupModelConfigurations() {
+    // Configure models with Neural Engine preference for supported devices
+    modelConfigurations = [
+        "HealthPrediction": ModelConfiguration(
+            name: "HealthPrediction",
+            type: .healthPrediction,
+            version: "1.0",
+            supportsNeuralEngine: true,
+            requiresPeriodicUpdate: true,
+            updateFrequency: .weekly
+        ),
+        "AnomalyDetection": ModelConfiguration(
+            name: "AnomalyDetection",
+            type: .anomalyDetection,
+            version: "1.0",
+            supportsNeuralEngine: true,
+            requiresPeriodicUpdate: true,
+            updateFrequency: .monthly
+        ),
+        "RecommendationEngine": ModelConfiguration(
+            name: "RecommendationEngine",
+            type: .recommendationEngine,
+            version: "1.0",
+            supportsNeuralEngine: true,
+            requiresPeriodicUpdate: true,
+            updateFrequency: .monthly
+        )
+    ]
+}
+
+private func loadModels() {
+    mlStatus = .loading
+    
+    Task {
+        for (modelName, config) in modelConfigurations {
+            modelStatus[modelName] = .loading
+            do {
+                // Load model with Neural Engine preference if supported
+                let modelConfig = MLModelConfiguration()
+                if config.supportsNeuralEngine {
+                    modelConfig.computeUnits = .cpuAndNeuralEngine
+                } else {
+                    modelConfig.computeUnits = .cpuAndGPU
+                }
+                
+                // Placeholder for actual model loading
+                // let model = try await loadModel(named: modelName, configuration: modelConfig)
+                // mlModels[modelName] = model
+                modelStatus[modelName] = .ready
+                
+                // Log model performance capabilities
+                modelPerformance[modelName] = ModelPerformance(
+                    latency: 0.0,
+                    memoryUsage: 0.0,
+                    usesNeuralEngine: config.supportsNeuralEngine
+                )
+            } catch {
+                modelStatus[modelName] = .error
+                print("Error loading model \(modelName): \(error)")
+            }
+        }
+        
+        mlStatus = .idle
+    }
+}
+
+// Placeholder method for model loading
+private func loadModel(named: String, configuration: MLModelConfiguration) async throws -> MLModel {
+    // Implement actual model loading logic here
+    fatalError("Model loading not implemented")
+}
+
+private func setupPerformanceMonitoring() {
+    // Setup monitoring for model performance
+    Timer.publish(every: 3600, on: .main, in: .common) // Every hour
+        .autoconnect()
+        .sink { [weak self] _ in
+            self?.evaluateModelPerformance()
+        }
+        .store(in: &cancellables)
+}
+
+private func evaluateModelPerformance() {
+    mlStatus = .evaluating
+    
+    for (modelName, _) in mlModels {
+        // Simulate performance evaluation
+        modelPerformance[modelName] = ModelPerformance(
+            latency: Double.random(in: 0.01...0.1),
+            memoryUsage: Double.random(in: 10...50),
+            usesNeuralEngine: modelConfigurations[modelName]?.supportsNeuralEngine ?? false
+        )
+    }
+    
+    mlStatus = .idle
 } 
