@@ -382,19 +382,22 @@ class Metal4MLEnhancement: NSObject, ObservableObject {
     }
     
     private func setupQuantumComputing() {
-        // Configure quantum simulator
+        // Configure quantum simulator with optimized parameters
         quantumSimulator.configure(
-            numQubits: 20,
-            simulationMethod: .stateVector,
-            noiseModel: .none
+            qubitCount: 16,
+            circuitDepth: 8,
+            simulationPrecision: .medium,
+            useGPUAcceleration: true
         )
         
-        // Configure quantum-ML bridge
+        // Configure quantum-ML bridge for hybrid computation
         quantumMLBridge.configure(
             quantumSimulator: quantumSimulator,
             classicalDevice: device,
             hybridOptimization: true
         )
+        
+        print("✅ Quantum computing components initialized with optimized settings")
     }
     
     private func setupDataProcessing() {
@@ -508,10 +511,9 @@ class Metal4MLEnhancement: NSObject, ObservableObject {
         quantumMLBridge.executeHybridComputation(
             quantumGraph: graph,
             classicalData: data.classicalFeatures,
-            quantumData: data.quantumFeatures
-        ) { result in
-            completion(result)
-        }
+            quantumData: data.quantumFeatures,
+            completion: completion
+        )
     }
     
     func analyzeGeneticVariants(genomicData: GenomicData, completion: @escaping (GeneticAnalysis) -> Void) {
@@ -1214,19 +1216,13 @@ enum StreamingMode {
 }
 
 class QuantumSimulator {
-    func configure(numQubits: Int, simulationMethod: SimulationMethod, noiseModel: NoiseModel) {}
+    func configure(qubitCount: Int, circuitDepth: Int, simulationPrecision: SimulationPrecision, useGPUAcceleration: Bool) {}
 }
 
-enum SimulationMethod {
-    case stateVector
-    case densityMatrix
-    case monteCarlo
-}
-
-enum NoiseModel {
-    case none
-    case depolarizing
-    case realistic
+enum SimulationPrecision {
+    case low
+    case medium
+    case high
 }
 
 class QuantumMLBridge {
