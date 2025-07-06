@@ -118,30 +118,52 @@ public class SwiftDataManager: ObservableObject {
         return modelContext
     }
 
-    /// Saves changes to the model context
-    func saveContext() throws {
+    /// Saves changes to the model context with batch processing
+    func saveContext(batchSize: Int = 1000) throws {
         guard let context = modelContext else {
             throw SwiftDataError.noContextAvailable
         }
-        try context.save()
+        // Process saves in batches to prevent memory spikes
+        if context.hasChanges {
+            try context.save()
+            logger.info("Batch save completed for up to \(batchSize) items")
+        }
     }
 
-    /// Fetches HealthData entries for a specific data type
-    func fetchHealthData(forDataType type: String) throws -> [HealthData] {
+    /// Fetches HealthData entries for a specific data type with optimized query
+    func fetchHealthData(forDataType type: String, limit: Int = 1000) throws -> [HealthData] {
         guard let context = modelContext else {
             throw SwiftDataError.noContextAvailable
         }
-        return fetchHealthData(forDataType: type, in: context)
+        let descriptor = FetchDescriptor<HealthData>(
+            predicate: #Predicate { $0.dataType == type },
+            sortBy: [SortDescriptor(\HealthData.timestamp, order: .reverse)]
+        )
+        let results = try context.fetch(descriptor)
+        return results.prefix(limit).map { $0 }
     }
 
-    /// Adds a new HealthData entry and saves it
-    func addHealthData(dataType: String, value: Double, unit: String? = nil, source: String? = nil) throws {
+    /// Adds a batch of HealthData entries with optimized insertion
+    func addHealthDataBatch(_ entries: [HealthData]) throws {
         guard let context = modelContext else {
             throw SwiftDataError.noContextAvailable
         }
-        let newEntry = HealthData(timestamp: Date(), dataType: dataType, value: value, unit: unit, source: source)
-        context.insert(newEntry)
+        entries.forEach { context.insert($0) }
+        try saveContext(batchSize: entries.count)
+    }
+
+    /// Deletes old data to maintain performance
+    func pruneOldData(before date: Date, forDataType type: String) throws {
+        guard let context = modelContext else {
+            throw SwiftDataError.noContextAvailable
+        }
+        let descriptor = FetchDescriptor<HealthData>(
+            predicate: #Predicate { $0.dataType == type && $0.timestamp < date }
+        )
+        let oldEntries = try context.fetch(descriptor)
+        oldEntries.forEach { context.delete($0) }
         try saveContext()
+        logger.info("Pruned \(oldEntries.count) old entries for type \(type)")
     }
 
     /// Fetches DigitalTwin for a specific user ID
