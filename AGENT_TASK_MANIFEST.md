@@ -17,20 +17,25 @@
 ### Required Workflow Fixes:
 **BEFORE starting any task:**
 - Always check current git status: `git status`
-- Ensure you're on the correct branch: `git branch`
-- If not on a feature branch, create one: `git checkout -b feature/task-X-description`
+- Ensure you're on the main branch: `git checkout main`
+- Pull latest changes: `git pull origin main`
 
 **AFTER completing each task:**
 - Stage all changes: `git add .`
 - Commit with descriptive message: `git commit -m "Task X: [Description] - Complete"`
-- Push to remote: `git push --set-upstream origin feature/task-X-description`
+- Push to main: `git push origin main`
 - **CRITICAL**: Update this file to mark task as complete: `[x]` instead of `[ ]`
-- Create PR on GitHub (if automated PR creation fails, do it manually)
 
 **If GitHub push fails:**
 - Check remote: `git remote -v`
-- Try: `git push origin feature/task-X-description`
+- Try: `git push origin main`
 - If still fails, save work locally and notify user
+
+**⚠️ SIMPLIFIED WORKFLOW:**
+- **NO feature branches needed** - work directly on main
+- **NO pull requests required** - direct commits to main
+- **Faster workflow** - less complexity for agents
+- **Easier management** - single branch to track
 
 **🚨 CRITICAL: If Agent Gets Stuck or Confused**
 
@@ -64,8 +69,8 @@
 5. **Task Completion:**
    - [ ] **ALWAYS complete the GitHub integration steps**
    - [ ] **ALWAYS mark the task as complete** in this file
-   - [ ] **ALWAYS create the PR** even if some parts are incomplete
-   - [ ] **ADD a note** in the PR description about what was skipped
+   - [ ] **ALWAYS push to main** even if some parts are incomplete
+   - [ ] **ADD a note** in the commit message about what was skipped
 
 **Example AGENT_CONFUSION_LOG.md entry:**
 ```markdown
@@ -140,11 +145,12 @@
 - **Estimated Time**: 45 minutes
 - **Priority**: High
 - **Description**: Conduct comprehensive performance benchmarking and optimization
-- **Branch Name**: `feature/task-27-performance-benchmarking`
+
 
 **STEP-BY-STEP CHECKLIST:**
 - [ ] **Setup Phase (5 min)**
-  - [ ] Create feature branch: `git checkout -b feature/task-27-performance-benchmarking`
+  - [ ] Ensure on main branch: `git checkout main`
+  - [ ] Pull latest changes: `git pull origin main`
   - [ ] Verify project builds: `xcodebuild -workspace "HealthAI 2030.xcworkspace" -scheme "HealthAI2030" build`
   - [ ] Check current performance baseline
 
@@ -175,8 +181,7 @@
 - [ ] **GitHub Integration (5 min)**
   - [ ] Stage all changes: `git add .`
   - [ ] Commit: `git commit -m "Task 27: Performance Benchmarking & Optimization - Complete"`
-  - [ ] Push: `git push --set-upstream origin feature/task-27-performance-benchmarking`
-  - [ ] Create PR on GitHub with title: "Task 27: Performance Benchmarking & Optimization"
+  - [ ] Push: `git push origin main`
   - [ ] Mark task as complete in this file: `[x]` instead of `[ ]`
 
 **🚨 If Confused or Stuck:**
