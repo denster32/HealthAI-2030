@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- CloudKit Configuration -->
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
+		<string>CloudDocuments</string>
+	</array>
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.com.healthai2030.HealthAI2030</string>
+	</array>
+	
+	<!-- HealthKit -->
+	<key>com.apple.developer.healthkit</key>
+	<true/>
+	<key>com.apple.developer.healthkit.access</key>
+	<array>
+		<string>health-records</string>
+	</array>
+	
+	<!-- App Groups for Cross-Device Sync and Extensions -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.healthai2030.shared</string>
+		<string>group.com.healthai2030.widgets</string>
+		<string>group.com.healthai2030.notifications</string>
+		<string>group.com.healthai2030.shortcuts</string>
+		<string>group.com.healthai2030.watch</string>
+	</array>
+	
+	<!-- Background App Refresh -->
+	<key>com.apple.developer.background-modes</key>
+	<array>
+		<string>background-fetch</string>
+		<string>background-processing</string>
+		<string>remote-notification</string>
+		<string>background-app-refresh</string>
+	</array>
+	
+	<!-- Keychain Sharing -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.healthai2030.HealthAI2030</string>
+		<string>$(AppIdentifierPrefix)group.com.healthai2030.shared</string>
+		<string>$(AppIdentifierPrefix)group.com.healthai2030.widgets</string>
+		<string>$(AppIdentifierPrefix)group.com.healthai2030.notifications</string>
+		<string>$(AppIdentifierPrefix)group.com.healthai2030.shortcuts</string>
+		<string>$(AppIdentifierPrefix)group.com.healthai2030.watch</string>
+	</array>
+	
+	<!-- Push Notifications -->
+	<key>com.apple.developer.aps-environment</key>
+	<string>development</string>
+	
+	<!-- Network Extensions for Sync -->
+	<key>com.apple.developer.networking.networkextension</key>
+	<array>
+		<string>app-proxy-provider</string>
+	</array>
+	
+	<!-- Core ML and Neural Engine Access -->
+	<key>com.apple.developer.coreml.private-model-access</key>
+	<true/>
+	
+	<!-- Associated Domains for Universal Links -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:healthai2030.com</string>
+		<string>applinks:sync.healthai2030.com</string>
+		<string>applinks:api.healthai2030.com</string>
+	</array>
+	
+	<!-- Siri Integration -->
+	<key>com.apple.developer.siri</key>
+	<true/>
+	
+	<!-- App Clips -->
+	<key>com.apple.developer.parent-application-identifiers</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.healthai2030.HealthAI2030</string>
+	</array>
+	
+	<!-- Family Controls -->
+	<key>com.apple.developer.family-controls</key>
+	<true/>
+	
+	<!-- Focus Status -->
+	<key>com.apple.developer.focus-status</key>
+	<true/>
+	
+	<!-- Live Activities -->
+	<key>com.apple.developer.usernotifications.time-sensitive</key>
+	<true/>
+	
+	<!-- App Attest -->
+	<key>com.apple.developer.devicecheck.appattest-environment</key>
+	<string>development</string>
+</dict>
+</plist>
