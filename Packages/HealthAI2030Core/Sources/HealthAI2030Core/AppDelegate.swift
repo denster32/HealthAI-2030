@@ -5,7 +5,6 @@ import HealthKit
 import CoreData
 import BackgroundTasks
 import WidgetKit // Import WidgetKit
-import Sentry
 
 #if canImport(WatchConnectivity)
 import WatchConnectivity

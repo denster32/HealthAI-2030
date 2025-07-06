@@ -17,7 +17,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(path: "../../Apps/Packages/HealthAI2030Core")
+        .package(path: "../HealthAI2030Core")
     ],
     targets: [
         .target(

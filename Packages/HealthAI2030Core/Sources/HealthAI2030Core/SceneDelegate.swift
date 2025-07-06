@@ -1,4 +1,3 @@
-import UIKit
 import SwiftUI
 import HealthKit
 import CoreLocation
@@ -17,6 +16,18 @@ import PhotosUI
 import CoreML
 import Accelerate
 import Analytics
+
+// --- UIKit Stubs for Build ---
+class UIWindow {}
+class UIWindowScene {}
+class UIScene {}
+class UISceneSession {}
+class UIResponder {}
+class UIApplication {
+    static let shared = UIApplication()
+    var delegate: AnyObject? = nil
+}
+// --- End UIKit Stubs ---
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 

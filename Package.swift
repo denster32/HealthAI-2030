@@ -117,7 +117,8 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.2.0")
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.2.0"),
+        .package(path: "Apps/MainApp/Packages/HealthAI2030Analytics")
     ],
     targets: [
         .target(
@@ -147,13 +148,14 @@ let package = Package(
                 "SharedSettingsModule",
                 "HealthAIConversationalEngine",
                 "Kit",
-                "SharedHealthSummary"
+                "SharedHealthSummary",
+                .product(name: "HealthAI2030Analytics", package: "HealthAI2030Analytics")
             ],
             path: "Sources/HealthAI2030"
         ),
         .target(
             name: "HealthAI2030Core",
-            dependencies: [],
+            dependencies: [.product(name: "HealthAI2030Analytics", package: "HealthAI2030Analytics")],
             path: "Packages/HealthAI2030Core/Sources"
         ),
         .target(

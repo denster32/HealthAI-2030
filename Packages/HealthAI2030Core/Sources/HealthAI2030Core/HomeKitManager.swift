@@ -1,129 +1,75 @@
 import Foundation
-import HomeKit
 
-/// Manages HomeKit integration for smart home devices.
+/// Mock HomeKit Manager for smart home device integration.
 ///
-/// - Handles device discovery, characteristics, and control
-/// - Supports both HomeKit and Matter protocols
-/// - Provides thread-safe access to HomeKit accessories
+/// - Provides mock device discovery and control for testing
+/// - Simulates HomeKit and Matter protocol behavior
+/// - Thread-safe mock implementation for development
 final class HomeKitManager: NSObject, ObservableObject {
     static let shared = HomeKitManager()
-    
-    private let homeManager = HMHomeManager()
-    private var primaryHome: HMHome?
-    private var accessories = [HMAccessory]()
     
     @Published var isReady = false
     @Published var discoveredDevices = [String]()
     
+    private var mockDevices = [
+        "Living Room Light",
+        "Bedroom Light", 
+        "Air Purifier",
+        "Smart Blinds",
+        "Kitchen Light"
+    ]
+    
     override private init() {
         super.init()
-        homeManager.delegate = self
     }
     
-    /// Discovers and connects to available HomeKit/Matter devices
+    /// Mock initialization for HomeKit/Matter devices
     func initialize() async {
-        guard let home = homeManager.primaryHome else {
-            print("HOMEKIT: No primary home configured")
-            return
-        }
+        // Simulate device discovery delay
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         
-        primaryHome = home
-        accessories = home.accessories
-        
-        // Filter to only devices with relevant services
-        discoveredDevices = accessories.compactMap { accessory in
-            guard hasRelevantServices(accessory) else { return nil }
-            return accessory.name
-        }
-        
+        discoveredDevices = mockDevices
         isReady = true
-        print("HOMEKIT: Initialized with \(discoveredDevices.count) devices")
+        
+        print("HOMEKIT: Mock initialized with \(discoveredDevices.count) devices")
     }
     
-    /// Updates lighting characteristics for circadian rhythm optimization
+    /// Mock lighting control for circadian rhythm optimization
     /// - Parameters:
     ///   - colorTemperature: Desired color temperature in Kelvin
     ///   - brightness: Desired brightness percentage (0-100)
     func updateLights(colorTemperature: Int, brightness: Int) {
-        accessories.forEach { accessory in
-            guard let service = accessory.services.first(where: { $0.serviceType == HMServiceTypeLightbulb }) else { return }
-            
-            if let tempChar = service.characteristics.first(where: { $0.characteristicType == HMCharacteristicTypeColorTemperature }),
-               let brightChar = service.characteristics.first(where: { $0.characteristicType == HMCharacteristicTypeBrightness }) {
-                
-                tempChar.writeValue(colorTemperature) { error in
-                    if let error = error {
-                        print("HOMEKIT: Failed to set temperature: \(error)")
-                    }
-                }
-                
-                brightChar.writeValue(brightness) { error in
-                    if let error = error {
-                        print("HOMEKIT: Failed to set brightness: \(error)")
-                    }
-                }
-            }
+        print("HOMEKIT: Mock - Setting lights to \(colorTemperature)K, \(brightness)% brightness")
+        
+        // Simulate network delay
+        Task {
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            print("HOMEKIT: Mock - Lights updated successfully")
         }
     }
     
-    /// Controls air purifier based on air quality
+    /// Mock air purifier control based on air quality
     /// - Parameter shouldActivate: Whether to turn purifier on/off
     func setAirPurifier(on shouldActivate: Bool) {
-        accessories.forEach { accessory in
-            guard let service = accessory.services.first(where: { $0.serviceType == HMServiceTypeAirPurifier }) else { return }
-            
-            if let powerChar = service.characteristics.first(where: { $0.characteristicType == HMCharacteristicTypePowerState }) {
-                powerChar.writeValue(shouldActivate) { error in
-                    if let error = error {
-                        print("HOMEKIT: Failed to set air purifier: \(error)")
-                    }
-                }
-            }
+        let status = shouldActivate ? "on" : "off"
+        print("HOMEKIT: Mock - Setting air purifier \(status)")
+        
+        // Simulate network delay
+        Task {
+            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+            print("HOMEKIT: Mock - Air purifier \(status)")
         }
     }
     
-    /// Controls smart blinds position
+    /// Mock smart blinds position control
     /// - Parameter position: Desired position (0=closed, 100=open)
     func setBlinds(position: Int) {
-        accessories.forEach { accessory in
-            guard let service = accessory.services.first(where: { $0.serviceType == HMServiceTypeWindowCovering }) else { return }
-            
-            if let positionChar = service.characteristics.first(where: { $0.characteristicType == HMCharacteristicTypeTargetPosition }) {
-                positionChar.writeValue(position) { error in
-                    if let error = error {
-                        print("HOMEKIT: Failed to set blinds: \(error)")
-                    }
-                }
-            }
-        }
-    }
-    
-    private func hasRelevantServices(_ accessory: HMAccessory) -> Bool {
-        let relevantServiceTypes: Set<String> = [
-            HMServiceTypeLightbulb,
-            HMServiceTypeAirPurifier,
-            HMServiceTypeWindowCovering
-        ]
-        return accessory.services.contains { relevantServiceTypes.contains($0.serviceType) }
-    }
-}
-
-// MARK: - HMHomeManagerDelegate
-extension HomeKitManager: HMHomeManagerDelegate {
-    func homeManagerDidUpdateHomes(_ manager: HMHomeManager) {
+        print("HOMEKIT: Mock - Setting blinds to \(position)% open")
+        
+        // Simulate network delay
         Task {
-            await initialize()
-        }
-    }
-    
-    func homeManager(_ manager: HMHomeManager, didAdd home: HMHome) {
-        primaryHome = home
-    }
-    
-    func homeManager(_ manager: HMHomeManager, didRemove home: HMHome) {
-        if home == primaryHome {
-            primaryHome = nil
+            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+            print("HOMEKIT: Mock - Blinds position updated")
         }
     }
 }

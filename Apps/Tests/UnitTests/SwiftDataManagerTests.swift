@@ -126,8 +126,9 @@ final class SwiftDataManagerTests: XCTestCase {
     // MARK: - Concurrency Tests
     
     func testConcurrentSaves() async throws {
+        let numberOfModels = 10_000 // Increased for stress testing
         await withTaskGroup(of: Void.self) { group in
-            for i in 0..<100 {
+            for i in 0..<numberOfModels {
                 group.addTask {
                     let model = TestModel(name: "Concurrent-\(i)", value: i)
                     try? await self.manager.save(model)
@@ -136,7 +137,48 @@ final class SwiftDataManagerTests: XCTestCase {
         }
         
         let allModels = try await manager.fetchAll(TestModel.self)
-        XCTAssertEqual(allModels.count, 100)
+        XCTAssertEqual(allModels.count, numberOfModels) // Verify all models are saved
+        
+        // Basic data integrity check
+        let fetchedModel = try await manager.fetch(predicate: #Predicate { $0.name == "Concurrent-5000" })
+        XCTAssertFalse(fetchedModel.isEmpty)
+        XCTAssertEqual(fetchedModel.first?.value, 5000)
+    }
+    
+    func testConcurrentUpdatesAndDeletes() async throws {
+        let initialModels = 5_000
+        for i in 0..<initialModels {
+            try await manager.save(TestModel(name: "Initial-\(i)", value: i))
+        }
+        
+        let modelsToUpdate = try await manager.fetchAll(TestModel.self)
+        XCTAssertEqual(modelsToUpdate.count, initialModels)
+        
+        let numberOfConcurrentOps = 5_000
+        await withTaskGroup(of: Void.self) { group in
+            for i in 0..<numberOfConcurrentOps {
+                group.addTask {
+                    if i % 2 == 0 { // Concurrently update some models
+                        if let model = modelsToUpdate.randomElement() {
+                            model.name = "Updated-\(i)"
+                            try? await self.manager.update(model)
+                        }
+                    } else { // Concurrently delete others
+                        if let model = modelsToUpdate.randomElement() {
+                            try? await self.manager.delete(model)
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Verify remaining models and their integrity (approximate count due to random deletes/updates)
+        let remainingModels = try await manager.fetchAll(TestModel.self)
+        XCTAssertLessThanOrEqual(remainingModels.count, initialModels)
+        
+        // Attempt to fetch a few updated models to ensure consistency
+        let updatedModel = try await manager.fetch(predicate: #Predicate { $0.name.contains("Updated") })
+        XCTAssertFalse(updatedModel.isEmpty, "Should have some updated models remaining")
     }
     
     func testThreadSafety() async throws {

@@ -1471,7 +1471,7 @@ struct OptimizationStatusSection: View {
         case .optimizing: return "Optimizing"
         case .optimized: return "Optimized"
         case .paused: return "Paused"
-        case .error(let message): return "Error: \(message)"
+        case .error: return "Error"
         }
     }
     
@@ -1877,7 +1877,3 @@ extension OptimizationType {
 #Preview {
     PerformanceOptimizationView()
 }
-
-<function_calls>
-<invoke name="TodoWrite">
-<parameter name="todos">[{"id": "1", "content": "Implement tvOS Spatial Audio Zones for immersive biofeedback meditation environments", "status": "completed", "priority": "high"}, {"id": "2", "content": "Create adaptive fractal visualizations using Metal and RealityKit frameworks", "status": "completed", "priority": "high"}, {"id": "3", "content": "Implement Siri Remote motion gestures for spatial health data navigation", "status": "completed", "priority": "high"}, {"id": "4", "content": "Enable Picture-in-Picture mode for continuous health metrics display", "status": "completed", "priority": "medium"}, {"id": "5", "content": "Implement multi-user group meditation and fitness data sync", "status": "completed", "priority": "medium"}, {"id": "6", "content": "Integrate Continuous Live Activities API for real-time health updates", "status": "completed", "priority": "medium"}, {"id": "7", "content": "Ensure tvOS Privacy Manifest v3 compliance for biometric data", "status": "completed", "priority": "high"}, {"id": "8", "content": "Implement on-device ML for adaptive content delivery on large screens", "status": "completed", "priority": "medium"}, {"id": "9", "content": "Create seamless cross-device integration with iCloud syncing", "status": "completed", "priority": "medium"}, {"id": "10", "content": "Optimize rendering and data-fetching for high performance on tvOS", "status": "completed", "priority": "high"}]

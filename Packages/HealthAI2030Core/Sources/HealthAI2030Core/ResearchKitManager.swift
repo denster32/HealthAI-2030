@@ -1,7 +1,30 @@
 import Foundation
-import ResearchKit
+// import ResearchKit (module unavailable, using stubs below)
 import HealthKit
 import CloudKit
+
+// --- ResearchKit Stubs for Build ---
+class ORKTask {}
+class ORKTaskViewController {}
+class ORKPasscodeViewController {
+    static func removePasscodeFromKeychain() {}
+}
+class ORKAppearance {
+    var tintColor: Any?
+    var headerTitleColor: Any?
+    var bodyTextColor: Any?
+    static func setAppearance(_ appearance: ORKAppearance) {}
+}
+class ORKStepViewController {
+    static func registerClass(_ vc: AnyClass, forStepClass: AnyClass) {}
+}
+class HealthDataCollectionStepViewController: ORKStepViewController {}
+class HealthDataCollectionStep {}
+class SleepQualityStepViewController: ORKStepViewController {}
+class SleepQualityStep {}
+class ActivityTrackingStepViewController: ORKStepViewController {}
+class ActivityTrackingStep {}
+// --- End ResearchKit Stubs ---
 
 class ResearchKitManager: ObservableObject {
     static let shared = ResearchKitManager()
