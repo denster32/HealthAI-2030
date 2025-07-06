@@ -73,7 +73,8 @@ struct HealthAI2030MacOSApp: App {
     
     private func setupDataSync() {
         // Setup CloudKit sync
-        // TODO: Implement CloudKit sync manager
+        let syncManager = UnifiedCloudKitSyncManager(container: container)
+        syncManager.startSync()
     }
     
     // MARK: - App Lifecycle
@@ -124,7 +125,43 @@ struct HealthAI2030MacOSApp: App {
     
     private func refreshData() {
         // Refresh health data from HealthKit
-        // TODO: Implement HealthKit data refresh
+        let healthKitManager = HealthKitManager()
+        healthKitManager.requestAuthorization { success, error in
+            if success {
+                healthKitManager.fetchRecentHealthData { data, fetchError in
+                    if let data = data {
+                        // Update SwiftData with new health data
+                        self.updateHealthData(data)
+                    } else if let fetchError = fetchError {
+                        print("Error fetching health data: \(fetchError.localizedDescription)")
+                    }
+                }
+            } else if let error = error {
+                print("HealthKit authorization failed: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    private func updateHealthData(_ data: [HKSample]) {
+        let context = container.mainContext
+        
+        for sample in data {
+            if let quantitySample = sample as? HKQuantitySample {
+                let healthData = HealthData(context: context)
+                healthData.type = quantitySample.quantityType.identifier
+                healthData.value = quantitySample.quantity.doubleValue(for: .count())
+                healthData.date = quantitySample.startDate
+                healthData.source = quantitySample.sourceRevision.source.name
+            }
+            // Handle other sample types as needed
+        }
+        
+        do {
+            try context.save()
+            print("Health data updated successfully")
+        } catch {
+            print("Error saving health data: \(error.localizedDescription)")
+        }
     }
 }
 
@@ -146,11 +183,12 @@ struct MacOSContentView: View {
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button("Sync") {
-                    // TODO: Trigger data sync
+                    // TODO: Implement sync trigger through a shared service or notification
+                    print("Sync functionality to be implemented")
                 }
                 
                 Button("Settings") {
-                    // TODO: Show settings
+                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
                 }
             }
         }
