@@ -80,12 +80,12 @@
       - Files within `Apps/MainApp/Services/`
     - [x] After modifications, run `swift build` and `swift test` to ensure no new errors are introduced.
     - [x] Commit logging changes with a descriptive message.
-  - [ ] **Subtask 1.2.2**: **Establish Metrics Dashboard (Conceptual for agent)**:
-    - [ ] **Note to Agent**: This step primarily involves setting up external tools (log aggregation, APM). Your role is to ensure the *application emits the necessary data* for such a dashboard.
-    - [ ] Research common log aggregation and APM (Application Performance Monitoring) services compatible with Swift/iOS applications (e.g., Datadog, Firebase Crashlytics/Performance Monitoring, Splunk, ELK Stack).
-    - [ ] **Plan (Do NOT implement external tools)**: Document the *types* of metrics that should be collected (e.g., app launch time, API response times, crash rates, memory usage, CPU usage for Quantum/Federated engines).
-    - [ ] Add comments or a temporary markdown file (e.g., `METRICS_PLAN.md`) detailing how these metrics *could be collected* from the application (e.g., custom `OSLog` events, `PerformanceMonitor` events).
-    - [ ] Mark this task complete in this manifest.
+  - [x] **Subtask 1.2.2**: **Establish Metrics Dashboard (Conceptual for agent)**:
+    - [x] **Note to Agent**: This step primarily involves setting up external tools (log aggregation, APM). Your role is to ensure the *application emits the necessary data* for such a dashboard.
+    - [x] Research common log aggregation and APM (Application Performance Monitoring) services compatible with Swift/iOS applications (e.g., Datadog, Firebase Crashlytics/Performance Monitoring, Splunk, ELK Stack).
+    - [x] **Plan (Do NOT implement external tools)**: Document the *types* of metrics that should be collected (e.g., app launch time, API response times, crash rates, memory usage, CPU usage for Quantum/Federated engines).
+    - [x] Add comments or a temporary markdown file (e.g., `METRICS_PLAN.md`) outlining how these metrics *could be collected* from the application (e.g., custom `OSLog` events, `PerformanceMonitor` events).
+    - [x] Mark this task complete in this manifest.
 
 - [ ] **Roadmap Task 1.3**: DocC Generation Enforcement in CI/CD
   - [ ] **Subtask 1.3.1**: Open `.github/workflows/ci-cd-pipeline.yml` for editing.
