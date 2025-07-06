@@ -1,0 +1,72 @@
+# Branch Protection Rules for HealthAI 2030
+# This file defines the protection rules for main branches
+
+branches:
+  - name: main
+    protection:
+      required_status_checks:
+        strict: true
+        contexts:
+          - "Code Quality & Linting"
+          - "Security Scan"
+          - "Unit Tests"
+          - "Integration Tests"
+          - "UI Tests"
+          - "Build & Archive"
+          - "Performance Tests"
+          - "Generate Documentation"
+      enforce_admins: true
+      required_pull_request_reviews:
+        required_approving_review_count: 2
+        dismiss_stale_reviews: true
+        require_code_owner_reviews: true
+        require_last_push_approval: true
+      restrictions:
+        users: []
+        teams: []
+      required_linear_history: true
+      allow_force_pushes: false
+      allow_deletions: false
+      block_creations: true
+      required_conversation_resolution: true
+      
+  - name: develop
+    protection:
+      required_status_checks:
+        strict: true
+        contexts:
+          - "Quick Lint Check"
+          - "Quick Build Check"
+          - "Quick Test Check"
+          - "Security Quick Scan"
+      enforce_admins: false
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+        dismiss_stale_reviews: true
+        require_code_owner_reviews: false
+        require_last_push_approval: false
+      restrictions:
+        users: []
+        teams: []
+      required_linear_history: false
+      allow_force_pushes: false
+      allow_deletions: false
+      block_creations: false
+      required_conversation_resolution: false
+
+# Code Owners configuration
+codeowners:
+  - path: "Apps/MainApp/"
+    owners: ["@healthai-team/core"]
+  - path: "Frameworks/"
+    owners: ["@healthai-team/frameworks"]
+  - path: "Modules/"
+    owners: ["@healthai-team/modules"]
+  - path: "docs/"
+    owners: ["@healthai-team/documentation"]
+  - path: ".github/"
+    owners: ["@healthai-team/devops"]
+  - path: "*.yml"
+    owners: ["@healthai-team/devops"]
+  - path: "*.yaml"
+    owners: ["@healthai-team/devops"] 

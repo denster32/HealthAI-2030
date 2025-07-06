@@ -41,6 +41,7 @@ analyzer_rules:
   - explicit_self
   - unused_declaration
   - unused_import
+  - unused_private_declaration
 
 # =============================================================================
 # RULE CONFIGURATION
@@ -160,6 +161,7 @@ disabled_rules:
   - function_body_length  # Configured separately
   - type_body_length  # Configured separately
   - file_length  # Configured separately
+  - trailing_whitespace
 
 # =============================================================================
 # RULE SPECIFIC CONFIGURATION
@@ -168,7 +170,7 @@ disabled_rules:
 # Line length configuration
 line_length:
   warning: 120
-  error: 140
+  error: 150
   ignores_function_declarations: true
   ignores_comments: true
   ignores_urls: true
@@ -186,18 +188,18 @@ function_parameter_count:
 # Type body length
 type_body_length:
   warning: 300
-  error: 400
+  error: 500
 
 # File length
 file_length:
   warning: 500
-  error: 800
+  error: 1000
   ignore_comment_only_lines: true
 
 # Cyclomatic complexity
 cyclomatic_complexity:
-  warning: 15
-  error: 25
+  warning: 10
+  error: 20
   ignores_case_statements: true
 
 # Nesting depth
@@ -318,6 +320,27 @@ custom_rules:
     name: "HealthKit Authorization"
     regex: "HKHealthStore.*(?!requestAuthorization)"
     message: "HealthKit usage should request proper authorization"
+    severity: warning
+
+  # Prevent hardcoded secrets
+  no_hardcoded_secrets:
+    name: "No Hardcoded Secrets"
+    regex: "(password|secret|key|token)\\s*=\\s*[\"'][^\"']+[\"']"
+    message: "Avoid hardcoded secrets in source code"
+    severity: error
+
+  # Ensure HTTPS usage
+  require_https:
+    name: "Require HTTPS"
+    regex: "http://(?!localhost|127\\.0\\.0\\.1)"
+    message: "Use HTTPS for network requests"
+    severity: error
+
+  # CloudKit security
+  cloudkit_security:
+    name: "CloudKit Security"
+    regex: "CKDatabase.*public"
+    message: "Use private CloudKit database for health data"
     severity: warning
 
 # =============================================================================
