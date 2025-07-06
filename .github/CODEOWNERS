@@ -1,0 +1,45 @@
+# Code Owners for HealthAI 2030
+# This file defines who is responsible for different parts of the codebase
+
+# Core application team
+/Apps/MainApp/ @healthai-team/core
+/Apps/HealthAI2030App/ @healthai-team/core
+
+# Framework teams
+/Frameworks/HealthAI2030UI/ @healthai-team/frameworks
+/Frameworks/HealthAI2030Core/ @healthai-team/core
+
+# Module teams
+/Modules/Core/ @healthai-team/core
+/Modules/Advanced/ @healthai-team/modules
+/Modules/Features/ @healthai-team/modules
+
+# Documentation
+/docs/ @healthai-team/documentation
+*.md @healthai-team/documentation
+
+# DevOps and CI/CD
+/.github/ @healthai-team/devops
+*.yml @healthai-team/devops
+*.yaml @healthai-team/devops
+.swiftlint.yml @healthai-team/devops
+
+# Configuration files
+*.xcconfig @healthai-team/devops
+*.plist @healthai-team/core
+
+# Tests
+*Tests/ @healthai-team/qa
+*UITests/ @healthai-team/qa
+
+# Scripts
+/Scripts/ @healthai-team/devops
+*.sh @healthai-team/devops
+
+# Dependencies
+Package.swift @healthai-team/devops
+Package.resolved @healthai-team/devops
+
+# Project files
+*.xcodeproj/ @healthai-team/devops
+*.xcworkspace/ @healthai-team/devops 

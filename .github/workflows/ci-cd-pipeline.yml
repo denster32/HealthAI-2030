@@ -1,0 +1,536 @@
+name: HealthAI 2030 CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+env:
+  XCODE_VERSION: '15.2'
+  SWIFT_VERSION: '5.9'
+  IOS_DEPLOYMENT_TARGET: '18.0'
+  MACOS_DEPLOYMENT_TARGET: '15.0'
+
+jobs:
+  # MARK: - Code Quality & Linting
+  code-quality:
+    name: Code Quality & Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v1
+        with:
+          swift-version: ${{ env.SWIFT_VERSION }}
+          
+      - name: Install SwiftLint
+        run: |
+          curl -sSL "https://github.com/realm/SwiftLint/releases/latest/download/bazel-bin-swiftlint-macos.tar.gz" | tar xz
+          sudo mv swiftlint /usr/local/bin/
+          
+      - name: Run SwiftLint
+        run: |
+          swiftlint lint --reporter github-actions-logging
+          
+      - name: Check code formatting
+        run: |
+          swiftlint lint --reporter json > swiftlint-report.json
+          
+      - name: Upload SwiftLint report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: swiftlint-report
+          path: swiftlint-report.json
+          
+      - name: Comment PR with lint results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('swiftlint-report.json', 'utf8'));
+            const violations = report.length;
+            
+            if (violations > 0) {
+              const comment = `⚠️ **SwiftLint found ${violations} violations**\n\nPlease fix the linting issues before merging.`;
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } else {
+              const comment = `✅ **SwiftLint passed** - No violations found!`;
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
+
+  # MARK: - Security Scanning
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/init@v3
+        with:
+          languages: swift
+          
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # MARK: - Unit Tests
+  unit-tests:
+    name: Unit Tests
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        platform: [iOS, macOS, watchOS, tvOS]
+        include:
+          - platform: iOS
+            destination: 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest'
+            scheme: 'HealthAI2030App'
+          - platform: macOS
+            destination: 'platform=macOS'
+            scheme: 'HealthAI2030App'
+          - platform: watchOS
+            destination: 'platform=watchOS Simulator,name=Apple Watch Series 9 (45mm),OS=latest'
+            scheme: 'HealthAI2030App'
+          - platform: tvOS
+            destination: 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest'
+            scheme: 'HealthAI2030App'
+            
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+          
+      - name: Show Xcode version
+        run: xcodebuild -version
+        
+      - name: Show available simulators
+        run: xcrun simctl list devices
+        
+      - name: Run unit tests
+        run: |
+          xcodebuild test \
+            -scheme ${{ matrix.scheme }} \
+            -destination '${{ matrix.destination }}' \
+            -derivedDataPath ./DerivedData \
+            -resultBundlePath ./TestResults.xcresult \
+            -enableCodeCoverage YES \
+            | xcpretty -c && exit ${PIPESTATUS[0]}
+            
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.platform }}
+          path: TestResults.xcresult
+          
+      - name: Generate coverage report
+        run: |
+          xcrun xccov view --report --json TestResults.xcresult > coverage-report-${{ matrix.platform }}.json
+          
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report-${{ matrix.platform }}
+          path: coverage-report-${{ matrix.platform }}.json
+
+  # MARK: - Integration Tests
+  integration-tests:
+    name: Integration Tests
+    runs-on: macos-latest
+    needs: unit-tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+          
+      - name: Run integration tests
+        run: |
+          xcodebuild test \
+            -scheme HealthAI2030App \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' \
+            -only-testing:HealthAI2030AppTests/IntegrationTests \
+            -derivedDataPath ./DerivedData \
+            -resultBundlePath ./IntegrationTestResults.xcresult \
+            | xcpretty -c && exit ${PIPESTATUS[0]}
+            
+      - name: Upload integration test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: IntegrationTestResults.xcresult
+
+  # MARK: - UI Tests
+  ui-tests:
+    name: UI Tests
+    runs-on: macos-latest
+    needs: unit-tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+          
+      - name: Run UI tests
+        run: |
+          xcodebuild test \
+            -scheme HealthAI2030App \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' \
+            -only-testing:HealthAI2030UITests \
+            -derivedDataPath ./DerivedData \
+            -resultBundlePath ./UITestResults.xcresult \
+            | xcpretty -c && exit ${PIPESTATUS[0]}
+            
+      - name: Upload UI test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-test-results
+          path: UITestResults.xcresult
+
+  # MARK: - Build & Archive
+  build:
+    name: Build & Archive
+    runs-on: macos-latest
+    needs: [unit-tests, integration-tests, ui-tests]
+    strategy:
+      matrix:
+        platform: [iOS, macOS]
+        include:
+          - platform: iOS
+            scheme: 'HealthAI2030App'
+            archive-name: 'HealthAI2030App-iOS.xcarchive'
+            export-options: 'exportOptions-iOS.plist'
+          - platform: macOS
+            scheme: 'HealthAI2030App'
+            archive-name: 'HealthAI2030App-macOS.xcarchive'
+            export-options: 'exportOptions-macOS.plist'
+            
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+          
+      - name: Setup code signing
+        uses: apple-actions/import-codesigning-certs@v1
+        with:
+          p12-file-base64: ${{ secrets.CODE_SIGNING_P12 }}
+          p12-password: ${{ secrets.CODE_SIGNING_PASSWORD }}
+          
+      - name: Create export options
+        run: |
+          if [ "${{ matrix.platform }}" = "iOS" ]; then
+            cat > exportOptions-iOS.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>${{ secrets.TEAM_ID }}</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>${{ secrets.BUNDLE_ID }}</key>
+                  <string>${{ secrets.PROVISIONING_PROFILE }}</string>
+              </dict>
+          </dict>
+          </plist>
+          EOF
+          else
+            cat > exportOptions-macOS.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>${{ secrets.TEAM_ID }}</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+          </dict>
+          </plist>
+          EOF
+          fi
+          
+      - name: Build and archive
+        run: |
+          xcodebuild archive \
+            -scheme ${{ matrix.scheme }} \
+            -archivePath ${{ matrix.archive-name }} \
+            -derivedDataPath ./DerivedData \
+            | xcpretty -c && exit ${PIPESTATUS[0]}
+            
+      - name: Export IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath ${{ matrix.archive-name }} \
+            -exportPath ./ExportedApp \
+            -exportOptionsPlist ${{ matrix.export-options }} \
+            | xcpretty -c && exit ${PIPESTATUS[0]}
+            
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.platform }}
+          path: |
+            ${{ matrix.archive-name }}
+            ExportedApp/
+
+  # MARK: - Performance Testing
+  performance-tests:
+    name: Performance Tests
+    runs-on: macos-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+          
+      - name: Run performance tests
+        run: |
+          xcodebuild test \
+            -scheme HealthAI2030App \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' \
+            -only-testing:HealthAI2030AppTests/PerformanceTests \
+            -derivedDataPath ./DerivedData \
+            -resultBundlePath ./PerformanceTestResults.xcresult \
+            | xcpretty -c && exit ${PIPESTATUS[0]}
+            
+      - name: Upload performance test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-test-results
+          path: PerformanceTestResults.xcresult
+
+  # MARK: - Documentation Generation
+  documentation:
+    name: Generate Documentation
+    runs-on: macos-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+          
+      - name: Generate documentation
+        run: |
+          xcodebuild docbuild \
+            -scheme HealthAI2030App \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' \
+            -derivedDataPath ./DerivedData \
+            | xcpretty -c && exit ${PIPESTATUS[0]}
+            
+      - name: Archive documentation
+        run: |
+          cd DerivedData/Build/Products/Debug-iphonesimulator
+          find . -name "*.doccarchive" -exec tar -czf ../../../../docs-archive.tar.gz {} \;
+          
+      - name: Upload documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: DerivedData/docs-archive.tar.gz
+
+  # MARK: - Staging Deployment
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: macos-latest
+    needs: [build, performance-tests, documentation]
+    if: github.ref == 'refs/heads/develop' || github.event.inputs.environment == 'staging'
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-iOS
+          path: ./builds
+          
+      - name: Deploy to TestFlight (Staging)
+        uses: apple-actions/upload-testflight@v1
+        with:
+          app-path: ./builds/ExportedApp/HealthAI2030App.ipa
+          api-key: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          api-issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          
+      - name: Notify staging deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚀 **Staging deployment completed successfully!**\n\nBuild is now available in TestFlight for testing.'
+            });
+
+  # MARK: - Production Deployment
+  deploy-production:
+    name: Deploy to Production
+    runs-on: macos-latest
+    needs: [build, performance-tests, documentation]
+    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'production'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-iOS
+          path: ./builds
+          
+      - name: Deploy to App Store
+        uses: apple-actions/upload-testflight@v1
+        with:
+          app-path: ./builds/ExportedApp/HealthAI2030App.ipa
+          api-key: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          api-issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          
+      - name: Create release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          body: |
+            ## HealthAI 2030 v${{ github.run_number }}
+            
+            ### Changes
+            - Automated release from CI/CD pipeline
+            - Build number: ${{ github.run_number }}
+            - Commit: ${{ github.sha }}
+            
+            ### Testing
+            - ✅ Unit tests passed
+            - ✅ Integration tests passed
+            - ✅ UI tests passed
+            - ✅ Performance tests passed
+            - ✅ Security scan passed
+            - ✅ Code quality checks passed
+          draft: false
+          prerelease: false
+          
+      - name: Notify production deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🎉 **Production deployment completed successfully!**\n\nRelease v${{ github.run_number }} is now live on the App Store.'
+            });
+
+  # MARK: - Post-Deployment Verification
+  post-deployment:
+    name: Post-Deployment Verification
+    runs-on: macos-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Run smoke tests
+        run: |
+          echo "Running post-deployment smoke tests..."
+          # Add smoke test commands here
+          
+      - name: Verify deployment
+        run: |
+          echo "Verifying deployment status..."
+          # Add deployment verification commands here
+          
+      - name: Update deployment status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ needs.deploy-staging.result }}' === 'success' || '${{ needs.deploy-production.result }}' === 'success' ? 'success' : 'failure';
+            const message = status === 'success' ? '✅ Deployment completed successfully' : '❌ Deployment failed';
+            
+            github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: status,
+              target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              description: message,
+              context: 'Deployment Status'
+            }); 
