@@ -314,4 +314,106 @@ public struct BiofeedbackSessionData {
     public let averageBreathingRate: Double
     public let averageStressLevel: Double
     public let protocol: String
+}
+
+// MARK: - Unified Biofeedback Session Types
+
+/// Unified BiofeedbackSession type for integration with spatial audio and other systems
+public struct BiofeedbackSession {
+    public let id: UUID
+    public let name: String
+    public let duration: TimeInterval
+    public let sessionType: BiofeedbackSessionType
+    public let protocol: BiofeedbackProtocol
+    
+    public init(id: UUID = UUID(), name: String, duration: TimeInterval, sessionType: BiofeedbackSessionType, protocol: BiofeedbackProtocol) {
+        self.id = id
+        self.name = name
+        self.duration = duration
+        self.sessionType = sessionType
+        self.protocol = protocol
+    }
+}
+
+public enum BiofeedbackSessionType {
+    case meditation
+    case breathingExercise
+    case stressRelief
+    case sleepPreparation
+    case performanceOptimization
+    case heartRateVariability
+}
+
+/// Audio zone configuration for spatial audio biofeedback
+public struct BiofeedbackAudioZone {
+    public let id: UUID
+    public let position: BiofeedbackSpatialPosition
+    public let audioSource: BiofeedbackAudioSource
+    public let intensityRange: ClosedRange<Float>
+    public let biofeedbackType: BiofeedbackType
+    
+    public init(id: UUID = UUID(), position: BiofeedbackSpatialPosition, audioSource: BiofeedbackAudioSource, intensityRange: ClosedRange<Float>, biofeedbackType: BiofeedbackType) {
+        self.id = id
+        self.position = position
+        self.audioSource = audioSource
+        self.intensityRange = intensityRange
+        self.biofeedbackType = biofeedbackType
+    }
+}
+
+public struct BiofeedbackSpatialPosition {
+    public let x: Float
+    public let y: Float
+    public let z: Float
+    
+    public init(x: Float, y: Float, z: Float) {
+        self.x = x
+        self.y = y
+        self.z = z
+    }
+}
+
+public struct BiofeedbackAudioSource {
+    public let fileName: String
+    public let fileExtension: String
+    public let category: BiofeedbackAudioCategory
+    
+    public init(fileName: String, fileExtension: String, category: BiofeedbackAudioCategory) {
+        self.fileName = fileName
+        self.fileExtension = fileExtension
+        self.category = category
+    }
+}
+
+public enum BiofeedbackAudioCategory {
+    case nature
+    case ambient
+    case binaural
+    case frequency
+}
+
+public enum BiofeedbackType {
+    case heartRate
+    case breathing
+    case stress
+    case coherence
+    case hrv
+    case performance
+}
+
+/// Biofeedback parameters for audio processing
+public struct BiofeedbackParameters {
+    public let heartRate: Double
+    public let breathingRate: Double
+    public let stressLevel: Double
+    public let coherenceLevel: Double
+    public let hrv: Double
+    
+    public init(heartRate: Double, breathingRate: Double, stressLevel: Double, coherenceLevel: Double, hrv: Double) {
+        self.heartRate = heartRate
+        self.breathingRate = breathingRate
+        self.stressLevel = stressLevel
+        self.coherenceLevel = coherenceLevel
+        self.hrv = hrv
+    }
 } 
