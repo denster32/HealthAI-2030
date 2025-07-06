@@ -44,28 +44,28 @@
 
 ### Phase 1: Immediate High-Impact Improvements (Focus: Automation & Visibility)
 
-- [ ] **Roadmap Task 1.1**: Integrate Automated Performance Tests into CI/CD Pipeline
-  - [ ] **Subtask 1.1.1**: Identify relevant CI/CD workflow file: `ci-cd-pipeline.yml` in `.github/workflows/`.
-  - [ ] **Subtask 1.1.2**: Open `.github/workflows/ci-cd-pipeline.yml` for editing.
-  - [ ] **Subtask 1.1.3**: Add a new job named `performance-tests` after `ui-tests`. This job should run on `macos-latest` and `needs: [unit-tests, integration-tests, ui-tests]`.
-  - [ ] **Subtask 1.1.4**: Within the `performance-tests` job, add steps to:
-    - Checkout code (`actions/checkout@v4`).
-    - Setup Xcode (`maxim-lobanov/setup-xcode@v1`, using `${{ env.XCODE_VERSION }}`).
-    - Run performance tests using `xcodebuild test` targeting the `HealthAI2030App` scheme for iOS Simulator.
-      - **Specific Command:**
+- [x] **Roadmap Task 1.1**: Integrate Automated Performance Tests into CI/CD Pipeline
+  - [x] **Subtask 1.1.1**: Identify relevant CI/CD workflow file: `ci-cd-pipeline.yml` in `.github/workflows/`.
+  - [x] **Subtask 1.1.2**: Open `.github/workflows/ci-cd-pipeline.yml` for editing.
+  - [x] **Subtask 1.1.3**: Add a new job named `performance-tests` after `ui-tests`. This job should run on `macos-latest` and `needs: [unit-tests, integration-tests, ui-tests]`.
+  - [x] **Subtask 1.1.4**: Within the `performance-tests` job, add steps to:
+    - [x] Checkout code (`actions/checkout@v4`).
+    - [x] Setup Xcode (`maxim-lobanov/setup-xcode@v1`, using `${{ env.XCODE_VERSION }}`).
+    - [x] Run performance tests using `xcodebuild test` targeting the `HealthAI2030App` scheme for iOS Simulator.
+      - [x] **Specific Command:**
         ```bash
         xcodebuild test \
           -scheme HealthAI2030App \
           -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' \
-          -only-testing:Apps/Tests/PerformanceTests \ # Assuming this is the main performance test target
+          -only-testing:HealthAI2030IntegrationTests/PerformanceTests \
           -derivedDataPath ./DerivedData \
           -resultBundlePath ./PerformanceTestResults.xcresult \
           | xcpretty -c && exit ${PIPESTATUS[0]}
         ```
-    - Upload test results as an artifact (`actions/upload-artifact@v4`). Name: `performance-test-results`. Path: `PerformanceTestResults.xcresult`.
-  - [ ] **Subtask 1.1.5**: Save and commit the changes to `.github/workflows/ci-cd-pipeline.yml`.
-  - [ ] **Subtask 1.1.6**: Push the changes to trigger the CI/CD pipeline and verify that the `performance-tests` job runs successfully.
-  - [ ] **Subtask 1.1.7**: Mark this task complete in this manifest.
+    - [x] Upload test results as an artifact (`actions/upload-artifact@v4`). Name: `performance-test-results`. Path: `PerformanceTestResults.xcresult`.
+  - [x] **Subtask 1.1.5**: Save and commit the changes to `.github/workflows/ci-cd-pipeline.yml`.
+  - [x] **Subtask 1.1.6**: Push the changes to trigger the CI/CD pipeline and verify that the `performance-tests` job runs successfully.
+  - [x] **Subtask 1.1.7**: Mark this task complete in this manifest.
 
 - [ ] **Roadmap Task 1.2**: Centralize Logging & Establish Unified Metrics Dashboard
   - [ ] **Subtask 1.2.1**: **Centralize Logging**:
