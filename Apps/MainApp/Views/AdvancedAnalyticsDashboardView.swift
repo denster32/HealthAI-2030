@@ -1,870 +1,798 @@
 import SwiftUI
 import Charts
 
-/// Advanced Analytics Dashboard
-/// Provides comprehensive health insights, trend analysis, and predictive modeling
+/// Advanced Analytics Dashboard View
+/// Provides a comprehensive analytics dashboard with customizable widgets,
+/// advanced filtering, comparison tools, and export features
 struct AdvancedAnalyticsDashboardView: View {
-    @StateObject private var analyticsManager = AdvancedAnalyticsManager()
-    @State private var selectedDimension: HealthDimension = .overall
-    @State private var selectedTimeframe: TimeInterval = 7 * 24 * 3600 // 7 days
-    @State private var showingInsightDetail = false
-    @State private var selectedInsight: HealthInsight?
-    @State private var showingRecommendationDetail = false
-    @State private var selectedRecommendation: HealthRecommendation?
     
-    private let timeframes: [(String, TimeInterval)] = [
-        ("7 Days", 7 * 24 * 3600),
-        ("30 Days", 30 * 24 * 3600),
-        ("90 Days", 90 * 24 * 3600)
-    ]
+    // MARK: - Properties
+    
+    @StateObject private var dashboardManager: AdvancedAnalyticsDashboardManager
+    @State private var showingAddWidget = false
+    @State private var showingFilters = false
+    @State private var showingComparison = false
+    @State private var showingExport = false
+    @State private var selectedWidget: DashboardWidget?
+    @State private var isEditingLayout = false
+    
+    // MARK: - Initialization
+    
+    init(healthDataManager: HealthDataManager, analyticsEngine: AnalyticsEngine, mlModelManager: MLModelManager) {
+        self._dashboardManager = StateObject(wrappedValue: AdvancedAnalyticsDashboardManager(
+            healthDataManager: healthDataManager,
+            analyticsEngine: analyticsEngine,
+            mlModelManager: mlModelManager
+        ))
+    }
+    
+    // MARK: - Body
     
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Health Overview Card
-                    HealthOverviewCard(healthScore: analyticsManager.currentHealthScore)
-                    
-                    // Dimension Selector
-                    DimensionSelectorView(selectedDimension: $selectedDimension)
-                    
-                    // Timeframe Selector
-                    TimeframeSelectorView(
-                        timeframes: timeframes,
-                        selectedTimeframe: $selectedTimeframe
-                    )
-                    
-                    // Analytics Content
-                    AnalyticsContentView(
-                        analyticsManager: analyticsManager,
-                        dimension: selectedDimension,
-                        timeframe: selectedTimeframe
-                    )
-                }
-                .padding()
+        NavigationView {
+            VStack(spacing: 0) {
+                // Header with controls
+                dashboardHeader
+                
+                // Main dashboard content
+                dashboardContent
             }
-            .navigationTitle("Health Analytics")
+            .navigationTitle("Analytics Dashboard")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: refreshAnalytics) {
-                        Image(systemName: "arrow.clockwise")
-                    }
+                    dashboardToolbar
                 }
             }
-        }
-        .onAppear {
-            analyticsManager.startAnalytics()
-        }
-        .onDisappear {
-            analyticsManager.stopAnalytics()
-        }
-        .sheet(isPresented: $showingInsightDetail) {
-            if let insight = selectedInsight {
-                InsightDetailView(insight: insight)
+            .sheet(isPresented: $showingAddWidget) {
+                AddWidgetView(dashboardManager: dashboardManager)
             }
-        }
-        .sheet(isPresented: $showingRecommendationDetail) {
-            if let recommendation = selectedRecommendation {
-                RecommendationDetailView(recommendation: recommendation)
+            .sheet(isPresented: $showingFilters) {
+                FilterView(dashboardManager: dashboardManager)
+            }
+            .sheet(isPresented: $showingComparison) {
+                ComparisonView(dashboardManager: dashboardManager)
+            }
+            .sheet(isPresented: $showingExport) {
+                ExportView(dashboardManager: dashboardManager)
+            }
+            .onAppear {
+                dashboardManager.loadDashboardLayout()
+                dashboardManager.refreshDashboard()
             }
         }
     }
     
-    private func refreshAnalytics() {
-        analyticsManager.startAnalytics()
-    }
-}
-
-// MARK: - Health Overview Card
-
-struct HealthOverviewCard: View {
-    let healthScore: Double
+    // MARK: - Header
     
-    var body: some View {
-        VStack(spacing: 16) {
+    private var dashboardHeader: some View {
+        VStack(spacing: 12) {
+            // Time range selector
             HStack {
-                VStack(alignment: .leading) {
-                    Text("Overall Health Score")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    
-                    Text("\(Int(healthScore * 100))")
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
-                        .foregroundColor(healthScoreColor)
+                Text("Time Range:")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                Picker("Time Range", selection: $dashboardManager.selectedTimeRange) {
+                    ForEach(TimeRange.allCases, id: \.self) { range in
+                        Text(range.displayName).tag(range)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .onChange(of: dashboardManager.selectedTimeRange) { _ in
+                    dashboardManager.refreshDashboard()
                 }
                 
                 Spacer()
                 
-                // Health Score Ring
-                ZStack {
-                    Circle()
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 8)
-                        .frame(width: 80, height: 80)
-                    
-                    Circle()
-                        .trim(from: 0, to: healthScore)
-                        .stroke(healthScoreColor, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                        .frame(width: 80, height: 80)
-                        .rotationEffect(.degrees(-90))
-                        .animation(.easeInOut(duration: 1.0), value: healthScore)
-                    
-                    Text("\(Int(healthScore * 100))")
-                        .font(.caption)
-                        .fontWeight(.semibold)
+                Button(action: {
+                    dashboardManager.refreshDashboard()
+                }) {
+                    Image(systemName: "arrow.clockwise")
+                        .foregroundColor(.blue)
                 }
+                .disabled(dashboardManager.isLoading)
             }
+            .padding(.horizontal)
             
-            // Health Level Indicator
-            HStack {
-                Text(healthLevelText)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(healthScoreColor)
-                
-                Spacer()
-                
-                Text(healthLevelDescription)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-        )
-    }
-    
-    private var healthScoreColor: Color {
-        switch healthScore {
-        case 0.0..<0.4: return .red
-        case 0.4..<0.7: return .orange
-        case 0.7..<0.9: return .yellow
-        default: return .green
-        }
-    }
-    
-    private var healthLevelText: String {
-        switch healthScore {
-        case 0.0..<0.4: return "Needs Attention"
-        case 0.4..<0.7: return "Fair"
-        case 0.7..<0.9: return "Good"
-        default: return "Excellent"
-        }
-    }
-    
-    private var healthLevelDescription: String {
-        switch healthScore {
-        case 0.0..<0.4: return "Focus on improving health habits"
-        case 0.4..<0.7: return "Room for improvement"
-        case 0.7..<0.9: return "Maintaining good health"
-        default: return "Optimal health status"
-        }
-    }
-}
-
-// MARK: - Dimension Selector
-
-struct DimensionSelectorView: View {
-    @Binding var selectedDimension: HealthDimension
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Health Dimension")
-                .font(.headline)
-                .foregroundColor(.primary)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(HealthDimension.allCases, id: \.self) { dimension in
-                        DimensionButton(
-                            dimension: dimension,
-                            isSelected: selectedDimension == dimension,
-                            action: { selectedDimension = dimension }
-                        )
-                    }
-                }
-                .padding(.horizontal)
-            }
-        }
-    }
-}
-
-struct DimensionButton: View {
-    let dimension: HealthDimension
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Text(dimension.rawValue)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundColor(isSelected ? .white : .primary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(isSelected ? Color.accentColor : Color(.systemGray6))
-                )
-        }
-    }
-}
-
-// MARK: - Timeframe Selector
-
-struct TimeframeSelectorView: View {
-    let timeframes: [(String, TimeInterval)]
-    @Binding var selectedTimeframe: TimeInterval
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Time Period")
-                .font(.headline)
-                .foregroundColor(.primary)
-            
-            HStack(spacing: 12) {
-                ForEach(timeframes, id: \.1) { timeframe in
-                    TimeframeButton(
-                        title: timeframe.0,
-                        isSelected: selectedTimeframe == timeframe.1,
-                        action: { selectedTimeframe = timeframe.1 }
-                    )
-                }
-            }
-        }
-    }
-}
-
-struct TimeframeButton: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundColor(isSelected ? .white : .primary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(isSelected ? Color.accentColor : Color(.systemGray6))
-                )
-        }
-    }
-}
-
-// MARK: - Analytics Content
-
-struct AnalyticsContentView: View {
-    @ObservedObject var analyticsManager: AdvancedAnalyticsManager
-    let dimension: HealthDimension
-    let timeframe: TimeInterval
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            // Trends Chart
-            TrendsChartView(
-                trends: analyticsManager.healthTrends,
-                dimension: dimension
-            )
-            
-            // Insights Panel
-            InsightsPanelView(
-                insights: analyticsManager.insights,
-                dimension: dimension
-            )
-            
-            // Recommendations Panel
-            RecommendationsPanelView(
-                recommendations: analyticsManager.recommendations,
-                dimension: dimension
-            )
-            
-            // Risk Assessment
-            RiskAssessmentView(
-                risks: analyticsManager.riskAssessments,
-                dimension: dimension
-            )
-        }
-    }
-}
-
-// MARK: - Trends Chart
-
-struct TrendsChartView: View {
-    let trends: [HealthTrend]
-    let dimension: HealthDimension
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Health Trends")
-                .font(.headline)
-                .foregroundColor(.primary)
-            
-            if trends.isEmpty {
-                Text("No trend data available")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding()
-            } else {
-                // Simple trend visualization
-                VStack(spacing: 12) {
-                    ForEach(trends.prefix(5), id: \.id) { trend in
-                        TrendRowView(trend: trend)
-                    }
-                }
-            }
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-        )
-    }
-}
-
-struct TrendRowView: View {
-    let trend: HealthTrend
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text(trend.metric)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
-                Text("\(String(format: "%.1f", trend.magnitude))% change")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            // Trend indicator
-            HStack(spacing: 4) {
-                Image(systemName: trendDirectionIcon)
-                    .foregroundColor(trendDirectionColor)
-                
-                Text(trend.direction.rawValue)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(trendDirectionColor)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-    
-    private var trendDirectionIcon: String {
-        switch trend.direction {
-        case .improving: return "arrow.up.right"
-        case .declining: return "arrow.down.right"
-        case .stable: return "arrow.right"
-        }
-    }
-    
-    private var trendDirectionColor: Color {
-        switch trend.direction {
-        case .improving: return .green
-        case .declining: return .red
-        case .stable: return .orange
-        }
-    }
-}
-
-// MARK: - Insights Panel
-
-struct InsightsPanelView: View {
-    let insights: [HealthInsight]
-    let dimension: HealthDimension
-    @State private var showingInsightDetail = false
-    @State private var selectedInsight: HealthInsight?
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("AI Insights")
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                Text("\(insights.count)")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color(.systemGray6))
-                    )
-            }
-            
-            if insights.isEmpty {
-                Text("No insights available")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding()
-            } else {
-                VStack(spacing: 12) {
-                    ForEach(insights.prefix(3), id: \.id) { insight in
-                        InsightCardView(insight: insight) {
-                            selectedInsight = insight
-                            showingInsightDetail = true
+            // Active filters display
+            if !dashboardManager.activeFilters.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(dashboardManager.activeFilters.indices, id: \.self) { index in
+                            FilterChip(filter: dashboardManager.activeFilters[index]) {
+                                dashboardManager.activeFilters.remove(at: index)
+                                dashboardManager.refreshDashboard()
+                            }
                         }
                     }
+                    .padding(.horizontal)
                 }
             }
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-        )
-        .sheet(isPresented: $showingInsightDetail) {
-            if let insight = selectedInsight {
-                InsightDetailView(insight: insight)
-            }
-        }
+        .padding(.vertical, 8)
+        .background(Color(.systemGroupedBackground))
     }
-}
-
-struct InsightCardView: View {
-    let insight: HealthInsight
-    let action: () -> Void
     
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text(insight.title)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    PriorityBadge(priority: insight.priority)
-                }
-                
-                Text(insight.description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-                
-                HStack {
-                    Text(insight.category.rawValue)
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color(.systemGray6))
-                        )
-                    
-                    Spacer()
-                    
-                    Text("\(Int(insight.confidence * 100))% confidence")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+    // MARK: - Dashboard Content
+    
+    private var dashboardContent: some View {
+        ScrollView {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
+                ForEach(dashboardManager.dashboardWidgets) { widget in
+                    DashboardWidgetView(
+                        widget: widget,
+                        isEditing: isEditingLayout,
+                        onRemove: {
+                            dashboardManager.removeWidget(id: widget.id)
+                        },
+                        onTap: {
+                            selectedWidget = widget
+                        }
+                    )
+                    .frame(height: widget.size.height * 200)
                 }
             }
             .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemGray6))
-            )
         }
-        .buttonStyle(PlainButtonStyle())
+        .refreshable {
+            dashboardManager.refreshDashboard()
+        }
     }
-}
-
-// MARK: - Recommendations Panel
-
-struct RecommendationsPanelView: View {
-    let recommendations: [HealthRecommendation]
-    let dimension: HealthDimension
-    @State private var showingRecommendationDetail = false
-    @State private var selectedRecommendation: HealthRecommendation?
     
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Recommendations")
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                Text("\(recommendations.count)")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color(.systemGray6))
-                    )
+    // MARK: - Toolbar
+    
+    private var dashboardToolbar: some View {
+        HStack(spacing: 16) {
+            Button(action: { showingFilters.toggle() }) {
+                Image(systemName: "line.3.horizontal.decrease.circle")
+                    .foregroundColor(dashboardManager.activeFilters.isEmpty ? .gray : .blue)
             }
             
-            if recommendations.isEmpty {
-                Text("No recommendations available")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding()
-            } else {
-                VStack(spacing: 12) {
-                    ForEach(recommendations.prefix(3), id: \.id) { recommendation in
-                        RecommendationCardView(recommendation: recommendation) {
-                            selectedRecommendation = recommendation
-                            showingRecommendationDetail = true
-                        }
-                    }
-                }
+            Button(action: { showingComparison.toggle() }) {
+                Image(systemName: "chart.bar.xaxis")
+                    .foregroundColor(dashboardManager.comparisonMode == .none ? .gray : .blue)
             }
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-        )
-        .sheet(isPresented: $showingRecommendationDetail) {
-            if let recommendation = selectedRecommendation {
-                RecommendationDetailView(recommendation: recommendation)
-            }
-        }
-    }
-}
-
-struct RecommendationCardView: View {
-    let recommendation: HealthRecommendation
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text(recommendation.title)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    PriorityBadge(priority: recommendation.priority)
-                }
-                
-                Text(recommendation.description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-                
-                HStack {
-                    Text(recommendation.category.rawValue)
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color(.systemGray6))
-                        )
-                    
-                    Spacer()
-                    
-                    Text("\(Int(recommendation.estimatedImpact * 100))% impact")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemGray6))
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
-// MARK: - Risk Assessment
-
-struct RiskAssessmentView: View {
-    let risks: [RiskAssessment]
-    let dimension: HealthDimension
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Risk Assessment")
-                .font(.headline)
-                .foregroundColor(.primary)
             
-            if risks.isEmpty {
-                Text("No risks identified")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding()
-            } else {
-                VStack(spacing: 12) {
-                    ForEach(risks.prefix(3), id: \.id) { risk in
-                        RiskCardView(risk: risk)
-                    }
+            Button(action: { showingAddWidget.toggle() }) {
+                Image(systemName: "plus.circle")
+                    .foregroundColor(.blue)
+            }
+            
+            Button(action: { isEditingLayout.toggle() }) {
+                Image(systemName: isEditingLayout ? "checkmark.circle" : "pencil.circle")
+                    .foregroundColor(isEditingLayout ? .green : .blue)
+            }
+            
+            Menu {
+                Button("Export as CSV") {
+                    showingExport = true
                 }
+                Button("Export as JSON") {
+                    showingExport = true
+                }
+                Button("Share Dashboard") {
+                    dashboardManager.shareDashboard()
+                }
+            } label: {
+                Image(systemName: "square.and.arrow.up")
+                    .foregroundColor(.blue)
             }
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-        )
     }
 }
 
-struct RiskCardView: View {
-    let risk: RiskAssessment
+// MARK: - Dashboard Widget View
+
+struct DashboardWidgetView: View {
+    let widget: DashboardWidget
+    let isEditing: Bool
+    let onRemove: () -> Void
+    let onTap: () -> Void
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            // Widget header
             HStack {
-                Text(risk.category.rawValue)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+                Text(widget.title)
+                    .font(.headline)
                     .foregroundColor(.primary)
                 
                 Spacer()
                 
-                RiskLevelBadge(level: risk.level)
+                if isEditing {
+                    Button(action: onRemove) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.red)
+                    }
+                }
             }
             
-            Text("Risk Score: \(Int(risk.score * 100))%")
+            // Widget content
+            widgetContent
+            
+            Spacer()
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(radius: 2)
+        .onTapGesture {
+            onTap()
+        }
+    }
+    
+    @ViewBuilder
+    private var widgetContent: some View {
+        switch widget.type {
+        case .healthOverview:
+            HealthOverviewWidget(data: widget.data)
+        case .activityTrends:
+            ActivityTrendsWidget(data: widget.data)
+        case .sleepAnalysis:
+            SleepAnalysisWidget(data: widget.data)
+        case .predictiveInsights:
+            PredictiveInsightsWidget(data: widget.data)
+        case .custom:
+            CustomWidget(data: widget.data)
+        }
+    }
+}
+
+// MARK: - Widget Content Views
+
+struct HealthOverviewWidget: View {
+    let data: WidgetData
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(data.subtitle)
                 .font(.caption)
                 .foregroundColor(.secondary)
             
-            if !risk.factors.isEmpty {
-                Text("Factors: \(risk.factors.joined(separator: ", "))")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-            }
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(riskLevelColor.opacity(0.1))
-        )
-    }
-    
-    private var riskLevelColor: Color {
-        switch risk.level {
-        case .low: return .green
-        case .moderate: return .orange
-        case .high: return .red
-        case .critical: return .purple
-        }
-    }
-}
-
-// MARK: - Supporting Views
-
-struct PriorityBadge: View {
-    let priority: InsightPriority
-    
-    var body: some View {
-        Text(priority.rawValue)
-            .font(.caption2)
-            .fontWeight(.medium)
-            .foregroundColor(.white)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(priorityColor)
-            )
-    }
-    
-    private var priorityColor: Color {
-        switch priority {
-        case .low: return .green
-        case .medium: return .orange
-        case .high: return .red
-        case .urgent: return .purple
-        }
-    }
-}
-
-struct RiskLevelBadge: View {
-    let level: RiskLevel
-    
-    var body: some View {
-        Text(level.rawValue)
-            .font(.caption2)
-            .fontWeight(.medium)
-            .foregroundColor(.white)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(levelColor)
-            )
-    }
-    
-    private var levelColor: Color {
-        switch level {
-        case .low: return .green
-        case .moderate: return .orange
-        case .high: return .red
-        case .critical: return .purple
-        }
-    }
-}
-
-// MARK: - Detail Views
-
-struct InsightDetailView: View {
-    let insight: HealthInsight
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Insight header
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(insight.title)
-                            .font(.title2)
-                            .fontWeight(.bold)
-                        
-                        Text(insight.description)
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                    }
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("\(Int(data.primaryValue))")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(data.color)
                     
-                    // Insight details
-                    VStack(alignment: .leading, spacing: 16) {
-                        DetailRow(title: "Category", value: insight.category.rawValue)
-                        DetailRow(title: "Priority", value: insight.priority.rawValue)
-                        DetailRow(title: "Confidence", value: "\(Int(insight.confidence * 100))%")
-                        DetailRow(title: "Actionable", value: insight.actionable ? "Yes" : "No")
-                    }
-                    
-                    if insight.actionable {
-                        // Action suggestions
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Suggested Actions")
-                                .font(.headline)
-                            
-                            Text("Based on this insight, consider taking the following actions to improve your health.")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                    }
+                    Text("Overall Score")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-                .padding()
-            }
-            .navigationTitle("Insight Details")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing) {
+                    Text("\(Int(data.secondaryValue))%")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(data.secondaryValue > 0 ? .green : .red)
+                    
+                    Text("Trend")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
-        }
-    }
-}
-
-struct RecommendationDetailView: View {
-    let recommendation: HealthRecommendation
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Recommendation header
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(recommendation.title)
-                            .font(.title2)
-                            .fontWeight(.bold)
-                        
-                        Text(recommendation.description)
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    // Recommendation details
-                    VStack(alignment: .leading, spacing: 16) {
-                        DetailRow(title: "Category", value: recommendation.category.rawValue)
-                        DetailRow(title: "Priority", value: recommendation.priority.rawValue)
-                        DetailRow(title: "Estimated Impact", value: "\(Int(recommendation.estimatedImpact * 100))%")
-                        DetailRow(title: "Actionable", value: recommendation.actionable ? "Yes" : "No")
-                    }
-                    
-                    if recommendation.actionable {
-                        // Implementation steps
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Implementation Steps")
-                                .font(.headline)
-                            
-                            Text("To implement this recommendation, consider the following steps:")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                    }
+            
+            if !data.chartData.isEmpty {
+                Chart(data.chartData) { point in
+                    LineMark(
+                        x: .value("Date", point.date),
+                        y: .value("Score", point.value)
+                    )
+                    .foregroundStyle(data.color)
                 }
-                .padding()
-            }
-            .navigationTitle("Recommendation Details")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
+                .frame(height: 60)
             }
         }
     }
 }
 
-struct DetailRow: View {
-    let title: String
-    let value: String
+struct ActivityTrendsWidget: View {
+    let data: WidgetData
     
     var body: some View {
-        HStack {
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(.medium)
+        VStack(alignment: .leading, spacing: 8) {
+            Text(data.subtitle)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("\(Int(data.primaryValue))")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(data.color)
+                    
+                    Text("Avg Steps")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing) {
+                    Text("\(Int(data.secondaryValue))%")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(data.secondaryValue > 0 ? .green : .red)
+                    
+                    Text("Change")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            if !data.chartData.isEmpty {
+                Chart(data.chartData) { point in
+                    BarMark(
+                        x: .value("Date", point.date),
+                        y: .value("Steps", point.value)
+                    )
+                    .foregroundStyle(data.color)
+                }
+                .frame(height: 60)
+            }
+        }
+    }
+}
+
+struct SleepAnalysisWidget: View {
+    let data: WidgetData
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(data.subtitle)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            HStack {
+                VStack(alignment: .leading) {
+                    Text(String(format: "%.1f", data.primaryValue))
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(data.color)
+                    
+                    Text("Hours")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing) {
+                    Text("\(Int(data.secondaryValue))%")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(data.secondaryValue > 80 ? .green : .orange)
+                    
+                    Text("Quality")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            if !data.chartData.isEmpty {
+                Chart(data.chartData) { point in
+                    AreaMark(
+                        x: .value("Date", point.date),
+                        y: .value("Hours", point.value)
+                    )
+                    .foregroundStyle(data.color.opacity(0.3))
+                    
+                    LineMark(
+                        x: .value("Date", point.date),
+                        y: .value("Hours", point.value)
+                    )
+                    .foregroundStyle(data.color)
+                }
+                .frame(height: 60)
+            }
+        }
+    }
+}
+
+struct PredictiveInsightsWidget: View {
+    let data: WidgetData
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(data.subtitle)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("\(Int(data.primaryValue))%")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(data.color)
+                    
+                    Text("Confidence")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing) {
+                    Text("\(Int(data.secondaryValue))%")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(data.secondaryValue > 0 ? .green : .red)
+                    
+                    Text("Trend")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            if !data.chartData.isEmpty {
+                Chart(data.chartData) { point in
+                    LineMark(
+                        x: .value("Date", point.date),
+                        y: .value("Prediction", point.value)
+                    )
+                    .foregroundStyle(data.color)
+                    .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 5]))
+                }
+                .frame(height: 60)
+            }
+        }
+    }
+}
+
+struct CustomWidget: View {
+    let data: WidgetData
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Custom Widget")
+                .font(.headline)
                 .foregroundColor(.primary)
             
-            Spacer()
-            
-            Text(value)
-                .font(.subheadline)
+            Text("Configure your custom widget here")
+                .font(.caption)
                 .foregroundColor(.secondary)
+            
+            Spacer()
         }
-        .padding(.vertical, 4)
     }
 }
 
-#Preview {
-    AdvancedAnalyticsDashboardView()
+// MARK: - Filter Chip
+
+struct FilterChip: View {
+    let filter: AnalyticsFilter
+    let onRemove: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(filter.name)
+                .font(.caption)
+                .foregroundColor(.primary)
+            
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.caption)
+                    .foregroundColor(.red)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color(.systemGray5))
+        .cornerRadius(12)
+    }
+}
+
+// MARK: - Add Widget View
+
+struct AddWidgetView: View {
+    @ObservedObject var dashboardManager: AdvancedAnalyticsDashboardManager
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedType: WidgetType = .healthOverview
+    @State private var widgetTitle = ""
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Widget Type") {
+                    Picker("Type", selection: $selectedType) {
+                        ForEach(WidgetType.allCases, id: \.self) { type in
+                            Text(type.displayName).tag(type)
+                        }
+                    }
+                    .pickerStyle(WheelPickerStyle())
+                }
+                
+                Section("Widget Title") {
+                    TextField("Enter widget title", text: $widgetTitle)
+                }
+            }
+            .navigationTitle("Add Widget")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Add") {
+                        let title = widgetTitle.isEmpty ? selectedType.displayName : widgetTitle
+                        dashboardManager.addWidget(type: selectedType, title: title)
+                        dismiss()
+                    }
+                    .disabled(widgetTitle.isEmpty && selectedType == .custom)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Filter View
+
+struct FilterView: View {
+    @ObservedObject var dashboardManager: AdvancedAnalyticsDashboardManager
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedMetric: HealthMetric = .heartRate
+    @State private var dateRange: ClosedRange<Date> = Date().addingTimeInterval(-86400)...Date()
+    @State private var valueRange: ClosedRange<Double> = 0...200
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Date Range") {
+                    DatePicker("Start Date", selection: Binding(
+                        get: { dateRange.lowerBound },
+                        set: { dateRange = $0...dateRange.upperBound }
+                    ), displayedComponents: .date)
+                    
+                    DatePicker("End Date", selection: Binding(
+                        get: { dateRange.upperBound },
+                        set: { dateRange = dateRange.lowerBound...$0 }
+                    ), displayedComponents: .date)
+                }
+                
+                Section("Health Metric") {
+                    Picker("Metric", selection: $selectedMetric) {
+                        ForEach(HealthMetric.allCases, id: \.self) { metric in
+                            Text(metric.rawValue.capitalized).tag(metric)
+                        }
+                    }
+                }
+                
+                Section("Value Range") {
+                    HStack {
+                        Text("Min: \(Int(valueRange.lowerBound))")
+                        Slider(value: Binding(
+                            get: { valueRange.lowerBound },
+                            set: { valueRange = $0...valueRange.upperBound }
+                        ), in: 0...200)
+                    }
+                    
+                    HStack {
+                        Text("Max: \(Int(valueRange.upperBound))")
+                        Slider(value: Binding(
+                            get: { valueRange.upperBound },
+                            set: { valueRange = valueRange.lowerBound...$0 }
+                        ), in: 0...200)
+                    }
+                }
+            }
+            .navigationTitle("Filters")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Apply") {
+                        applyFilters()
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+    
+    private func applyFilters() {
+        // Clear existing filters
+        dashboardManager.activeFilters.removeAll()
+        
+        // Add date range filter
+        let dateFilter = DateRangeFilter(
+            name: "Date Range",
+            dateRange: dateRange
+        )
+        dashboardManager.activeFilters.append(dateFilter)
+        
+        // Add metric filter
+        let metricFilter = HealthMetricFilter(
+            name: "Health Metric",
+            metric: selectedMetric
+        )
+        dashboardManager.activeFilters.append(metricFilter)
+        
+        // Add value range filter
+        let valueFilter = ValueRangeFilter(
+            name: "Value Range",
+            range: valueRange
+        )
+        dashboardManager.activeFilters.append(valueFilter)
+        
+        dashboardManager.refreshDashboard()
+    }
+}
+
+// MARK: - Comparison View
+
+struct ComparisonView: View {
+    @ObservedObject var dashboardManager: AdvancedAnalyticsDashboardManager
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedMode: ComparisonMode = .periodOverPeriod
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Comparison Mode") {
+                    Picker("Mode", selection: $selectedMode) {
+                        ForEach(ComparisonMode.allCases, id: \.self) { mode in
+                            Text(mode.displayName).tag(mode)
+                        }
+                    }
+                    .pickerStyle(WheelPickerStyle())
+                }
+                
+                Section("Description") {
+                    Text(selectedMode.description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Comparison")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Apply") {
+                        dashboardManager.comparisonMode = selectedMode
+                        dashboardManager.refreshDashboard()
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Export View
+
+struct ExportView: View {
+    @ObservedObject var dashboardManager: AdvancedAnalyticsDashboardManager
+    @Environment(\.dismiss) private var dismiss
+    @State private var exportFormat: ExportFormat = .csv
+    @State private var isExporting = false
+    
+    enum ExportFormat: String, CaseIterable {
+        case csv = "CSV"
+        case json = "JSON"
+        case image = "Image"
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Export Format") {
+                    Picker("Format", selection: $exportFormat) {
+                        ForEach(ExportFormat.allCases, id: \.self) { format in
+                            Text(format.rawValue).tag(format)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                }
+                
+                Section("Export Options") {
+                    Button(action: exportData) {
+                        HStack {
+                            if isExporting {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            } else {
+                                Image(systemName: "square.and.arrow.up")
+                            }
+                            Text("Export Dashboard")
+                        }
+                    }
+                    .disabled(isExporting)
+                }
+            }
+            .navigationTitle("Export")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+    
+    private func exportData() {
+        isExporting = true
+        
+        Task {
+            switch exportFormat {
+            case .csv:
+                let csvData = await dashboardManager.exportDashboardAsCSV()
+                // Handle CSV export
+                break
+            case .json:
+                let jsonData = await dashboardManager.exportDashboardAsJSON()
+                // Handle JSON export
+                break
+            case .image:
+                let image = await dashboardManager.exportDashboardAsImage()
+                // Handle image export
+                break
+            }
+            
+            await MainActor.run {
+                isExporting = false
+            }
+        }
+    }
+}
+
+// MARK: - Extensions
+
+extension ComparisonMode {
+    var displayName: String {
+        switch self {
+        case .none: return "None"
+        case .periodOverPeriod: return "Period over Period"
+        case .goalVsActual: return "Goal vs Actual"
+        case .peerGroup: return "Peer Group"
+        case .historical: return "Historical"
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .none:
+            return "No comparison mode selected"
+        case .periodOverPeriod:
+            return "Compare current period with previous period"
+        case .goalVsActual:
+            return "Compare actual performance with set goals"
+        case .peerGroup:
+            return "Compare with similar users in your age group"
+        case .historical:
+            return "Compare with historical data trends"
+        }
+    }
+}
+
+// MARK: - Preview
+
+struct AdvancedAnalyticsDashboardView_Previews: PreviewProvider {
+    static var previews: some View {
+        AdvancedAnalyticsDashboardView(
+            healthDataManager: HealthDataManager(),
+            analyticsEngine: AnalyticsEngine(),
+            mlModelManager: MLModelManager()
+        )
+    }
 } 

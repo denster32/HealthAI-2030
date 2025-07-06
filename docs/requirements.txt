@@ -1,0 +1,5 @@
+pandas>=1.5.0
+numpy>=1.21.0
+create-ml>=1.0.0
+scikit-learn>=1.1.0
+coremltools>=6.0.0 
