@@ -123,10 +123,68 @@ final class SwiftDataManagerTests: XCTestCase {
         XCTAssertEqual(fetched.first?.name, "Conflict")
     }
     
+    /// Extended conflict scenario: simulate updates from two devices
+    func testCloudKitConflictResolution_MultipleDevices() async throws {
+        // Device A: initial save
+        let entry = TestModel(name: "Original", value: 1)
+        try await manager.save(entry)
+
+        // Device A offline update
+        entry.value = 5
+        try await manager.update(entry)
+
+        // Device B: direct context modification (simulating remote update)
+        let container = manager.modelContainer!
+        let contextB = ModelContext(container)
+        if let entryB = try contextB.fetchAll(TestModel.self).first(where: { $0.id == entry.id }) {
+            entryB.value = 10
+            try contextB.save()
+        }
+
+        // Conflict resolution: last write wins (remote)
+        let result = try await manager.fetch(predicate: #Predicate { $0.id == entry.id })
+        XCTAssertEqual(result.first?.value, 10)
+    }
+    
+    /// Test conflict resolution for HealthDataEntry model using last-write-wins strategy
+    func testCloudKitConflictResolution_HealthDataEntry() async throws {
+        let entry = HealthDataEntry(
+            id: UUID(),
+            timestamp: Date(),
+            dataType: "conflictTest",
+            value: 1.0,
+            stringValue: nil,
+            unit: "unit",
+            source: "test",
+            deviceSource: "device",
+            provenance: nil,
+            metadata: nil,
+            isValidated: false,
+            validationErrors: nil
+        )
+        // Initial save
+        try await manager.save(entry)
+        // Local update offline
+        entry.value = 2.0
+        try await manager.update(entry)
+
+        // Remote update (simulated via direct context save)
+        let container = manager.modelContainer!
+        let contextB = ModelContext(container)
+        if let remoteEntry = try contextB.fetchAll(HealthDataEntry.self).first(where: { $0.id == entry.id }) {
+            remoteEntry.value = 3.0
+            try contextB.save()
+        }
+
+        // Fetch and verify the remote update prevails
+        let result = try await manager.fetch(predicate: #Predicate { $0.id == entry.id })
+        XCTAssertEqual(result.first?.value, 3.0)
+    }
+    
     // MARK: - Concurrency Tests
     
     func testConcurrentSaves() async throws {
-        let numberOfModels = 10_000 // Increased for stress testing
+        let numberOfModels = 100_000 // Increased for high-volume stress testing
         await withTaskGroup(of: Void.self) { group in
             for i in 0..<numberOfModels {
                 group.addTask {
@@ -140,9 +198,9 @@ final class SwiftDataManagerTests: XCTestCase {
         XCTAssertEqual(allModels.count, numberOfModels) // Verify all models are saved
         
         // Basic data integrity check
-        let fetchedModel = try await manager.fetch(predicate: #Predicate { $0.name == "Concurrent-5000" })
+        let fetchedModel = try await manager.fetch(predicate: #Predicate { $0.name == "Concurrent-50000" })
         XCTAssertFalse(fetchedModel.isEmpty)
-        XCTAssertEqual(fetchedModel.first?.value, 5000)
+        XCTAssertEqual(fetchedModel.first?.value, 50000)
     }
     
     func testConcurrentUpdatesAndDeletes() async throws {
@@ -154,7 +212,7 @@ final class SwiftDataManagerTests: XCTestCase {
         let modelsToUpdate = try await manager.fetchAll(TestModel.self)
         XCTAssertEqual(modelsToUpdate.count, initialModels)
         
-        let numberOfConcurrentOps = 5_000
+        let numberOfConcurrentOps = 50_000 // Increased for high-volume operations
         await withTaskGroup(of: Void.self) { group in
             for i in 0..<numberOfConcurrentOps {
                 group.addTask {
@@ -179,6 +237,10 @@ final class SwiftDataManagerTests: XCTestCase {
         // Attempt to fetch a few updated models to ensure consistency
         let updatedModel = try await manager.fetch(predicate: #Predicate { $0.name.contains("Updated") })
         XCTAssertFalse(updatedModel.isEmpty, "Should have some updated models remaining")
+        
+        // Data integrity checks
+        XCTAssertTrue(remainingModels.allSatisfy { !$0.name.isEmpty }, "All remaining models have valid non-empty names")
+        XCTAssertTrue(remainingModels.allSatisfy { $0.value >= 0 }, "All remaining models have valid values")
     }
     
     func testThreadSafety() async throws {
@@ -194,6 +256,63 @@ final class SwiftDataManagerTests: XCTestCase {
                 }
             }
         }
+    }
+    
+    // MARK: - Long-Duration Data Persistence Stress Test
+    func testLongDurationDataPersistence() async throws {
+        let startTime = Date()
+        let duration: TimeInterval = 30 * 60 // 30 minutes
+        var count = 0
+        while Date().timeIntervalSince(startTime) < duration {
+            let model = TestModel(name: "Stress-\(count)", value: count)
+            try await manager.save(model)
+            count += 1
+            if count % 1000 == 0 {
+                let allModels = try await manager.fetchAll(TestModel.self)
+                XCTAssertEqual(allModels.count, count)
+            }
+            if count % 2000 == 0, let randomModel = (try await manager.fetchAll(TestModel.self)).randomElement() {
+                try await manager.delete(randomModel)
+                count -= 1
+            }
+        }
+        let finalModels = try await manager.fetchAll(TestModel.self)
+        XCTAssertFalse(finalModels.isEmpty)
+    }
+    
+    // MARK: - Long Duration Data Persistence Test
+    
+    func testLongDurationDataPersistence() async throws {
+        let recordsPerMinute = 1000
+        let durationInMinutes = 30
+        let totalRecords = recordsPerMinute * durationInMinutes
+        
+        // Simulate long-running data generation and persistence
+        for minute in 0..<durationInMinutes {
+            for i in 0..<recordsPerMinute {
+                let record = TestModel(
+                    name: "LongDuration-Minute\(minute)-Record\(i)", 
+                    value: Double(minute * recordsPerMinute + i)
+                )
+                try await manager.save(record)
+            }
+            
+            // Periodic consistency checks
+            let recordsAtMinute = try await manager.fetch(
+                predicate: #Predicate { $0.name.contains("LongDuration-Minute\(minute)") }
+            )
+            XCTAssertEqual(recordsAtMinute.count, recordsPerMinute, "All records for minute \(minute) should be saved")
+            
+            // Simulate a brief pause between batches
+            try await Task.sleep(for: .seconds(1))
+        }
+        
+        // Final consistency check
+        let allRecords = try await manager.fetchAll(TestModel.self)
+        XCTAssertEqual(allRecords.count, totalRecords, "Total number of records should match expected")
+        
+        // Memory and resource usage would typically be monitored externally
+        // This test ensures data integrity and consistent saving
     }
     
     // MARK: - Performance Tests

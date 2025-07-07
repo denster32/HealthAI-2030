@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import HealthKit // For HealthKit data types if needed
 import SwiftData
+import CryptoKit
 
 /// Represents the Digital Twin, a dynamic, predictive model of a user's health.
 ///
@@ -144,6 +145,14 @@ class DigitalTwin {
         case .overallWellness:
             return "Your overall health score is \(String(format: "%.0f", overallHealthScore)). \(riskSummary)"
         }
+    }
+
+    /// SHA256 checksum of the digital twin's core data
+    var checksum: String {
+        let encoder = JSONEncoder()
+        guard let data = try? encoder.encode(self) else { return "" }
+        let hash = SHA256.hash(data: data)
+        return hash.compactMap { String(format: "%02x", $0) }.joined()
     }
 }
 

@@ -5,6 +5,8 @@ import Sentry // Assuming Sentry SDK is integrated
 #if canImport(FirebaseCrashlytics)
 import FirebaseCrashlytics
 #endif
+import AppError
+import HealthAI2030Networking
 
 /// Enumeration for different types of third-party health services.
 enum ThirdPartyServiceType: String, CaseIterable, Codable {
@@ -85,23 +87,34 @@ struct APIClient {
         request.httpBody = body
 
         URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                completion(.failure(ThirdPartyAPIError.networkError(error.localizedDescription)))
+            if let urlError = error as? URLError {
+                switch urlError.code {
+                case .notConnectedToInternet:
+                    completion(.failure(AppError.networkOffline))
+                case .timedOut:
+                    completion(.failure(AppError.timeout))
+                default:
+                    completion(.failure(AppError.unknownError(urlError.localizedDescription)))
+                }
+                return
+            } else if let error = error {
+                completion(.failure(AppError.unknownError(error.localizedDescription)))
                 return
             }
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                completion(.failure(ThirdPartyAPIError.unknownError("Invalid HTTP response")))
+                completion(.failure(AppError.unknownError("Invalid HTTP response")))
                 return
             }
 
             guard (200...299).contains(httpResponse.statusCode) else {
-                completion(.failure(ThirdPartyAPIError.networkError("HTTP Status Code: \(httpResponse.statusCode)")))
+                completion(.failure(AppError.serverError(statusCode: httpResponse.statusCode,
+                                                       message: HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode))))
                 return
             }
 
             guard let data = data else {
-                completion(.failure(ThirdPartyAPIError.dataParsingError("No data received")))
+                completion(.failure(AppError.unknownError("No data received")))
                 return
             }
 
@@ -109,7 +122,7 @@ struct APIClient {
                 let decodedData = try JSONDecoder().decode(T.self, from: data)
                 completion(.success(decodedData))
             } catch {
-                completion(.failure(ThirdPartyAPIError.dataParsingError("Failed to decode response: \(error.localizedDescription)")))
+                completion(.failure(AppError.unknownError("Failed to decode response: \(error.localizedDescription)")))
             }
         }.resume()
     }
@@ -119,11 +132,121 @@ struct APIClient {
 ///
 /// - Handles authentication, data fetching, and error handling for external providers.
 /// - Adds OAuth support, background sync, and robust error reporting.
-class ThirdPartyAPIManager {
+public class ThirdPartyAPIManager {
     /// Shared singleton instance for global access.
-    static let shared = ThirdPartyAPIManager()
+    public static let shared = ThirdPartyAPIManager()
 
+    private let errorHandler = NetworkErrorHandler.shared
+    private let logger = Logger(subsystem: "com.healthai.thirdpartyapi", category: "APIManager")
+    
+    // Circuit breakers for different services
+    private let healthKitCircuitBreaker = NetworkErrorHandler.CircuitBreaker()
+    private let fitnessAPICircuitBreaker = NetworkErrorHandler.CircuitBreaker()
+    private let nutritionAPICircuitBreaker = NetworkErrorHandler.CircuitBreaker()
+    
     private init() {}
+
+    /// Unified method for making network requests with error handling and retry
+    public func makeRequest<T: Decodable>(
+        url: URL, 
+        method: String = "GET", 
+        body: Data? = nil,
+        circuitBreaker: NetworkErrorHandler.CircuitBreaker? = nil
+    ) async throws -> T {
+        return try await errorHandler.exponentialBackoffRetry {
+            guard circuitBreaker?.canMakeRequest() ?? true else {
+                throw AppNetworkError.serverError(statusCode: 503, message: "Service temporarily unavailable")
+            }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = method
+            request.httpBody = body
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            
+            let (data, response) = try await URLSession.shared.data(with: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                circuitBreaker?.recordFailure()
+                throw AppNetworkError.invalidResponse
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                circuitBreaker?.recordFailure()
+                throw AppNetworkError.serverError(
+                    statusCode: httpResponse.statusCode, 
+                    message: HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode)
+                )
+            }
+            
+            do {
+                let decodedResponse = try JSONDecoder().decode(T.self, from: data)
+                circuitBreaker?.recordSuccess()
+                return decodedResponse
+            } catch {
+                circuitBreaker?.recordFailure()
+                throw AppNetworkError.decodingError
+            }
+        }
+    }
+    
+    /// Fetch data from HealthKit-compatible third-party services
+    public func fetchHealthKitData<T: Decodable>(
+        endpoint: URL
+    ) async throws -> T {
+        logger.info("Fetching HealthKit data from: \(endpoint.absoluteString)")
+        
+        return try await makeRequest(
+            url: endpoint, 
+            circuitBreaker: healthKitCircuitBreaker
+        )
+    }
+    
+    /// Fetch fitness tracking data
+    public func fetchFitnessData<T: Decodable>(
+        endpoint: URL
+    ) async throws -> T {
+        logger.info("Fetching fitness data from: \(endpoint.absoluteString)")
+        
+        return try await makeRequest(
+            url: endpoint, 
+            circuitBreaker: fitnessAPICircuitBreaker
+        )
+    }
+    
+    /// Fetch nutrition data
+    public func fetchNutritionData<T: Decodable>(
+        endpoint: URL
+    ) async throws -> T {
+        logger.info("Fetching nutrition data from: \(endpoint.absoluteString)")
+        
+        return try await makeRequest(
+            url: endpoint, 
+            circuitBreaker: nutritionAPICircuitBreaker
+        )
+    }
+    
+    /// Validate API endpoints and their versions
+    public func validateAPIEndpoint(url: URL) async throws -> Bool {
+        do {
+            let _ = try await makeRequest<[String: String]>(url: url)
+            return true
+        } catch {
+            let networkError = errorHandler.categorizeError(error)
+            logger.error("API Endpoint Validation Failed: \(networkError.localizedDescription)")
+            return false
+        }
+    }
+    
+    /// Simulate authentication token refresh
+    public func refreshAuthToken() async throws -> String {
+        // In a real implementation, this would interact with an authentication service
+        return try await errorHandler.exponentialBackoffRetry {
+            // Simulated token refresh logic
+            let tokenEndpoint = URL(string: "https://api.healthai.com/token/refresh")!
+            let tokenData: TokenResponse = try await makeRequest(url: tokenEndpoint, method: "POST")
+            return tokenData.accessToken
+        }
+    }
 
     /// Fetches health data from a third-party provider.
     /// - Parameters:
@@ -293,4 +416,10 @@ enum ThirdPartyAPIError: Error, LocalizedError {
 extension Logger {
     private static var subsystem = "com.healthai2030.app"
     static let api = Logger(subsystem: subsystem, category: "ThirdPartyAPI")
+}
+
+// Placeholder structs for demonstration
+struct TokenResponse: Codable {
+    let accessToken: String
+    let expiresIn: Int
 }

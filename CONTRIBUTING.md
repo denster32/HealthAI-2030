@@ -1,6 +1,21 @@
 # Contributing to HealthAI 2030
 
-Thank you for your interest in contributing to HealthAI 2030! This document provides guidelines for contributing to our proprietary health AI platform.
+Thank you for your interest in contributing to HealthAI 2030! Please follow these guidelines:
+
+## Branching Strategy
+- Describe how to create branches, naming conventions, and workflow.
+
+## Commit Message Conventions
+- Detail commit message format and best practices.
+
+## Code Review Process
+- Outline pull request requirements and review steps.
+
+## Testing Requirements
+- Specify testing standards, coverage requirements, and how to run tests.
+
+## Reporting Issues
+- Explain how to file issues and what information to include.
 
 ## 🚨 Important Notice
 

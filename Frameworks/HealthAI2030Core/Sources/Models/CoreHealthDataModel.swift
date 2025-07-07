@@ -4,6 +4,7 @@ import HealthAI2030Core
 import HealthAI2030Core
 import Foundation
 import HealthKit
+import CryptoKit
 
 /// Centralized health data schema for cross-feature compatibility
 struct CoreHealthDataModel: Codable, Identifiable {
@@ -39,6 +40,14 @@ struct CoreHealthDataModel: Codable, Identifiable {
             case .cognitive: return "363679005"
             }
         }
+    }
+    
+    /// SHA256 checksum of the model's JSON representation
+    var checksum: String {
+        let encoder = JSONEncoder()
+        guard let data = try? encoder.encode(self) else { return "" }
+        let hash = SHA256.hash(data: data)
+        return hash.compactMap { String(format: "%02x", $0) }.joined()
     }
 }
 

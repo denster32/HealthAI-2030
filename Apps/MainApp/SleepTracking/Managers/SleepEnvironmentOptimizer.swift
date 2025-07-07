@@ -4,10 +4,14 @@ import HomeKit
 #endif
 import Combine
 import CoreML
+import HealthKit
+import os
 
 /// Sleep Environment Optimizer
 /// Intelligent sleep environment control based on real-time health data and sleep stage detection
 class SleepEnvironmentOptimizer: ObservableObject {
+    
+    public static let shared = SleepEnvironmentOptimizer()
     
     // MARK: - Published Properties
     @Published var sleepEnvironmentStatus: SleepEnvironmentStatus = .inactive
@@ -46,6 +50,17 @@ class SleepEnvironmentOptimizer: ObservableObject {
     
     private var cancellables = Set<AnyCancellable>()
     
+    private let healthStore = HKHealthStore()
+    private let logger = Logger(subsystem: "com.healthai.sleep", category: "EnvironmentOptimizer")
+    
+    // Machine Learning Models
+    private var sleepQualityPredictor: MLModel?
+    private var interventionRecommender: MLModel?
+    
+    // Combine publishers for real-time monitoring
+    private var biometricPublisher = PassthroughSubject<SleepEnvironmentModel, Never>()
+    private var interventionPublisher = PassthroughSubject<SleepInterventionRecommendation, Never>()
+    
     init() {
         self.sleepStageDetector = SleepStageDetector()
         self.sleepQualityAnalyzer = SleepQualityAnalyzer()
@@ -60,6 +75,8 @@ class SleepEnvironmentOptimizer: ObservableObject {
         self.personalizedSleepModel = PersonalizedSleepModel()
         
         setupSleepEnvironmentOptimizer()
+        setupMLModels()
+        setupBiometricMonitoring()
     }
     
     deinit {
@@ -983,6 +1000,180 @@ class SleepEnvironmentOptimizer: ObservableObject {
     private func calculateSleepEfficiency() async -> Double { return 0.85 }
     private func calculateOptimizationEffectiveness() async -> Double { return 0.9 }
     private func generateSleepRecommendations() async -> [SleepRecommendation] { return [] }
+    
+    /// Setup Machine Learning Models
+    private func setupMLModels() {
+        do {
+            sleepQualityPredictor = try MLModel(contentsOf: Bundle.main.url(forResource: "SleepQualityPredictor", withExtension: "mlmodel")!)
+            interventionRecommender = try MLModel(contentsOf: Bundle.main.url(forResource: "SleepInterventionRecommender", withExtension: "mlmodel")!)
+        } catch {
+            logger.error("ML Model setup failed: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Setup real-time biometric monitoring
+    private func setupBiometricMonitoring() {
+        // Configure HK queries for continuous monitoring
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        
+        let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
+        let respiratoryRateType = HKQuantityType.quantityType(forIdentifier: .respiratoryRate)!
+        
+        let query = HKAnchoredObjectQuery(type: heartRateType, predicate: nil, anchor: nil, limit: HKObjectQueryNoLimit) { [weak self] (query, samples, deletedObjects, newAnchor, error) in
+            guard let heartRateSamples = samples as? [HKQuantitySample] else { return }
+            
+            // Process heart rate variability
+            self?.processHeartRateVariability(samples: heartRateSamples)
+        }
+        
+        healthStore.execute(query)
+    }
+    
+    /// Process heart rate variability
+    private func processHeartRateVariability(samples: [HKQuantitySample]) {
+        guard !samples.isEmpty else { return }
+        
+        // Calculate HRV metrics
+        let heartRates = samples.map { $0.quantity.doubleValue(for: HKUnit(from: "count/min")) }
+        let hrv = calculateHeartRateVariability(heartRates: heartRates)
+        
+        // Create environment model
+        let environmentModel = SleepEnvironmentModel(
+            temperature: getCurrentRoomTemperature(),
+            humidity: getCurrentHumidity(),
+            noise: getCurrentNoiseLevel(),
+            light: getCurrentLightLevel(),
+            breathingPattern: getCurrentBreathingRate(),
+            heartRateVariability: hrv
+        )
+        
+        biometricPublisher.send(environmentModel)
+        recommendIntervention(for: environmentModel)
+    }
+    
+    /// Calculate Heart Rate Variability (RMSSD method)
+    private func calculateHeartRateVariability(heartRates: [Double]) -> Double {
+        guard heartRates.count > 1 else { return 0 }
+        
+        let intervalDifferences = zip(heartRates, heartRates.dropFirst()).map { abs($0 - $1) }
+        let squaredDifferences = intervalDifferences.map { $0 * $0 }
+        let meanSquaredDifferences = squaredDifferences.reduce(0, +) / Double(squaredDifferences.count)
+        
+        return sqrt(meanSquaredDifferences)
+    }
+    
+    /// Recommend sleep intervention based on environment model
+    private func recommendIntervention(for model: SleepEnvironmentModel) {
+        // Use ML model to recommend intervention
+        guard let interventionRecommender = interventionRecommender else { return }
+        
+        do {
+            let prediction = try interventionRecommender.prediction(input: [
+                "temperature": model.temperature,
+                "heartRateVariability": model.heartRateVariability,
+                "breathingPattern": model.breathingPattern,
+                "noise": model.noise,
+                "light": model.light
+            ])
+            
+            // Extract intervention details from ML prediction
+            let interventionType = mapMLPredictionToInterventionType(prediction)
+            let recommendation = SleepInterventionRecommendation(
+                type: interventionType,
+                intensity: 0.7,  // Dynamically determined by ML model
+                duration: 15 * 60,  // 15 minutes default
+                explanation: generateInterventionExplanation(for: interventionType)
+            )
+            
+            interventionPublisher.send(recommendation)
+        } catch {
+            logger.error("Intervention recommendation failed: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Map ML prediction to intervention type
+    private func mapMLPredictionToInterventionType(_ prediction: [String: Any]) -> SleepInterventionRecommendation.InterventionType {
+        // Simplified mapping - replace with actual ML model output interpretation
+        guard let type = prediction["interventionType"] as? String else {
+            return .none
+        }
+        
+        switch type {
+        case "temperature": return .temperatureAdjustment
+        case "sound": return .soundMasking
+        case "light": return .lightModulation
+        case "breathing": return .breathingExercise
+        case "relaxation": return .relaxationGuide
+        default: return .none
+        }
+    }
+    
+    /// Generate human-readable intervention explanation
+    private func generateInterventionExplanation(for type: SleepInterventionRecommendation.InterventionType) -> String {
+        switch type {
+        case .temperatureAdjustment:
+            return "Your room temperature is suboptimal for deep sleep. A slight adjustment will help improve your sleep quality."
+        case .soundMasking:
+            return "Background noise might be disrupting your sleep. White noise can help mask disruptive sounds."
+        case .lightModulation:
+            return "Current light levels may be interfering with your natural sleep cycle. Adjusting lighting can help."
+        case .breathingExercise:
+            return "Your breathing pattern suggests some stress. A guided breathing exercise can help you relax."
+        case .relaxationGuide:
+            return "Your biometrics indicate elevated stress. A short relaxation guide can help calm your mind."
+        case .none:
+            return "No specific intervention is recommended at this time."
+        }
+    }
+    
+    // MARK: - Environment Sensing Methods (Simulated)
+    
+    private func getCurrentRoomTemperature() -> Double {
+        // In a real implementation, use HomeKit or IoT sensors
+        return Double.random(in: 18.0...24.0)
+    }
+    
+    private func getCurrentHumidity() -> Double {
+        return Double.random(in: 30.0...60.0)
+    }
+    
+    private func getCurrentNoiseLevel() -> Double {
+        return Double.random(in: 20.0...70.0)
+    }
+    
+    private func getCurrentLightLevel() -> Double {
+        return Double.random(in: 0.0...100.0)
+    }
+    
+    private func getCurrentBreathingRate() -> Double {
+        return Double.random(in: 12.0...20.0)
+    }
+    
+    // MARK: - Public Interface
+    
+    /// Subscribe to biometric updates
+    public func subscribeToBiometricUpdates() -> AnyPublisher<SleepEnvironmentModel, Never> {
+        return biometricPublisher.eraseToAnyPublisher()
+    }
+    
+    /// Subscribe to intervention recommendations
+    public func subscribeToInterventionRecommendations() -> AnyPublisher<SleepInterventionRecommendation, Never> {
+        return interventionPublisher.eraseToAnyPublisher()
+    }
+    
+    /// Manually trigger environment optimization
+    public func optimizeEnvironment() {
+        let currentEnvironment = SleepEnvironmentModel(
+            temperature: getCurrentRoomTemperature(),
+            humidity: getCurrentHumidity(),
+            noise: getCurrentNoiseLevel(),
+            light: getCurrentLightLevel(),
+            breathingPattern: getCurrentBreathingRate(),
+            heartRateVariability: 0  // Placeholder
+        )
+        
+        recommendIntervention(for: currentEnvironment)
+    }
 }
 
 // MARK: - Supporting Data Structures and Enums
@@ -1414,3 +1605,30 @@ struct MLPrediction {
     let confidence: Double = 0.8
 }
 struct EnvironmentContext {}
+
+/// Comprehensive sleep environment optimization model
+public struct SleepEnvironmentModel: Codable {
+    public let temperature: Double
+    public let humidity: Double
+    public let noise: Double
+    public let light: Double
+    public let breathingPattern: Double
+    public let heartRateVariability: Double
+}
+
+/// Detailed sleep intervention recommendation
+public struct SleepInterventionRecommendation {
+    public enum InterventionType {
+        case temperatureAdjustment
+        case soundMasking
+        case lightModulation
+        case breathingExercise
+        case relaxationGuide
+        case none
+    }
+    
+    public let type: InterventionType
+    public let intensity: Double  // 0.0 to 1.0
+    public let duration: TimeInterval
+    public let explanation: String
+}

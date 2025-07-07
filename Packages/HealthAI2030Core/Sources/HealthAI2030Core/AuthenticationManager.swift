@@ -18,6 +18,27 @@ class AuthenticationManager: NSObject, ObservableObject {
     private override init() {
         super.init()
         checkAuthenticationState()
+        // Monitor credential state on app foreground
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppForeground),
+            name: UIApplication.willEnterForegroundNotification,
+            object: nil
+        )
+    }
+    
+    @objc private func handleAppForeground() {
+        // Check if Apple credential has been revoked
+        if let userID = currentUser?.id.uuidString {
+            let provider = ASAuthorizationAppleIDProvider()
+            provider.getCredentialState(forUserID: userID) { [weak self] state, _ in
+                Task { @MainActor in
+                    if state == .revoked {
+                        await self?.signOut()
+                    }
+                }
+            }
+        }
     }
     
     /// Configure the authentication manager with a SwiftData context
@@ -146,6 +167,8 @@ class AuthenticationManager: NSObject, ObservableObject {
         // Update authentication state
         currentUser = user
         isAuthenticated = true
+        // Start credential state monitoring after login
+        handleAppForeground()
         
         logger.info("User authenticated successfully: \(user.email)")
     }

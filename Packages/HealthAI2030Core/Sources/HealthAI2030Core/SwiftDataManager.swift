@@ -675,6 +675,18 @@ public class SwiftDataManager: ObservableObject {
             throw dataError
         }
     }
+
+    /// Creates a backup of the SwiftData store file at the given URL.
+    public func backupStoreFile(storeURL: URL, backupURL: URL) throws {
+        try DataBackupManager.backupStore(from: storeURL, to: backupURL)
+        logger.info("SwiftData store backup created at \(backupURL.path)")
+    }
+
+    /// Restores the SwiftData store file from a backup at the given URL.
+    public func restoreStoreFile(from backupURL: URL, to storeURL: URL) throws {
+        try DataBackupManager.restoreStore(from: backupURL, to: storeURL)
+        logger.info("SwiftData store restored from backup at \(backupURL.path)")
+    }
 }
 
 /// Errors for SwiftDataManager operations.

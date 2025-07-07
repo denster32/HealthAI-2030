@@ -2,6 +2,8 @@ import Foundation
 import Combine
 import Network
 import os.log
+import AppError
+import CircuitBreaker
 
 /// Comprehensive Networking Layer Manager for HealthAI 2030
 /// Provides modular, optimized networking with error handling, retry logic, and performance monitoring
@@ -28,11 +30,13 @@ public class NetworkingLayerManager: ObservableObject {
     private var retryPolicies: [String: RetryPolicy] = [:]
     private var requestInterceptors: [RequestInterceptor] = []
     private var responseInterceptors: [ResponseInterceptor] = []
+    private var circuitBreakers: [String: CircuitBreaker] = [:]
     
     // MARK: - Configuration
     
     public struct NetworkConfiguration {
         public let baseURL: URL
+        public let apiVersion: String
         public let timeoutInterval: TimeInterval
         public let cachePolicy: URLRequest.CachePolicy
         public let allowsCellularAccess: Bool
@@ -47,6 +51,7 @@ public class NetworkingLayerManager: ObservableObject {
         
         public init(
             baseURL: URL,
+            apiVersion: String = "v1",
             timeoutInterval: TimeInterval = 30.0,
             cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy,
             allowsCellularAccess: Bool = true,
@@ -60,6 +65,7 @@ public class NetworkingLayerManager: ObservableObject {
             defaultRetryDelay: TimeInterval = 1.0
         ) {
             self.baseURL = baseURL
+            self.apiVersion = apiVersion
             self.timeoutInterval = timeoutInterval
             self.cachePolicy = cachePolicy
             self.allowsCellularAccess = allowsCellularAccess
@@ -594,6 +600,9 @@ public class NetworkingLayerManager: ObservableObject {
             urlRequest.setValue(value, forHTTPHeaderField: key)
         }
         
+        // Add API version header
+        urlRequest.setValue(configuration.apiVersion, forHTTPHeaderField: "API-Version")
+        
         return urlRequest
     }
     
@@ -601,12 +610,23 @@ public class NetworkingLayerManager: ObservableObject {
         _ urlRequest: URLRequest,
         originalRequest: NetworkRequest
     ) async throws -> NetworkResponse {
+        // Circuit breaker check for this endpoint
+        let endpoint = originalRequest.url.path
+        let breaker = circuitBreakers[endpoint] ?? CircuitBreaker()
+        circuitBreakers[endpoint] = breaker
+        guard breaker.allowRequest() else {
+            throw AppError.serverError(statusCode: 503, message: "Circuit breaker open for endpoint: \(endpoint)")
+        }
+        
         var lastError: NetworkError?
         let maxAttempts = originalRequest.retryPolicy?.maxAttempts ?? configuration.defaultRetryAttempts
         
         for attempt in 1...maxAttempts {
             do {
                 let response = try await performSingleRequest(urlRequest, originalRequest: originalRequest)
+                
+                // Record success in circuit breaker
+                breaker.recordSuccess()
                 
                 // Apply response interceptors
                 var modifiedResponse = response
@@ -622,6 +642,8 @@ public class NetworkingLayerManager: ObservableObject {
                 return modifiedResponse
                 
             } catch let error as NetworkError {
+                // Record failure in circuit breaker
+                breaker.recordFailure()
                 lastError = error
                 
                 if !error.isRetryable || attempt >= maxAttempts {
@@ -815,5 +837,27 @@ private class LoggingInterceptor: NetworkingLayerManager.ResponseInterceptor {
         """)
         
         return response
+    }
+}
+
+// MARK: - Error Mapping Extension
+
+extension NetworkingLayerManager {
+    /// Maps generic errors to AppError for unified network error handling
+    func mapError(_ error: Error) -> AppError {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet:
+                return .networkOffline
+            case .timedOut:
+                return .timeout
+            default:
+                return .unknownError(urlError.localizedDescription)
+            }
+        } else if let appError = error as? AppError {
+            return appError
+        } else {
+            return .unknownError(error.localizedDescription)
+        }
     }
 } 
