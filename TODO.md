@@ -1067,15 +1067,15 @@ This final phase addresses remaining critical tasks from the AGENT_TASK_MANIFEST
             - [x] Visualization and reporting system
             - [x] Risk factor analysis and recommendations
         - [x] **Verification:** Risk predictions are clinically accurate and provide actionable insights.
-    - [ ] **10.1.2 Sleep Quality Forecasting System:**
-        - [ ] **File Examples:** `Apps/MainApp/Services/HealthPrediction/SleepQualityForecaster.swift`, `Apps/Tests/UnitTests/SleepQualityForecasterTests.swift`.
-        - [ ] **Action:** Develop 7-day sleep quality prediction model with circadian rhythm optimization.
-        - [ ] **Features:**
-            - [ ] Environmental factor impact modeling
-            - [ ] Recovery time estimation system
-            - [ ] Metal shaders for sleep pattern visualization
-            - [ ] Comprehensive unit tests
-        - [ ] **Verification:** Sleep predictions improve user sleep quality and recovery.
+    - [x] **10.1.2 Sleep Quality Forecasting System:**
+        - [x] **File Examples:** `Apps/MainApp/Services/HealthPrediction/SleepQualityForecaster.swift`, `Apps/Tests/UnitTests/SleepQualityForecasterTests.swift`.
+        - [x] **Action:** Develop 7-day sleep quality prediction model with circadian rhythm optimization.
+        - [x] **Features:**
+            - [x] Environmental factor impact modeling
+            - [x] Recovery time estimation system
+            - [x] Metal shaders for sleep pattern visualization
+            - [x] Comprehensive unit tests
+        - [x] **Verification:** Sleep predictions improve user sleep quality and recovery.
     - [x] **10.1.3 Multimodal Stress Prediction Engine:**
         - [x] **File Examples:** `Apps/MainApp/Services/HealthPrediction/StressPredictionEngine.swift`, `Apps/Tests/UnitTests/StressPredictionEngineTests.swift`.
         - [x] **Action:** Create comprehensive stress prediction using voice analysis, HRV, facial expressions, and text sentiment.
