@@ -134,10 +134,10 @@ This phase focuses on ensuring the absolute reliability, integrity, and resilien
     - [x] **1.2.2 Robust Retry Mechanisms with Exponential Backoff and Circuit Breakers**
         - [x] **1.2.2.1 Implement Exponential Backoff for Retries:**
             - [x] **1.2.2.1 Implement Exponential Backoff for Retries:**
-            - [ ] **File Examples:** `NetworkService.swift`, `APIManager.swift`.
-            - [ ] **Action:** For idempotent network requests (e.g., GET, PUT), implement an exponential backoff strategy for retries (e.g., 1s, 2s, 4s, 8s, with a max of 3-5 retries).
-            - [ ] **Action:** Ensure a maximum number of retries is defined to prevent infinite loops.
-            - [ ] **Verification:** Simulate transient network failures and observe retry behavior and eventual success or failure.
+            - [x] **File Examples:** `NetworkService.swift`, `APIManager.swift`.
+            - [x] **Action:** For idempotent network requests (e.g., GET, PUT), implement an exponential backoff strategy for retries (e.g., 1s, 2s, 4s, 8s, with a max of 3-5 retries).
+            - [x] **Action:** Ensure a maximum number of retries is defined to prevent infinite loops.
+            - [x] **Verification:** Simulate transient network failures and observe retry behavior and eventual success or failure.
         - [x] **1.2.2.2 Implement Circuit Breaker Pattern:**
             - [x] **1.2.2.2 Implement Circuit Breaker Pattern:**
             - [x] **Action:** Implement a circuit breaker pattern (e.g., using a dedicated `CircuitBreaker` class) for critical backend services.
