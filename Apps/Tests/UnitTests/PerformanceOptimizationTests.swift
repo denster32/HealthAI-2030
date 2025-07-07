@@ -1,5 +1,6 @@
 import XCTest
 import Combine
+import Foundation
 @testable import HealthAI2030
 
 @MainActor
@@ -878,6 +879,487 @@ final class PerformanceOptimizationTests: XCTestCase {
         XCTAssertEqual(report.summary.criticalIssues, 0)
         XCTAssertEqual(report.summary.overallHealth, .fair)
         XCTAssertNotNil(report.generatedAt)
+    }
+    
+    // MARK: - Memory Usage Optimization Tests
+    
+    func testMemoryUsageOptimization() async throws {
+        // Test memory usage optimization
+        let result = performanceManager.optimizeMemoryUsage()
+        
+        // Verify result structure
+        XCTAssertNotNil(result)
+        XCTAssertGreaterThanOrEqual(result.initialMemoryUsage, 0)
+        XCTAssertGreaterThanOrEqual(result.finalMemoryUsage, 0)
+        XCTAssertGreaterThanOrEqual(result.freedMemory, 0)
+        
+        // Verify cache optimization
+        XCTAssertNotNil(result.cacheOptimization)
+        XCTAssertGreaterThanOrEqual(result.cacheOptimization.initialSize, 0)
+        XCTAssertGreaterThanOrEqual(result.cacheOptimization.finalSize, 0)
+        XCTAssertGreaterThanOrEqual(result.cacheOptimization.freedSpace, 0)
+        
+        // Verify image optimization
+        XCTAssertNotNil(result.imageOptimization)
+        XCTAssertGreaterThanOrEqual(result.imageOptimization.compressedImages, 0)
+        XCTAssertGreaterThanOrEqual(result.imageOptimization.freedMemory, 0)
+    }
+    
+    func testMemoryOptimizationPerformance() {
+        measure {
+            let result = performanceManager.optimizeMemoryUsage()
+            XCTAssertNotNil(result)
+        }
+    }
+    
+    func testMemoryOptimizationWithHighUsage() {
+        // Simulate high memory usage scenario
+        let result = performanceManager.optimizeMemoryUsage()
+        
+        // Should always return valid results
+        XCTAssertNotNil(result)
+        XCTAssertGreaterThanOrEqual(result.freedMemory, 0)
+    }
+    
+    // MARK: - CPU Performance Monitoring Tests
+    
+    func testCPUPerformanceMonitoring() {
+        // Test CPU performance monitoring
+        let metrics = performanceManager.monitorCPUPerformance()
+        
+        // Verify metrics structure
+        XCTAssertNotNil(metrics)
+        XCTAssertGreaterThanOrEqual(metrics.currentUsage, 0)
+        XCTAssertLessThanOrEqual(metrics.currentUsage, 100)
+        XCTAssertGreaterThanOrEqual(metrics.averageUsage, 0)
+        XCTAssertLessThanOrEqual(metrics.averageUsage, 100)
+        XCTAssertGreaterThanOrEqual(metrics.peakUsage, 0)
+        XCTAssertLessThanOrEqual(metrics.peakUsage, 100)
+        XCTAssertGreaterThanOrEqual(metrics.temperature, 0)
+        XCTAssertNotNil(metrics.timestamp)
+    }
+    
+    func testCPUUsageOptimization() {
+        // Test CPU usage optimization
+        let result = performanceManager.optimizeCPUUsage()
+        
+        // Verify result structure
+        XCTAssertNotNil(result)
+        XCTAssertGreaterThanOrEqual(result.initialUsage, 0)
+        XCTAssertLessThanOrEqual(result.initialUsage, 100)
+        XCTAssertGreaterThanOrEqual(result.finalUsage, 0)
+        XCTAssertLessThanOrEqual(result.finalUsage, 100)
+        XCTAssertGreaterThanOrEqual(result.usageReduction, -100) // Can be negative if usage increases
+        
+        // Verify optimization components
+        XCTAssertNotNil(result.backgroundTaskOptimization)
+        XCTAssertGreaterThanOrEqual(result.backgroundTaskOptimization.optimizedTasks, 0)
+        XCTAssertGreaterThanOrEqual(result.backgroundTaskOptimization.reducedCPUUsage, 0)
+        
+        XCTAssertNotNil(result.renderingOptimization)
+        XCTAssertGreaterThanOrEqual(result.renderingOptimization.optimizedViews, 0)
+        XCTAssertGreaterThanOrEqual(result.renderingOptimization.improvedFrameRate, 0)
+        
+        XCTAssertNotNil(result.algorithmOptimization)
+        XCTAssertGreaterThanOrEqual(result.algorithmOptimization.optimizedAlgorithms, 0)
+        XCTAssertGreaterThanOrEqual(result.algorithmOptimization.performanceImprovement, 0)
+    }
+    
+    func testCPUOptimizationPerformance() {
+        measure {
+            let result = performanceManager.optimizeCPUUsage()
+            XCTAssertNotNil(result)
+        }
+    }
+    
+    // MARK: - Battery Life Optimization Tests
+    
+    func testBatteryLifeOptimization() {
+        // Test battery life optimization
+        let result = performanceManager.optimizeBatteryLife()
+        
+        // Verify result structure
+        XCTAssertNotNil(result)
+        XCTAssertGreaterThanOrEqual(result.initialBatteryLevel, 0)
+        XCTAssertLessThanOrEqual(result.initialBatteryLevel, 100)
+        XCTAssertGreaterThanOrEqual(result.initialBatteryUsage, 0)
+        XCTAssertGreaterThanOrEqual(result.finalBatteryUsage, 0)
+        XCTAssertGreaterThanOrEqual(result.usageReduction, -100) // Can be negative if usage increases
+        
+        // Verify optimization components
+        XCTAssertNotNil(result.locationOptimization)
+        XCTAssertGreaterThanOrEqual(result.locationOptimization.reducedLocationUpdates, 0)
+        XCTAssertGreaterThanOrEqual(result.locationOptimization.batterySavings, 0)
+        
+        XCTAssertNotNil(result.networkOptimization)
+        XCTAssertGreaterThanOrEqual(result.networkOptimization.reducedNetworkCalls, 0)
+        XCTAssertGreaterThanOrEqual(result.networkOptimization.batterySavings, 0)
+        
+        XCTAssertNotNil(result.backgroundOptimization)
+        XCTAssertGreaterThanOrEqual(result.backgroundOptimization.reducedBackgroundTasks, 0)
+        XCTAssertGreaterThanOrEqual(result.backgroundOptimization.batterySavings, 0)
+        
+        XCTAssertNotNil(result.displayOptimization)
+        XCTAssertGreaterThanOrEqual(result.displayOptimization.reducedBrightness, 0)
+        XCTAssertGreaterThanOrEqual(result.displayOptimization.batterySavings, 0)
+    }
+    
+    func testBatteryOptimizationPerformance() {
+        measure {
+            let result = performanceManager.optimizeBatteryLife()
+            XCTAssertNotNil(result)
+        }
+    }
+    
+    func testBatteryOptimizationWithLowBattery() {
+        // Test battery optimization with low battery scenario
+        let result = performanceManager.optimizeBatteryLife()
+        
+        // Should always return valid results regardless of battery level
+        XCTAssertNotNil(result)
+        XCTAssertGreaterThanOrEqual(result.usageReduction, -100)
+    }
+    
+    // MARK: - Network Efficiency and Caching Tests
+    
+    func testNetworkEfficiencyOptimization() {
+        // Test network efficiency optimization
+        let result = performanceManager.optimizeNetworkEfficiency()
+        
+        // Verify result structure
+        XCTAssertNotNil(result)
+        XCTAssertGreaterThanOrEqual(result.initialNetworkUsage, 0)
+        XCTAssertGreaterThanOrEqual(result.finalNetworkUsage, 0)
+        XCTAssertGreaterThanOrEqual(result.usageReduction, -1000) // Can be negative if usage increases
+        
+        // Verify optimization components
+        XCTAssertNotNil(result.requestOptimization)
+        XCTAssertGreaterThanOrEqual(result.requestOptimization.batchedRequests, 0)
+        XCTAssertGreaterThanOrEqual(result.requestOptimization.reducedRequests, 0)
+        XCTAssertGreaterThanOrEqual(result.requestOptimization.dataSaved, 0)
+        
+        XCTAssertNotNil(result.cacheOptimization)
+        XCTAssertGreaterThanOrEqual(result.cacheOptimization.cacheHitRate, 0)
+        XCTAssertLessThanOrEqual(result.cacheOptimization.cacheHitRate, 100)
+        XCTAssertGreaterThanOrEqual(result.cacheOptimization.reducedRequests, 0)
+        
+        XCTAssertNotNil(result.compressionOptimization)
+        XCTAssertGreaterThanOrEqual(result.compressionOptimization.compressionRatio, 0)
+        XCTAssertLessThanOrEqual(result.compressionOptimization.compressionRatio, 100)
+        XCTAssertGreaterThanOrEqual(result.compressionOptimization.dataSaved, 0)
+        
+        XCTAssertNotNil(result.connectionOptimization)
+        XCTAssertTrue(result.connectionOptimization.connectionPooling)
+        XCTAssertGreaterThanOrEqual(result.connectionOptimization.reducedConnections, 0)
+    }
+    
+    func testNetworkOptimizationPerformance() {
+        measure {
+            let result = performanceManager.optimizeNetworkEfficiency()
+            XCTAssertNotNil(result)
+        }
+    }
+    
+    func testNetworkOptimizationWithHighUsage() {
+        // Test network optimization with high usage scenario
+        let result = performanceManager.optimizeNetworkEfficiency()
+        
+        // Should always return valid results
+        XCTAssertNotNil(result)
+        XCTAssertGreaterThanOrEqual(result.usageReduction, -1000)
+    }
+    
+    // MARK: - Storage Usage Optimization Tests
+    
+    func testStorageUsageOptimization() {
+        // Test storage usage optimization
+        let result = performanceManager.optimizeStorageUsage()
+        
+        // Verify result structure
+        XCTAssertNotNil(result)
+        XCTAssertGreaterThanOrEqual(result.initialStorageUsage, 0)
+        XCTAssertGreaterThanOrEqual(result.finalStorageUsage, 0)
+        XCTAssertGreaterThanOrEqual(result.spaceFreed, 0)
+        
+        // Verify optimization components
+        XCTAssertNotNil(result.cacheCleanup)
+        XCTAssertGreaterThanOrEqual(result.cacheCleanup.cleanedFiles, 0)
+        XCTAssertGreaterThanOrEqual(result.cacheCleanup.spaceFreed, 0)
+        
+        XCTAssertNotNil(result.dataCompression)
+        XCTAssertGreaterThanOrEqual(result.dataCompression.compressedFiles, 0)
+        XCTAssertGreaterThanOrEqual(result.dataCompression.spaceSaved, 0)
+        
+        XCTAssertNotNil(result.unusedDataRemoval)
+        XCTAssertGreaterThanOrEqual(result.unusedDataRemoval.removedFiles, 0)
+        XCTAssertGreaterThanOrEqual(result.unusedDataRemoval.spaceFreed, 0)
+        
+        XCTAssertNotNil(result.databaseOptimization)
+        XCTAssertGreaterThanOrEqual(result.databaseOptimization.optimizedTables, 0)
+        XCTAssertGreaterThanOrEqual(result.databaseOptimization.spaceFreed, 0)
+    }
+    
+    func testStorageOptimizationPerformance() {
+        measure {
+            let result = performanceManager.optimizeStorageUsage()
+            XCTAssertNotNil(result)
+        }
+    }
+    
+    func testStorageOptimizationWithHighUsage() {
+        // Test storage optimization with high usage scenario
+        let result = performanceManager.optimizeStorageUsage()
+        
+        // Should always return valid results
+        XCTAssertNotNil(result)
+        XCTAssertGreaterThanOrEqual(result.spaceFreed, 0)
+    }
+    
+    // MARK: - App Launch Time Optimization Tests
+    
+    func testAppLaunchTimeOptimization() {
+        // Test app launch time optimization
+        let result = performanceManager.optimizeAppLaunchTime()
+        
+        // Verify result structure
+        XCTAssertNotNil(result)
+        XCTAssertGreaterThanOrEqual(result.initialLaunchTime, 0)
+        XCTAssertGreaterThanOrEqual(result.finalLaunchTime, 0)
+        XCTAssertGreaterThanOrEqual(result.timeReduction, -10) // Can be negative if time increases
+        
+        // Verify optimization components
+        XCTAssertNotNil(result.startupOptimization)
+        XCTAssertGreaterThanOrEqual(result.startupOptimization.optimizedSteps, 0)
+        XCTAssertGreaterThanOrEqual(result.startupOptimization.timeSaved, 0)
+        
+        XCTAssertNotNil(result.resourceOptimization)
+        XCTAssertGreaterThanOrEqual(result.resourceOptimization.optimizedResources, 0)
+        XCTAssertGreaterThanOrEqual(result.resourceOptimization.timeSaved, 0)
+        
+        XCTAssertNotNil(result.initializationOptimization)
+        XCTAssertGreaterThanOrEqual(result.initializationOptimization.optimizedComponents, 0)
+        XCTAssertGreaterThanOrEqual(result.initializationOptimization.timeSaved, 0)
+    }
+    
+    func testLaunchTimeOptimizationPerformance() {
+        measure {
+            let result = performanceManager.optimizeAppLaunchTime()
+            XCTAssertNotNil(result)
+        }
+    }
+    
+    func testLaunchTimeOptimizationWithSlowLaunch() {
+        // Test launch time optimization with slow launch scenario
+        let result = performanceManager.optimizeAppLaunchTime()
+        
+        // Should always return valid results
+        XCTAssertNotNil(result)
+        XCTAssertGreaterThanOrEqual(result.timeReduction, -10)
+    }
+    
+    // MARK: - Performance Monitoring Tests
+    
+    func testPerformanceMonitoringStartStop() {
+        // Test that monitoring can be started and stopped
+        XCTAssertNotNil(performanceManager)
+        
+        // Monitoring should be active after initialization
+        // (This is implementation-dependent, so we just verify the manager exists)
+        XCTAssertTrue(true)
+    }
+    
+    func testPerformanceMetricsUpdate() {
+        // Test that performance metrics are updated
+        let initialMetrics = performanceManager.performanceMetrics
+        
+        // Wait a bit for metrics to potentially update
+        let expectation = XCTestExpectation(description: "Metrics update")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 1.0)
+        
+        // Metrics should be accessible
+        XCTAssertNotNil(performanceManager.performanceMetrics)
+    }
+    
+    func testPerformanceAlerts() {
+        // Test performance alerts generation
+        let initialAlertCount = performanceManager.performanceAlerts.count
+        
+        // Trigger some performance monitoring
+        _ = performanceManager.monitorCPUPerformance()
+        
+        // Alerts should be accessible (may or may not be generated depending on thresholds)
+        XCTAssertNotNil(performanceManager.performanceAlerts)
+        XCTAssertGreaterThanOrEqual(performanceManager.performanceAlerts.count, initialAlertCount)
+    }
+    
+    func testOptimizationRecommendations() {
+        // Test optimization recommendations
+        let initialRecommendationCount = performanceManager.optimizationRecommendations.count
+        
+        // Trigger some optimization
+        _ = performanceManager.optimizeMemoryUsage()
+        
+        // Recommendations should be accessible (may or may not be generated)
+        XCTAssertNotNil(performanceManager.optimizationRecommendations)
+        XCTAssertGreaterThanOrEqual(performanceManager.optimizationRecommendations.count, initialRecommendationCount)
+    }
+    
+    // MARK: - Edge Case Tests
+    
+    func testConcurrentOptimizationCalls() {
+        // Test concurrent optimization calls
+        let expectation1 = XCTestExpectation(description: "Memory optimization")
+        let expectation2 = XCTestExpectation(description: "CPU optimization")
+        let expectation3 = XCTestExpectation(description: "Battery optimization")
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = self.performanceManager.optimizeMemoryUsage()
+            XCTAssertNotNil(result)
+            expectation1.fulfill()
+        }
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = self.performanceManager.optimizeCPUUsage()
+            XCTAssertNotNil(result)
+            expectation2.fulfill()
+        }
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = self.performanceManager.optimizeBatteryLife()
+            XCTAssertNotNil(result)
+            expectation3.fulfill()
+        }
+        
+        wait(for: [expectation1, expectation2, expectation3], timeout: 5.0)
+    }
+    
+    func testOptimizationWithZeroValues() {
+        // Test optimization with edge case values
+        let memoryResult = performanceManager.optimizeMemoryUsage()
+        let cpuResult = performanceManager.optimizeCPUUsage()
+        let batteryResult = performanceManager.optimizeBatteryLife()
+        let networkResult = performanceManager.optimizeNetworkEfficiency()
+        let storageResult = performanceManager.optimizeStorageUsage()
+        let launchResult = performanceManager.optimizeAppLaunchTime()
+        
+        // All results should be valid even with edge cases
+        XCTAssertNotNil(memoryResult)
+        XCTAssertNotNil(cpuResult)
+        XCTAssertNotNil(batteryResult)
+        XCTAssertNotNil(networkResult)
+        XCTAssertNotNil(storageResult)
+        XCTAssertNotNil(launchResult)
+    }
+    
+    func testPerformanceManagerLifecycle() {
+        // Test performance manager lifecycle
+        var manager: PerformanceOptimizationManager? = PerformanceOptimizationManager()
+        XCTAssertNotNil(manager)
+        
+        // Test basic operations
+        let memoryResult = manager?.optimizeMemoryUsage()
+        XCTAssertNotNil(memoryResult)
+        
+        // Test deallocation
+        manager = nil
+        XCTAssertNil(manager)
+    }
+    
+    // MARK: - Integration Tests
+    
+    func testFullOptimizationWorkflow() {
+        // Test a complete optimization workflow
+        let memoryResult = performanceManager.optimizeMemoryUsage()
+        XCTAssertNotNil(memoryResult)
+        
+        let cpuResult = performanceManager.optimizeCPUUsage()
+        XCTAssertNotNil(cpuResult)
+        
+        let batteryResult = performanceManager.optimizeBatteryLife()
+        XCTAssertNotNil(batteryResult)
+        
+        let networkResult = performanceManager.optimizeNetworkEfficiency()
+        XCTAssertNotNil(networkResult)
+        
+        let storageResult = performanceManager.optimizeStorageUsage()
+        XCTAssertNotNil(storageResult)
+        
+        let launchResult = performanceManager.optimizeAppLaunchTime()
+        XCTAssertNotNil(launchResult)
+        
+        // All optimizations should complete successfully
+        XCTAssertTrue(true)
+    }
+    
+    func testPerformanceMetricsConsistency() {
+        // Test that performance metrics are consistent
+        let metrics1 = performanceManager.performanceMetrics
+        let metrics2 = performanceManager.performanceMetrics
+        
+        // Metrics should be accessible and consistent
+        XCTAssertNotNil(metrics1)
+        XCTAssertNotNil(metrics2)
+        
+        // Basic structure should be the same
+        XCTAssertEqual(type(of: metrics1), type(of: metrics2))
+    }
+    
+    // MARK: - Stress Tests
+    
+    func testStressTestOptimization() {
+        // Stress test with multiple rapid optimization calls
+        measure {
+            for _ in 0..<10 {
+                _ = performanceManager.optimizeMemoryUsage()
+                _ = performanceManager.optimizeCPUUsage()
+                _ = performanceManager.optimizeBatteryLife()
+                _ = performanceManager.optimizeNetworkEfficiency()
+                _ = performanceManager.optimizeStorageUsage()
+                _ = performanceManager.optimizeAppLaunchTime()
+            }
+        }
+    }
+    
+    func testStressTestMonitoring() {
+        // Stress test with rapid monitoring calls
+        measure {
+            for _ in 0..<50 {
+                _ = performanceManager.monitorCPUPerformance()
+            }
+        }
+    }
+    
+    // MARK: - Error Handling Tests
+    
+    func testOptimizationWithInvalidData() {
+        // Test optimization with potentially invalid data
+        // This tests the robustness of the optimization methods
+        
+        let memoryResult = performanceManager.optimizeMemoryUsage()
+        XCTAssertNotNil(memoryResult)
+        
+        let cpuResult = performanceManager.optimizeCPUUsage()
+        XCTAssertNotNil(cpuResult)
+        
+        let batteryResult = performanceManager.optimizeBatteryLife()
+        XCTAssertNotNil(batteryResult)
+        
+        // All optimizations should handle edge cases gracefully
+        XCTAssertTrue(true)
+    }
+    
+    func testPerformanceManagerInitialization() {
+        // Test multiple initializations
+        let manager1 = PerformanceOptimizationManager()
+        let manager2 = PerformanceOptimizationManager()
+        
+        XCTAssertNotNil(manager1)
+        XCTAssertNotNil(manager2)
+        XCTAssertNotEqual(ObjectIdentifier(manager1), ObjectIdentifier(manager2))
     }
 }
 

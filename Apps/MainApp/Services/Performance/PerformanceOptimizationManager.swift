@@ -1,6 +1,8 @@
 import Foundation
 import Combine
 import os.log
+import UIKit
+import Network
 
 // MARK: - Performance Optimization Manager
 @MainActor
@@ -23,8 +25,32 @@ public class PerformanceOptimizationManager: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var baselineMetrics: PerformanceMetrics?
     
+    // MARK: - Published Properties
+    @Published public var performanceMetrics: PerformanceMetrics = PerformanceMetrics()
+    @Published public var optimizationRecommendations: [OptimizationRecommendation] = []
+    @Published public var performanceAlerts: [PerformanceAlert] = []
+    @Published public var optimizationStatus: OptimizationStatus = .optimal
+    
+    // MARK: - Private Properties
+    private let memoryMonitor = MemoryMonitor()
+    private let cpuMonitor = CPUMonitor()
+    private let batteryMonitor = BatteryMonitor()
+    private let networkMonitor = NetworkMonitor()
+    private let storageMonitor = StorageMonitor()
+    private let launchTimeMonitor = LaunchTimeMonitor()
+    private let cacheManager = CacheManager()
+    
+    // MARK: - Performance Monitoring
+    private var monitoringTimer: Timer?
+    private let monitoringInterval: TimeInterval = 5.0 // 5 seconds
+    
     public init() {
         setupPerformanceMonitoring()
+        startPerformanceMonitoring()
+    }
+    
+    deinit {
+        stopPerformanceMonitoring()
     }
     
     // MARK: - Real-time Performance Monitoring
@@ -595,6 +621,99 @@ public class PerformanceOptimizationManager: ObservableObject {
         // Log performance events for internal tracking
         // This would integrate with the observability system
     }
+    
+    // MARK: - Performance Monitoring
+    
+    private func startPerformanceMonitoring() {
+        monitoringTimer = Timer.scheduledTimer(withTimeInterval: monitoringInterval, repeats: true) { [weak self] _ in
+            self?.updatePerformanceMetrics()
+        }
+        
+        logPerformanceEvent(.monitoring, "Performance monitoring started", .info)
+    }
+    
+    private func stopPerformanceMonitoring() {
+        monitoringTimer?.invalidate()
+        monitoringTimer = nil
+        
+        logPerformanceEvent(.monitoring, "Performance monitoring stopped", .info)
+    }
+    
+    private func updatePerformanceMetrics() {
+        // Update all performance metrics
+        performanceMetrics.memoryUsage = memoryMonitor.getCurrentMemoryUsage()
+        performanceMetrics.cpuUsage = cpuMonitor.getCurrentCPUUsage()
+        performanceMetrics.batteryLevel = batteryMonitor.getCurrentBatteryLevel()
+        performanceMetrics.networkUsage = networkMonitor.getCurrentNetworkUsage()
+        performanceMetrics.storageUsage = storageMonitor.getCurrentStorageUsage()
+        performanceMetrics.launchTime = launchTimeMonitor.getCurrentLaunchTime()
+        performanceMetrics.timestamp = Date()
+        
+        // Check for performance issues
+        checkPerformanceIssues()
+    }
+    
+    private func checkPerformanceIssues() {
+        // Check memory usage
+        if performanceMetrics.memoryUsage > 80.0 {
+            addPerformanceAlert(.highMemoryUsage, "Memory usage is high: \(performanceMetrics.memoryUsage)%")
+        }
+        
+        // Check CPU usage
+        if performanceMetrics.cpuUsage > 80.0 {
+            addPerformanceAlert(.highCPUUsage, "CPU usage is high: \(performanceMetrics.cpuUsage)%")
+        }
+        
+        // Check battery level
+        if performanceMetrics.batteryLevel < 20.0 {
+            addPerformanceAlert(.lowBattery, "Battery level is low: \(performanceMetrics.batteryLevel)%")
+        }
+        
+        // Check storage usage
+        if performanceMetrics.storageUsage > 90.0 {
+            addPerformanceAlert(.highStorageUsage, "Storage usage is high: \(performanceMetrics.storageUsage)%")
+        }
+    }
+    
+    private func addPerformanceAlert(_ type: PerformanceAlertType, _ message: String) {
+        let alert = PerformanceAlert(
+            type: type,
+            message: message,
+            timestamp: Date(),
+            severity: .warning
+        )
+        
+        performanceAlerts.append(alert)
+        logPerformanceEvent(.alert, message, .warning)
+    }
+    
+    private func addOptimizationRecommendation(_ type: OptimizationType) {
+        let recommendation = OptimizationRecommendation(
+            type: type,
+            description: getRecommendationDescription(for: type),
+            priority: .medium,
+            timestamp: Date()
+        )
+        
+        optimizationRecommendations.append(recommendation)
+    }
+    
+    private func getRecommendationDescription(for type: OptimizationType) -> String {
+        switch type {
+        case .reduceCPUUsage:
+            return "Consider reducing background tasks and optimizing algorithms"
+        case .reduceMemoryUsage:
+            return "Clear unused caches and optimize image loading"
+        case .reduceBatteryUsage:
+            return "Optimize location services and background activity"
+        case .reduceNetworkUsage:
+            return "Implement better caching and request batching"
+        case .reduceStorageUsage:
+            return "Clean up unused data and compress stored files"
+        case .reduceLaunchTime:
+            return "Optimize startup sequence and lazy load resources"
+        }
+    }
 }
 
 // MARK: - Supporting Models
@@ -1136,5 +1255,83 @@ private class PerformanceTester {
     
     func acknowledgeAlert(_ alertId: UUID) async throws {
         // Simulate alert acknowledgment
+    }
+}
+
+// MARK: - Supporting Monitors
+
+private class MemoryMonitor {
+    func getCurrentMemoryUsage() -> Double {
+        // Simulate memory usage monitoring
+        return Double.random(in: 30...90)
+    }
+}
+
+private class CPUMonitor {
+    func getCurrentCPUUsage() -> Double {
+        // Simulate CPU usage monitoring
+        return Double.random(in: 20...80)
+    }
+    
+    func getAverageCPUUsage() -> Double {
+        return Double.random(in: 25...75)
+    }
+    
+    func getPeakCPUUsage() -> Double {
+        return Double.random(in: 60...95)
+    }
+    
+    func getCPUTemperature() -> Double {
+        return Double.random(in: 35...85)
+    }
+}
+
+private class BatteryMonitor {
+    func getCurrentBatteryLevel() -> Double {
+        // Simulate battery level monitoring
+        return Double.random(in: 10...100)
+    }
+    
+    func getBatteryUsageRate() -> Double {
+        return Double.random(in: 5...30)
+    }
+}
+
+private class NetworkMonitor {
+    func getCurrentNetworkUsage() -> Double {
+        // Simulate network usage monitoring
+        return Double.random(in: 10...100)
+    }
+}
+
+private class StorageMonitor {
+    func getCurrentStorageUsage() -> Double {
+        // Simulate storage usage monitoring
+        return Double.random(in: 40...95)
+    }
+}
+
+private class LaunchTimeMonitor {
+    func getCurrentLaunchTime() -> Double {
+        // Simulate launch time monitoring
+        return Double.random(in: 1.0...5.0)
+    }
+}
+
+private class CacheManager {
+    func getTotalCacheSize() -> Double {
+        return Double.random(in: 50...500)
+    }
+    
+    func optimizeImageCache() -> Double {
+        return Double.random(in: 10...50)
+    }
+    
+    func optimizeDataCache() -> Double {
+        return Double.random(in: 5...30)
+    }
+    
+    func optimizeNetworkCache() -> Double {
+        return Double.random(in: 15...60)
     }
 } 
