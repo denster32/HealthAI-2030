@@ -55,23 +55,12 @@ public final class RemoteTelemetryProcessor {
         guard retryCount < maxRetries else {
             print("[TelemetryProcessor] Max retries exceeded for batch - saving to local storage")
             do {
-                try saveToLocalStorage(batch: batch)
+                try saveBatchToLocalStorage(batch)
                 print("[TelemetryProcessor] Saved batch to local storage")
             } catch {
                 print("[TelemetryProcessor] Failed to save batch to local storage: \(error)")
             }
             return
-        }
-        
-        private func saveToLocalStorage(batch: [TelemetryEvent]) throws {
-            let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let fileName = "telemetry_fallback_\(Date().timeIntervalSince1970).json"
-            let fileURL = documentsURL.appendingPathComponent(fileName)
-            
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(batch)
-            try data.write(to: fileURL, options: .atomic)
         }
         
         let delay = min(5.0 * pow(2.0, Double(retryCount)), 30.0) // Exponential backoff with max 30s
@@ -87,6 +76,18 @@ public final class RemoteTelemetryProcessor {
                 }
             }
         }
+    }
+    
+    /// Saves a batch of telemetry events to local storage as JSON file
+    private func saveBatchToLocalStorage(_ batch: [TelemetryEvent]) throws {
+        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let fileName = "telemetry_fallback_\(Date().timeIntervalSince1970).json"
+        let fileURL = documentsURL.appendingPathComponent(fileName)
+        
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(batch)
+        try data.write(to: fileURL, options: .atomic)
     }
 }
 
