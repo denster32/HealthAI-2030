@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    name: Build, Archive & Distribute
+    runs-on: macos-latest
+    env:
+      XCODE_SCHEME: "HealthAI2030App"
+      XCODE_WORKSPACE: "HealthAI 2030.xcworkspace"
+      ENV_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      EXPORT_OPTIONS_PLIST: "ExportOptions.plist"
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+      APPLE_PRIVATE_KEY: ${{ secrets.APPLE_PRIVATE_KEY }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.0'
+
+      - name: Install Dependencies
+        run: swift package resolve
+
+      - name: Build & Archive
+        run: |
+          xcodebuild clean archive \
+            -workspace $XCODE_WORKSPACE \
+            -scheme $XCODE_SCHEME \
+            -configuration AppStoreDistribution \
+            -archivePath $PWD/build/${{ github.ref }}.xcarchive
+
+      - name: Export IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath $PWD/build/${{ github.ref }}.xcarchive \
+            -exportOptionsPlist $EXPORT_OPTIONS_PLIST \
+            -exportPath $PWD/build
+
+      - name: Upload to TestFlight
+        run: |
+          xcrun altool --upload-app \
+            --apiKey $APPLE_API_KEY_ID \
+            --apiIssuer $APPLE_API_ISSUER_ID \
+            --type ios \
+            --file $PWD/build/${{ github.ref }}.ipa
+
+      - name: Generate Release Notes
+        id: gen_notes
+        run: |
+          git log --pretty=format:"* %s" ${{ github.ref }}^..HEAD > release_notes.md
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false 
