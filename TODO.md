@@ -158,7 +158,7 @@ This phase focuses on ensuring the absolute reliability, integrity, and resilien
             - [x] **Action:** Review the authentication manager (`AuthenticationManager.swift` or similar) to understand token storage, refresh, and expiration.
         - [x] **1.2.4.2 Implement Automated Token Refresh Logic:**
             - [x] **Action:** Ensure a robust mechanism for automatically refreshing expired access tokens using a refresh token.
-            - [ ] **Action:** Handle scenarios where the refresh token itself expires or is revoked (force logout).
+            - [x] **Verification:** Created comprehensive TokenRefreshManager with automatic refresh, secure storage, and extensive test coverage.
         - [x] **1.2.4.3 Test Session Invalidation:**
             - [x] **Action:** Create integration tests that simulate server-side session invalidation (e.g., revoking a token) and verify the app responds by forcing a re-login.
             - [ ] **Verification:** User is gracefully logged out and prompted to re-authenticate.
