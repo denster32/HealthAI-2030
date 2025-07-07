@@ -94,8 +94,8 @@ This phase focuses on ensuring the absolute reliability, integrity, and resilien
     - [x] **1.1.3 Data Corruption Resilience and Recovery Mechanisms**
         - [x] **1.1.3.1 Simulate Data File Corruption:**
             - [x] **Action:** Add `Scripts/Fixes/simulate_swiftdatastore_corruption.sh` to simulate SwiftData persistence file corruption.
-            - [ ] **Rationale:** To test how the app responds to unexpected database states.
-            - [ ] **Verification:** Observe application behavior (crash, recovery, data loss). The goal is graceful failure or recovery, not necessarily perfect data recovery without user intervention for severe corruption.
+            - [x] **Rationale:** To test how the app responds to unexpected database states.
+            - [x] **Verification:** Observe application behavior (crash, recovery, data loss). The goal is graceful failure or recovery, not necessarily perfect data recovery without user intervention for severe corruption.
         - [x] **1.1.3.2 Implement Checksum/Integrity Checks for Critical Data:**
             - [x] **Action:** Add `checksum` properties to critical models and `DataIntegrityManager` for hash validation.
             - [ ] **Verification:** Introduce intentional minor data alterations in test data and confirm checksum validation flags them.
