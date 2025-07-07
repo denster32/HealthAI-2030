@@ -98,7 +98,7 @@ This phase focuses on ensuring the absolute reliability, integrity, and resilien
             - [x] **Verification:** Observe application behavior (crash, recovery, data loss). The goal is graceful failure or recovery, not necessarily perfect data recovery without user intervention for severe corruption.
         - [x] **1.1.3.2 Implement Checksum/Integrity Checks for Critical Data:**
             - [x] **Action:** Add `checksum` properties to critical models and `DataIntegrityManager` for hash validation.
-            - [ ] **Verification:** Introduce intentional minor data alterations in test data and confirm checksum validation flags them.
+            - [x] **Verification:** Introduce intentional minor data alterations in test data and confirm checksum validation flags them.
         - [x] **1.1.3.3 Implement Snapshot/Backup & Restore Functionality (Local):**
             - [x] **Action:** Added `DataBackupManager` to create and restore backups of local store files.
             - [x] **Verification:** `DataBackupManagerTests` validate backup and restore behavior.
@@ -167,19 +167,28 @@ This phase focuses on ensuring the absolute reliability, integrity, and resilien
             - [x] **Action:** Re-read `RealTimeDataSync.swift` and any other relevant sync managers to deeply understand the synchronization process.
             - [x] **Verification:** RealTimeDataSyncManager is comprehensively implemented with multi-device sync, conflict resolution, offline mode, and CloudKit integration.
         - [x] **1.2.5.2 Implement Comprehensive Sync Integration Tests:**
-            - [x] **1.2.5.2 Implement Comprehensive Sync Integration Tests:**
-            - [ ] **File:** `Apps/Tests/IntegrationTests/DataSynchronizationTests.swift` (create if not exists)
-            - [ ] **Action:** Add test cases for various sync scenarios:
-                - [ ] Offline data creation, then go online and sync.
-                - [ ] Online data creation, then go offline, modify, go online, sync.
-                - [ ] Long-term offline accumulation of data and then sync.
-                - [ ] Concurrent sync attempts from multiple devices/threads.
-                - [ ] Network errors during sync (partial syncs, retries).
-            - [ ] **Verification:** Ensure data consistency across devices and backend after each scenario, no data loss.
+            - [x] **Action:** Add test cases for various sync scenarios:
+                - [x] Offline data creation, then go online and sync.
+                - [x] Online data creation, then go offline, modify, go online, sync.
+                - [x] Long-term offline accumulation of data and then sync.
+                - [x] Concurrent sync attempts from multiple devices/threads.
+                - [x] Network errors during sync (partial syncs, retries).
+            - [x] **Verification:** Ensure data consistency across devices and backend after each scenario, no data loss.
 
 - [x] **1.3 ML/AI Model Reliability & Explainability**
     - [x] **1.3.1 Implementation of Automated Model Drift Detection and Retraining Pipelines**
         - [x] **1.3.1.1 Identify All Core ML Models & Their Usage**
+            - [x] **Action:** Use `grep_search` for `@Model`, `NSManagedObject`, `ModelContainer`, `NSPersistentContainer` in `Apps/`, `Packages/`, `Sources/`, `Modules/`.
+            - [x] **Expected Output:** List of all data models (`.swift` files defining `@Model` classes or `NSManagedObject` subclasses) and data managers (e.g., `SwiftDataManager.swift`, `CoreDataManager.swift`).
+            - [x] **Verification:** Confirm primary data models like `HealthRecord`, `SleepRecord`, `UserProfile`, `DigitalTwin`, `WaterIntake`, `FamilyMember` and their associated managers are identified.
+            - [x] **Core ML Models Identified:**
+                - [x] **SleepStageClassifier**: Sleep stage classification using heart rate, HRV, motion, and SpO2 data
+                - [x] **HealthPredictor**: General health prediction and risk assessment
+                - [x] **PreSymptomHealthPredictor**: Pre-symptom health prediction with telemetry
+                - [x] **MLXHealthPredictor**: MLX-based health predictions for sleep and general health
+                - [x] **MoodAnalyzer**: Mental health and mood analysis
+                - [x] **ECGDataProcessor**: ECG signal processing and anomaly detection
+                - [x] **FederatedHealthPredictor**: Federated learning health predictions
         - [x] **1.3.1.2 Implement Model Performance Monitoring**
         - [x] **1.3.1.3 Develop Model Drift Detection Logic**
         - [x] **1.3.1.4 Implement On-Device Model Update Mechanism**
