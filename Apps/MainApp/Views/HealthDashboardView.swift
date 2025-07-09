@@ -38,6 +38,19 @@ struct HealthDashboardView: View {
                     
                     // Oxygen Saturation Card
                     OxygenSaturationCard()
+                    // --- New: Advanced Health Prediction Card ---
+                    NavigationLink(destination: AdvancedHealthPredictionView(analyticsEngine: AnalyticsEngine())) {
+                        HealthMetricCard(
+                            title: "AI Health Predictions",
+                            value: "AI",
+                            unit: "",
+                            color: .blue,
+                            icon: "brain.head.profile",
+                            trend: .stable,
+                            subtitle: "Personalized Insights",
+                            detailText: "Tap for advanced predictions"
+                        )
+                    }
                 }
                 
                 // Health trends chart
