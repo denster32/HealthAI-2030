@@ -3,6 +3,7 @@ import Charts
 
 struct HealthDashboardView: View {
     @StateObject private var dashboardVM = HealthDashboardViewModel()
+    @State private var showingCoachingDashboard = false
     
     var body: some View {
         ScrollView {
@@ -10,6 +11,14 @@ struct HealthDashboardView: View {
                 // Real-time vital signs
                 VitalSignsPanel(vitals: dashboardVM.currentVitals)
                     .padding(.top)
+                
+                // AI Health Predictions
+                AIHealthPredictionsCard()
+                
+                // Health Coaching Card
+                HealthCoachingCard {
+                    showingCoachingDashboard = true
+                }
                 
                 // Sleep architecture visualization
                 if let sleepReport = dashboardVM.sleepReport {
@@ -33,6 +42,13 @@ struct HealthDashboardView: View {
         }
         .refreshable {
             dashboardVM.refreshData()
+        }
+        .sheet(isPresented: $showingCoachingDashboard) {
+            RealTimeCoachingDashboardView(
+                healthDataManager: HealthDataManager(),
+                predictionEngine: AdvancedHealthPredictionEngine(),
+                analyticsEngine: AnalyticsEngine()
+            )
         }
     }
 }
