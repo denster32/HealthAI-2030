@@ -1,0 +1,459 @@
+name: HealthAI-2030 Testing Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  XCODE_VERSION: "16.0"
+  SWIFT_VERSION: "6.0"
+  PLATFORMS: "iOS,macOS,watchOS,tvOS"
+
+jobs:
+  # MARK: - Unit Tests
+  unit-tests:
+    name: Unit Tests
+    runs-on: macos-latest
+    
+    strategy:
+      matrix:
+        platform: [iOS, macOS, watchOS, tvOS]
+        configuration: [Debug, Release]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Cache Swift packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.swiftpm
+          .build
+        key: ${{ runner.os }}-swift-${{ hashFiles('**/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-swift-
+          
+    - name: Run unit tests
+      run: |
+        swift test \
+          --platform ${{ matrix.platform }} \
+          --configuration ${{ matrix.configuration }} \
+          --parallel \
+          --enable-test-discovery
+          
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: unit-test-results-${{ matrix.platform }}-${{ matrix.configuration }}
+        path: |
+          .build/test-results/
+          .build/coverage/
+          
+  # MARK: - UI Tests
+  ui-tests:
+    name: UI Tests
+    runs-on: macos-latest
+    
+    strategy:
+      matrix:
+        platform: [iOS, macOS]
+        device: [iPhone 15, iPhone 15 Pro, iPad Pro (12.9-inch)]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Run UI tests
+      run: |
+        xcodebuild test \
+          -scheme HealthAI2030 \
+          -destination 'platform=${{ matrix.platform }} Simulator,name=${{ matrix.device }}' \
+          -enableCodeCoverage YES \
+          -resultBundlePath TestResults.xcresult
+          
+    - name: Upload UI test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: ui-test-results-${{ matrix.platform }}-${{ matrix.device }}
+        path: TestResults.xcresult
+        
+  # MARK: - Integration Tests
+  integration-tests:
+    name: Integration Tests
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Run integration tests
+      run: |
+        swift test \
+          --filter IntegrationTests \
+          --parallel \
+          --enable-test-discovery
+          
+    - name: Upload integration test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: integration-test-results
+        path: .build/test-results/
+        
+  # MARK: - Performance Tests
+  performance-tests:
+    name: Performance Tests
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Run performance tests
+      run: |
+        swift test \
+          --filter PerformanceTests \
+          --enable-test-discovery
+          
+    - name: Upload performance test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-test-results
+        path: .build/test-results/
+        
+  # MARK: - Property-Based Tests
+  property-tests:
+    name: Property-Based Tests
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Run property-based tests
+      run: |
+        swift test \
+          --filter PropertyTests \
+          --enable-test-discovery
+          
+    - name: Upload property test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: property-test-results
+        path: .build/test-results/
+        
+  # MARK: - Code Coverage
+  code-coverage:
+    name: Code Coverage
+    runs-on: macos-latest
+    needs: [unit-tests, ui-tests, integration-tests]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Download test artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: test-results/
+        
+    - name: Generate coverage report
+      run: |
+        xcrun xccov view --report --files-for-target HealthAI2030Core \
+          test-results/*/coverage/*.xcresult > coverage-report.txt
+          
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: coverage-report.txt
+        
+    - name: Check coverage threshold
+      run: |
+        COVERAGE=$(grep -o '[0-9.]*%' coverage-report.txt | head -1 | sed 's/%//')
+        if (( $(echo "$COVERAGE < 85" | bc -l) )); then
+          echo "❌ Code coverage ($COVERAGE%) is below threshold (85%)"
+          exit 1
+        else
+          echo "✅ Code coverage ($COVERAGE%) meets threshold (85%)"
+        fi
+        
+  # MARK: - Security Tests
+  security-tests:
+    name: Security Tests
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Run security tests
+      run: |
+        swift test \
+          --filter SecurityTests \
+          --enable-test-discovery
+          
+    - name: Upload security test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-test-results
+        path: .build/test-results/
+        
+  # MARK: - Quality Tests
+  quality-tests:
+    name: Quality Tests
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Run quality tests
+      run: |
+        swift test \
+          --filter CodeQualityTests \
+          --enable-test-discovery
+          
+    - name: Upload quality test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: quality-test-results
+        path: .build/test-results/
+        
+  # MARK: - Cross-Platform Tests
+  cross-platform-tests:
+    name: Cross-Platform Tests
+    runs-on: macos-latest
+    
+    strategy:
+      matrix:
+        platform: [iOS, macOS, watchOS, tvOS]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Run cross-platform tests
+      run: |
+        swift test \
+          --platform ${{ matrix.platform }} \
+          --filter CrossPlatformTests \
+          --enable-test-discovery
+          
+    - name: Upload cross-platform test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: cross-platform-test-results-${{ matrix.platform }}
+        path: .build/test-results/
+        
+  # MARK: - Test Summary
+  test-summary:
+    name: Test Summary
+    runs-on: macos-latest
+    needs: [unit-tests, ui-tests, integration-tests, performance-tests, property-tests, code-coverage, security-tests, quality-tests, cross-platform-tests]
+    if: always()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download all test artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: all-test-results/
+        
+    - name: Generate test summary
+      run: |
+        echo "# HealthAI-2030 Test Summary" > test-summary.md
+        echo "" >> test-summary.md
+        echo "## Test Results" >> test-summary.md
+        echo "" >> test-summary.md
+        echo "- Unit Tests: ${{ needs.unit-tests.result }}" >> test-summary.md
+        echo "- UI Tests: ${{ needs.ui-tests.result }}" >> test-summary.md
+        echo "- Integration Tests: ${{ needs.integration-tests.result }}" >> test-summary.md
+        echo "- Performance Tests: ${{ needs.performance-tests.result }}" >> test-summary.md
+        echo "- Property Tests: ${{ needs.property-tests.result }}" >> test-summary.md
+        echo "- Security Tests: ${{ needs.security-tests.result }}" >> test-summary.md
+        echo "- Quality Tests: ${{ needs.quality-tests.result }}" >> test-summary.md
+        echo "- Cross-Platform Tests: ${{ needs.cross-platform-tests.result }}" >> test-summary.md
+        echo "" >> test-summary.md
+        echo "## Code Coverage" >> test-summary.md
+        echo "" >> test-summary.md
+        if [ -f "all-test-results/coverage-report/coverage-report.txt" ]; then
+          cat all-test-results/coverage-report/coverage-report.txt >> test-summary.md
+        else
+          echo "Coverage report not available" >> test-summary.md
+        fi
+        
+    - name: Upload test summary
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-summary
+        path: test-summary.md
+        
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync('test-summary.md', 'utf8');
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });
+          
+  # MARK: - Quality Gates
+  quality-gates:
+    name: Quality Gates
+    runs-on: macos-latest
+    needs: [test-summary]
+    if: always()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download test summary
+      uses: actions/download-artifact@v3
+      with:
+        name: test-summary
+        path: ./
+        
+    - name: Check quality gates
+      run: |
+        # Check if all tests passed
+        if [[ "${{ needs.unit-tests.result }}" != "success" ]] || \
+           [[ "${{ needs.ui-tests.result }}" != "success" ]] || \
+           [[ "${{ needs.integration-tests.result }}" != "success" ]]; then
+          echo "❌ Quality gate failed: Tests did not pass"
+          exit 1
+        fi
+        
+        # Check code coverage
+        if [ -f "test-summary.md" ]; then
+          COVERAGE=$(grep -o '[0-9.]*%' test-summary.md | head -1 | sed 's/%//')
+          if (( $(echo "$COVERAGE < 85" | bc -l) )); then
+            echo "❌ Quality gate failed: Code coverage ($COVERAGE%) below threshold (85%)"
+            exit 1
+          fi
+        fi
+        
+        echo "✅ All quality gates passed"
+        
+  # MARK: - Build Verification
+  build-verification:
+    name: Build Verification
+    runs-on: macos-latest
+    
+    strategy:
+      matrix:
+        platform: [iOS, macOS, watchOS, tvOS]
+        configuration: [Debug, Release]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Build project
+      run: |
+        swift build \
+          --platform ${{ matrix.platform }} \
+          --configuration ${{ matrix.configuration }}
+          
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: build-${{ matrix.platform }}-${{ matrix.configuration }}
+        path: .build/
+        
+  # MARK: - Documentation Generation
+  documentation:
+    name: Generate Documentation
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: Generate documentation
+      run: |
+        swift package generate-documentation \
+          --target HealthAI2030Core \
+          --output-path Documentation/HealthAI-2030.doccarchive \
+          --transform-for-static-hosting \
+          --hosting-base-path /HealthAI-2030
+          
+    - name: Upload documentation
+      uses: actions/upload-artifact@v3
+      with:
+        name: documentation
+        path: Documentation/ 

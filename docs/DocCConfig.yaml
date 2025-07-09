@@ -1,0 +1,225 @@
+# DocC Configuration for HealthAI-2030
+# Agent 3 Code Quality & Refactoring Champion
+
+# MARK: - Documentation Configuration
+documentation:
+  # Documentation bundle identifier
+  bundleIdentifier: "com.healthai.documentation"
+  
+  # Documentation bundle name
+  bundleName: "HealthAI-2030"
+  
+  # Documentation bundle version
+  bundleVersion: "1.0.0"
+  
+  # Documentation bundle display name
+  bundleDisplayName: "HealthAI 2030"
+  
+  # Documentation bundle description
+  bundleDescription: "Comprehensive documentation for HealthAI-2030 health monitoring and AI platform"
+  
+  # Documentation bundle author
+  bundleAuthor: "HealthAI Team"
+  
+  # Documentation bundle author URL
+  bundleAuthorURL: "https://healthai.com"
+  
+  # Documentation bundle copyright
+  bundleCopyright: "Copyright © 2025 HealthAI. All rights reserved."
+  
+  # Documentation bundle license
+  bundleLicense: "MIT License"
+  
+  # Documentation bundle license URL
+  bundleLicenseURL: "https://opensource.org/licenses/MIT"
+
+# MARK: - Source Configuration
+sources:
+  # Source directory
+  sourceDirectory: "../"
+  
+  # Include patterns
+  include:
+    - "Apps/**/*.swift"
+    - "Packages/**/*.swift"
+    - "Sources/**/*.swift"
+    - "Modules/**/*.swift"
+    - "Frameworks/**/*.swift"
+  
+  # Exclude patterns
+  exclude:
+    - "**/Tests/**"
+    - "**/Scripts/**"
+    - "**/Resources/**"
+    - "**/Generated/**"
+    - "**/*.generated.swift"
+
+# MARK: - Output Configuration
+output:
+  # Output directory
+  outputDirectory: "../Documentation/HealthAI-2030.doccarchive"
+  
+  # Output format
+  outputFormat: "html"
+  
+  # Include source code
+  includeSourceCode: true
+  
+  # Include symbol graph
+  includeSymbolGraph: true
+
+# MARK: - Symbol Graph Configuration
+symbolGraph:
+  # Symbol graph directory
+  symbolGraphDirectory: "../Documentation/SymbolGraphs"
+  
+  # Include symbol graph
+  includeSymbolGraph: true
+  
+  # Generate symbol graph
+  generateSymbolGraph: true
+
+# MARK: - Documentation Structure
+documentationStructure:
+  # Main documentation file
+  mainDocumentationFile: "HealthAI-2030.md"
+  
+  # Table of contents
+  tableOfContents:
+    - "Overview"
+    - "Getting Started"
+    - "Architecture"
+    - "Features"
+    - "API Reference"
+    - "Security"
+    - "Performance"
+    - "Testing"
+    - "Deployment"
+    - "Contributing"
+
+# MARK: - Customization
+customization:
+  # Theme
+  theme: "default"
+  
+  # Navigation
+  navigation:
+    showBreadcrumbs: true
+    showTableOfContents: true
+    showRelatedItems: true
+  
+  # Search
+  search:
+    enabled: true
+    includeSymbols: true
+    includeArticles: true
+  
+  # Code highlighting
+  codeHighlighting:
+    enabled: true
+    theme: "default"
+  
+  # Images
+  images:
+    maxWidth: 800
+    maxHeight: 600
+    format: "png"
+
+# MARK: - Metadata
+metadata:
+  # Keywords
+  keywords:
+    - "HealthAI"
+    - "Health Monitoring"
+    - "AI"
+    - "Machine Learning"
+    - "iOS"
+    - "Swift"
+    - "Healthcare"
+    - "Wellness"
+    - "Fitness"
+    - "Medical"
+  
+  # Categories
+  categories:
+    - "Health & Fitness"
+    - "Medical"
+    - "Lifestyle"
+    - "Productivity"
+  
+  # Platforms
+  platforms:
+    - "iOS"
+    - "macOS"
+    - "watchOS"
+    - "tvOS"
+  
+  # Minimum deployment target
+  minimumDeploymentTarget:
+    iOS: "18.0"
+    macOS: "15.0"
+    watchOS: "11.0"
+    tvOS: "18.0"
+
+# MARK: - Validation
+validation:
+  # Validate documentation
+  validateDocumentation: true
+  
+  # Check for broken links
+  checkBrokenLinks: true
+  
+  # Check for missing documentation
+  checkMissingDocumentation: true
+  
+  # Check for duplicate symbols
+  checkDuplicateSymbols: true
+
+# MARK: - Generation
+generation:
+  # Generate documentation
+  generateDocumentation: true
+  
+  # Generate symbol graph
+  generateSymbolGraph: true
+  
+  # Generate index
+  generateIndex: true
+  
+  # Generate search index
+  generateSearchIndex: true
+  
+  # Generate table of contents
+  generateTableOfContents: true
+
+# MARK: - Publishing
+publishing:
+  # Publish to GitHub Pages
+  githubPages:
+    enabled: false
+    repository: "denster32/HealthAI-2030"
+    branch: "gh-pages"
+  
+  # Publish to internal server
+  internalServer:
+    enabled: false
+    url: "https://docs.healthai.com"
+  
+  # Export to static site
+  staticSite:
+    enabled: true
+    outputDirectory: "../Documentation/StaticSite"
+
+# MARK: - Integration
+integration:
+  # Xcode integration
+  xcode:
+    enabled: true
+    showDocumentation: true
+    showSymbols: true
+  
+  # CI/CD integration
+  cicd:
+    enabled: true
+    generateOnBuild: true
+    validateOnBuild: true 

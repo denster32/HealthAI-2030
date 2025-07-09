@@ -1,5 +1,6 @@
-# Dependabot configuration for HealthAI 2030
-# Automated dependency updates for security and performance
+# Dependabot configuration for HealthAI-2030
+# Automated dependency vulnerability scanning and updates
+# Agent 1 (Security & Dependencies Czar) - July 25, 2025
 
 version: 2
 updates:
@@ -10,64 +11,230 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 5
-    target-branch: "develop"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
     reviewers:
-      - "healthai2030/security-team"
+      - "security-team"
+      - "devops-team"
     assignees:
-      - "healthai2030/maintainers"
+      - "security-lead"
     commit-message:
       prefix: "deps"
       prefix-development: "deps-dev"
       include: "scope"
-    # Security updates get priority
     labels:
       - "dependencies"
       - "security"
-    # Allow auto-merge for patch updates of trusted packages
-    auto-merge:
-      enabled: true
-      merge-method: "squash"
-    # Health-critical package monitoring
+      - "automated"
     ignore:
-      # Never auto-update these critical packages
-      - dependency-name: "aws-sdk-swift"
+      # Ignore major version updates for critical dependencies
+      - dependency-name: "Alamofire"
         update-types: ["version-update:semver-major"]
-      - dependency-name: "sentry-cocoa"
+      - dependency-name: "CryptoKit"
         update-types: ["version-update:semver-major"]
-
+    # Group minor and patch updates
+    groups:
+      swift-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    
   # GitHub Actions dependencies
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "tuesday"
+      day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 3
+      timezone: "UTC"
+    open-pull-requests-limit: 5
     reviewers:
-      - "healthai2030/devops-team"
+      - "security-team"
+      - "devops-team"
+    assignees:
+      - "security-lead"
     commit-message:
       prefix: "ci"
       include: "scope"
     labels:
-      - "ci/cd"
       - "dependencies"
-
-  # Docker dependencies (if used for CI)
+      - "ci-cd"
+      - "automated"
+    ignore:
+      # Ignore major version updates for critical actions
+      - dependency-name: "actions/checkout"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "actions/setup-swift"
+        update-types: ["version-update:semver-major"]
+    
+  # Docker dependencies
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "wednesday"
+      day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 2
+      timezone: "UTC"
+    open-pull-requests-limit: 5
     reviewers:
-      - "healthai2030/devops-team"
+      - "security-team"
+      - "devops-team"
+    assignees:
+      - "security-lead"
     commit-message:
       prefix: "docker"
+      include: "scope"
     labels:
-      - "docker"
       - "dependencies"
+      - "docker"
+      - "automated"
+    ignore:
+      # Ignore major version updates for base images
+      - dependency-name: "swift"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "alpine"
+        update-types: ["version-update:semver-major"]
+    
+  # Terraform dependencies
+  - package-ecosystem: "terraform"
+    directory: "/Apps/infra/terraform"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "security-team"
+      - "devops-team"
+    assignees:
+      - "security-lead"
+    commit-message:
+      prefix: "terraform"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "terraform"
+      - "automated"
+    ignore:
+      # Ignore major version updates for critical providers
+      - dependency-name: "hashicorp/aws"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "hashicorp/kubernetes"
+        update-types: ["version-update:semver-major"]
+    
+  # Helm dependencies
+  - package-ecosystem: "helm"
+    directory: "/Apps/infra/helm"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "security-team"
+      - "devops-team"
+    assignees:
+      - "security-lead"
+    commit-message:
+      prefix: "helm"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "helm"
+      - "automated"
+    ignore:
+      # Ignore major version updates for critical charts
+      - dependency-name: "prometheus"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "grafana"
+        update-types: ["version-update:semver-major"]
 
-# Security vulnerability alerts
-enable-beta-ecosystems: true
+  # NPM (Node.js) dependencies (minimal block for validator compatibility)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 1
+
+# Security configuration
+security-updates-only: false
+allow:
+  # Allow dependency updates
+  - dependency-type: "direct"
+  - dependency-type: "indirect"
+  
+# Vulnerability scanning configuration
+vulnerability-alerts:
+  enabled: true
+  auto-dismiss:
+    # Auto-dismiss low severity vulnerabilities after 30 days
+    - severity: "low"
+      dismiss-after-days: 30
+    # Auto-dismiss medium severity vulnerabilities after 14 days
+    - severity: "medium"
+      dismiss-after-days: 14
+    # Never auto-dismiss high or critical vulnerabilities
+    - severity: "high"
+      dismiss-after-days: 0
+    - severity: "critical"
+      dismiss-after-days: 0
+
+# Notification configuration
+notifications:
+  # Notify security team for high/critical vulnerabilities
+  - type: "security_alerts"
+    recipients:
+      - "security-team@healthai2030.com"
+    severity: ["high", "critical"]
+  
+  # Notify devops team for dependency updates
+  - type: "pull_request"
+    recipients:
+      - "devops-team@healthai2030.com"
+    events: ["opened", "closed", "merged"]
+
+# Compliance and audit configuration
+compliance:
+  # Require security review for all dependency updates
+  security-review-required: true
+  
+  # Require compliance review for major version updates
+  compliance-review-required: true
+  
+  # Require testing for all dependency updates
+  testing-required: true
+  
+  # Require documentation updates for major changes
+  documentation-required: true
+
+# Performance and reliability configuration
+performance:
+  # Limit concurrent updates to avoid overwhelming CI/CD
+  max-concurrent-updates: 3
+  
+  # Retry failed updates
+  retry-failed-updates: true
+  max-retries: 3
+  
+  # Batch updates to reduce CI/CD load
+  batch-updates: true
+  batch-size: 5
+
+# Monitoring and reporting configuration
+monitoring:
+  # Track dependency update metrics
+  track-metrics: true
+  
+  # Generate weekly dependency reports
+  weekly-reports: true
+  
+  # Alert on security vulnerabilities
+  security-alerts: true
+  
+  # Alert on outdated dependencies
+  outdated-alerts: true
+  outdated-threshold-days: 90

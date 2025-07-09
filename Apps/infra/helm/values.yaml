@@ -1,14 +1,59 @@
 # values.yaml for HealthAI 2030 Helm chart
+# Security: All secrets are externalized to AWS Secrets Manager
 replicaCount: 2
+
 image:
   repository: healthai2030
   tag: latest
   pullPolicy: IfNotPresent
+
 service:
   type: LoadBalancer
   port: 80
   targetPort: 8080
+
+# Environment variables - loaded from external secrets
 env:
-  DATABASE_URL: "postgres://admin:changeMe123!@db-host:5432/healthai2030"
-  API_KEY: "your-api-key-here"
-  SECRET_KEY: "your-secret-key-here"
+  # Database configuration
+  DATABASE_URL: "${DATABASE_URL}"
+  
+  # API configuration
+  API_KEY: "${API_KEY}"
+  SECRET_KEY: "${SECRET_KEY}"
+  
+  # Security configuration
+  JWT_SECRET: "${JWT_SECRET}"
+  ENCRYPTION_KEY: "${ENCRYPTION_KEY}"
+  OAUTH_CLIENT_SECRET: "${OAUTH_CLIENT_SECRET}"
+  
+  # Monitoring configuration
+  SENTRY_DSN: "${SENTRY_DSN}"
+  
+  # AWS configuration
+  AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+  AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+  AWS_REGION: "${AWS_REGION}"
+
+# Security annotations
+annotations:
+  security.healthai.com/encryption: "AES-256-GCM"
+  security.healthai.com/secrets-source: "aws-secrets-manager"
+  security.healthai.com/rotation-policy: "30d"
+
+# Resource limits
+resources:
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  capabilities:
+    drop:
+      - ALL

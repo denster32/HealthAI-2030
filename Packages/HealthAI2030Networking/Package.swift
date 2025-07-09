@@ -18,7 +18,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../../Apps/Packages/HealthAI2030Core"),
-        .package(url: "https://github.com/awslabs/aws-sdk-swift", from: "0.34.0")
+        .package(url: "https://github.com/awslabs/aws-sdk-swift", from: "0.78.0")
     ],
     targets: [
         .target(

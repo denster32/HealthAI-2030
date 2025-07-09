@@ -434,74 +434,150 @@ The final push to ensure everything is perfect for release and sustainable in th
 
 ---
 
-## 📋 AGENT TROUBLESHOOTING GUIDE
+# Comprehensive Code Audit and Remediation Plan
 
-### **If You Can't Find a File:**
-- [ ] **STEP 1**: Use `find . -name "filename.swift"` to locate it
-- [ ] **STEP 2**: If file doesn't exist, create it with basic structure
-- [ ] **STEP 3**: Add TODO comments for missing functionality
-- [ ] **STEP 4**: Continue with the task
+**Project:** HealthAI-2030
+**Date:** July 9, 2025
+**Status:** Planning
 
-### **If Build Fails:**
-- [ ] **STEP 1**: Run `swift package resolve` to fix dependencies
-- [ ] **STEP 2**: Run `swift build` to see specific errors
-- [ ] **STEP 3**: Fix syntax errors one by one
-- [ ] **STEP 4**: If too complex, create placeholder with TODO comments
-- [ ] **STEP 5**: Continue with the task
+## 1. Introduction
 
-### **If Git Push Fails:**
-- [ ] **STEP 1**: Check `git status` to see what's staged
-- [ ] **STEP 2**: Run `git remote -v` to verify remote
-- [ ] **STEP 3**: Try `git push origin main --force` (if safe)
-- [ ] **STEP 4**: If still fails, save work locally and continue
+This document outlines a comprehensive audit and remediation plan for the HealthAI-2030 codebase. The goal is to improve the overall quality, security, performance, and maintainability of the project. The work is divided among four specialized agents to enable parallel execution and ensure a thorough review of the entire codebase.
 
-### **If Task is Too Complex:**
-- [ ] **STEP 1**: Break it into smaller subtasks
-- [ ] **STEP 2**: Implement basic version first
-- [ ] **STEP 3**: Add TODO comments for advanced features
-- [ ] **STEP 4**: Complete what you can
-- [ ] **STEP 5**: Document what was skipped
+### Agent Roles and Responsibilities
 
-### **If You Get Confused:**
-- [ ] **STEP 1**: Create `AGENT_CONFUSION_LOG.md` file
-- [ ] **STEP 2**: Document what confused you
-- [ ] **STEP 3**: Skip confusing part
-- [ ] **STEP 4**: Complete rest of task
-- [ ] **STEP 5**: Ask for help in next session
+*   **Agent 1: Security & Dependencies Czar:** Focuses on security vulnerabilities, dependency management, and secure coding practices.
+*   **Agent 2: Performance & Optimization Guru:** Identifies and addresses performance bottlenecks, memory leaks, and optimizes resource usage.
+*   **Agent 3: Code Quality & Refactoring Champion:** Enforces coding standards, refactors complex code, improves documentation, and ensures overall code health.
+*   **Agent 4: Testing & Reliability Engineer:** Improves test coverage, fixes bugs, and ensures the reliability of the application across all platforms.
 
----
+## 2. Timeline
 
-## 🎯 SUCCESS METRICS
+The audit and remediation process is planned for a two-week sprint.
 
-### **Task Completion Rate Target: 95%**
-- Complete at least 95% of assigned tasks
-- Document any incomplete parts
-- Always push changes to GitHub
+*   **Week 1 (July 14-18, 2025):** Audit and Analysis. Each agent will perform their assigned audit tasks and document their findings.
+*   **Week 2 (July 21-25, 2025):** Remediation and Implementation. Agents will work on implementing the fixes and improvements identified in the first week.
 
-### **Code Quality Standards:**
-- No syntax errors in committed code
-- Add proper error handling
-- Include basic documentation
-- Follow Swift coding conventions
+## 3. Communication & Coordination
 
-### **GitHub Integration:**
-- All changes pushed to main branch
-- Descriptive commit messages
-- Tasks marked complete in this file
-- No uncommitted work left behind
+*   **Daily Stand-ups:** A brief daily meeting at 9:00 AM PST to sync progress, discuss blockers, and coordinate efforts.
+*   **Shared Task Board:** A Kanban board will be used to track the status of all tasks.
+*   **Pull Requests:** All code changes must be submitted as pull requests and reviewed by at least one other agent.
 
-**Remember: It's better to complete 80% of a task than to get stuck and do 0%. Keep moving forward!**
+## 4. Tooling
+
+*   **Static Analysis:** SwiftLint, Clang Static Analyzer
+*   **Performance Profiling:** Instruments (Time Profiler, Allocations, Leaks)
+*   **Dependency Management:** Swift Package Manager
+*   **Testing:** XCTest, XCUITest
+
+## 5. Agent Task Assignments
 
 ---
 
-## 📞 EMERGENCY CONTACT
+### **Agent 1: Security & Dependencies Czar**
 
-**If you encounter critical issues:**
-- [ ] **STEP 1**: Document the issue in `AGENT_CONFUSION_LOG.md`
-- [ ] **STEP 2**: Save all work with `git add . && git commit -m "Emergency save"`
-- [ ] **STEP 3**: Push changes: `git push origin main`
-- [ ] **STEP 4**: Continue with next task
-- [ ] **STEP 5**: User will review and provide guidance
+**Role:** Security & Dependencies Czar
+**Sprint:** July 14-25, 2025
 
-**The goal is continuous progress, not perfection. Keep the momentum going!**
+Your primary focus is on improving the security of the HealthAI-2030 application and managing its dependencies.
+
+#### Week 1: Audit and Analysis (July 14-18)
+
+| Task ID | Description | Deliverables |
+| --- | --- | --- |
+| SEC-001 | **Dependency Vulnerability Scan:** Audit all third-party dependencies for known vulnerabilities using the Swift Package Manager's `swift package resolve` and `swift package show-dependencies` commands, and by checking against vulnerability databases like the [National Vulnerability Database (NVD)](https://nvd.nist.gov/). | A report of vulnerable dependencies and a plan for remediation. The report should include the dependency name, version, vulnerability details, and recommended action (e.g., update, replace). |
+| SEC-002 | **Static Application Security Testing (SAST):** Run SAST tools like the Clang Static Analyzer and other available linters to identify security flaws in the codebase. Focus on common Swift vulnerabilities such as those listed in the [OWASP Mobile Top 10](https://owasp.org/www-project-mobile-top-10/). | A list of identified vulnerabilities, prioritized by severity (Critical, High, Medium, Low). For each vulnerability, include the file path, line number, and a brief description of the issue. |
+| SEC-003 | **Secure Coding Practices Review:** Manually review critical sections of the code for common security issues. Pay close attention to: - Input validation in all user-facing forms and API endpoints. - Data protection mechanisms for sensitive user data (e.g., health information), ensuring proper encryption at rest and in transit. - Authentication and authorization logic. | A document with findings and recommendations for improvement. Provide code snippets to illustrate the issues and suggest corrected implementations. |
+| SEC-004 | **Secrets Management Audit:** Ensure no secrets (API keys, credentials, certificates) are hardcoded in the source code. Search the codebase for common patterns of hardcoded secrets. | A report on the state of secrets management. If any hardcoded secrets are found, create a plan to move them to a secure storage solution like the iOS Keychain or a configuration file that is excluded from version control. |
+
+#### Week 2: Remediation and Implementation (July 21-25)
+
+| Task ID | Description |
+| --- | --- |
+| SEC-FIX-001 | **Update Vulnerable Dependencies:** Apply the remediation plan for vulnerable dependencies. This will likely involve updating package versions in `Package.swift`. |
+| SEC-FIX-002 | **Fix High-Priority Vulnerabilities:** Address the critical and high-severity vulnerabilities identified by the SAST scan. |
+| SEC-FIX-003 | **Implement Secure Coding Recommendations:** Apply the recommended changes from the secure coding review. |
+| SEC-FIX-004 | **Migrate Hardcoded Secrets:** Implement the plan to move hardcoded secrets to a secure storage solution. |
+
+---
+
+### **Agent 2: Performance & Optimization Guru**
+
+**Role:** Performance & Optimization Guru
+**Sprint:** July 14-25, 2025
+
+Your primary focus is on identifying and addressing performance bottlenecks to ensure the HealthAI-2030 application is fast, responsive, and efficient.
+
+#### Week 1: Audit and Analysis (July 14-18)
+
+| Task ID | Description | Deliverables |
+| --- | --- | --- |
+| PERF-001 | **Performance Profiling:** Profile the application on all target platforms (iOS, macOS, watchOS, tvOS) using Instruments. Focus on the Time Profiler to identify CPU-intensive operations and the GPU Driver instrument to analyze rendering performance. | A report detailing performance hotspots for each platform. The report should include screenshots from Instruments, method names responsible for high CPU/GPU usage, and initial hypotheses for optimization. |
+| PERF-002 | **Memory Leak Detection:** Use the Leaks and Allocations instruments to detect and analyze memory leaks and abandoned memory. Pay special attention to retain cycles in closures and delegates. | A list of identified memory leaks with stack traces and proposed fixes. For each leak, provide the object graph and an explanation of the retain cycle. |
+| PERF-003 | **App Launch Time Optimization:** Use the "App Launch" template in Instruments to analyze and optimize the application's launch time. Measure both cold and warm launch times. | A report on launch time metrics before and after optimization. The report should detail the phases of the app launch and identify the specific code paths that are causing delays. |
+| PERF-004 | **Energy Consumption Analysis:** Use the Energy Log instrument to profile the app's energy impact. Identify areas of high CPU usage, network activity, and GPS usage that could be optimized to reduce battery drain. | A report on energy consumption with recommendations for reducing it. The report should highlight the most energy-intensive parts of the app and suggest specific changes (e.g., batching network requests, using more efficient APIs). |
+
+#### Week 2: Remediation and Implementation (July 21-25)
+
+| Task ID | Description |
+| --- | --- |
+| PERF-FIX-001 | **Optimize CPU/GPU Hotspots:** Apply optimizations to the identified performance hotspots. This could involve algorithm improvements, moving work to background threads, or optimizing graphics assets. |
+| PERF-FIX-002 | **Fix Memory Leaks:** Implement the proposed fixes for all identified memory leaks. |
+| PERF-FIX-003 | **Implement Launch Time Optimizations:** Apply the changes to improve the application's launch time. |
+| PERF-FIX-004 | **Reduce Energy Consumption:** Implement the recommendations to reduce the app's energy impact. |
+
+---
+
+### **Agent 3: Code Quality & Refactoring Champion**
+
+**Role:** Code Quality & Refactoring Champion
+**Sprint:** July 14-25, 2025
+
+Your primary focus is on improving the overall code health of the HealthAI-2030 application, making it more readable, maintainable, and consistent.
+
+#### Week 1: Audit and Analysis (July 14-18)
+
+| Task ID | Description | Deliverables |
+| --- | --- | --- |
+| QUAL-001 | **Code Style and Linting Enforcement:** Configure and run SwiftLint across the entire codebase. Define a shared `.swiftlint.yml` configuration file based on community best practices (e.g., the [Swift Style Guide](https://github.com/raywenderlich/swift-style-guide)). | A pull request with the `.swiftlint.yml` configuration file and any initial, auto-correctable style fixes. Also, a report of the major style violations that require manual intervention. |
+| QUAL-002 | **Code Complexity Analysis and Refactoring:** Use tools and manual inspection to identify "code smells" such as long methods, large classes, and high cyclomatic complexity. Pay special attention to the Core Data stack, networking layer, and any complex business logic. | A prioritized list of areas that require refactoring. For each area, provide a brief explanation of the problem and a proposed refactoring strategy (e.g., "Extract Method," "Decompose Class"). |
+| QUAL-003 | **API Design and Consistency Review:** Review internal and public APIs for consistency, clarity, and adherence to Swift API Design Guidelines. Check for consistent naming conventions, parameter ordering, and use of value types vs. reference types. | A document with recommendations for API improvements. This should include a list of specific APIs to be changed and the proposed new signature. |
+| QUAL-004 | **Documentation Audit and Improvement:** Audit existing documentation, including in-code comments (especially `// MARK:` comments), READMEs, and any external documentation in the `/docs` directory. Check for accuracy, completeness, and clarity. | A report on the state of the documentation, highlighting missing or outdated information. Create a plan for improving the documentation during the remediation week. |
+
+#### Week 2: Remediation and Implementation (July 21-25)
+
+| Task ID | Description |
+| --- | --- |
+| QUAL-FIX-001 | **Fix Linting Issues:** Manually address the remaining SwiftLint violations. |
+| QUAL-FIX-002 | **Refactor High-Priority Code:** Begin refactoring the most critical areas identified in the complexity analysis. |
+| QUAL-FIX-003 | **Improve API Consistency:** Apply the recommended changes to improve API design. |
+| QUAL-FIX-004 | **Update and Improve Documentation:** Execute the documentation improvement plan. This includes adding missing comments, updating READMEs, and clarifying confusing sections. |
+
+---
+
+### **Agent 4: Testing & Reliability Engineer**
+
+**Role:** Testing & Reliability Engineer
+**Sprint:** July 14-25, 2025
+
+Your primary focus is on improving the test coverage, fixing bugs, and ensuring the reliability of the HealthAI-2030 application across all platforms.
+
+#### Week 1: Audit and Analysis (July 14-18)
+
+| Task ID | Description | Deliverables |
+| --- | --- | --- |
+| TEST-001 | **Test Coverage Analysis:** Use Xcode's code coverage tools to measure the current test coverage for both unit tests and UI tests. Identify critical areas of the application with low or no test coverage, such as business logic, data models, and utility classes. | A test coverage report detailing the coverage percentage for each module and a prioritized list of areas that need improved test coverage. |
+| TEST-002 | **UI Test Automation Review and Enhancement:** Review the existing UI test suite (`XCUITest`). Identify flaky tests, improve test assertions, and expand the suite to cover more user flows. Pay special attention to tests for new features and critical user journeys. | A report on the state of the UI test suite, including a list of flaky tests and a plan for improving them. |
+| TEST-003 | **Bug Triage and Prioritization:** Review the existing bug backlog in the project's issue tracker. Reproduce reported issues to confirm their validity, and prioritize them based on severity and user impact. | An updated and prioritized bug backlog. Each bug should have clear steps to reproduce, an assigned priority, and be ready for a developer to work on. |
+| TEST-004 | **Cross-platform Consistency Testing:** Manually test the application on all supported platforms (iOS, macOS, watchOS, tvOS) to ensure a consistent user experience and identify any platform-specific bugs. | A report on any inconsistencies or platform-specific bugs found during testing. For each issue, include screenshots or videos and detailed steps to reproduce. |
+
+#### Week 2: Remediation and Implementation (July 21-25)
+
+| Task ID | Description |
+| --- | --- |
+| TEST-FIX-001 | **Increase Test Coverage:** Write new unit tests for the critical areas identified in the coverage analysis. |
+| TEST-FIX-002 | **Improve UI Tests:** Implement the plan to improve the UI test suite, fixing flaky tests and adding new ones. |
+| TEST-FIX-003 | **Fix High-Priority Bugs:** Begin fixing the high-priority bugs from the newly triaged backlog. |
+| TEST-FIX-004 | **Address Platform Inconsistencies:** Work with the team to address the platform-specific issues identified during testing. |
 

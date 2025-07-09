@@ -1,0 +1,616 @@
+# Comprehensive Testing Pipeline for HealthAI 2030
+# Automated testing with coverage reporting and quality gates
+
+name: 🧪 Comprehensive Testing Pipeline
+
+on:
+  push:
+    branches: [ main, develop, feature/*, bugfix/* ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run full test suite nightly
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of tests to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - unit
+        - ui
+        - integration
+        - performance
+        - coverage
+        - security
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_16.0.app/Contents/Developer
+  XCODE_VERSION: '16.0'
+  SWIFT_VERSION: '6.0'
+  IOS_VERSION: '18.0'
+  MACOS_VERSION: '15.0'
+  COVERAGE_THRESHOLD: 85
+  TEST_TIMEOUT: 30
+
+# =============================================================================
+# WORKFLOW JOBS
+# =============================================================================
+
+jobs:
+
+  # ===========================================================================
+  # ENVIRONMENT SETUP
+  # ===========================================================================
+  
+  setup:
+    name: 🔧 Environment Setup
+    runs-on: macos-15
+    timeout-minutes: 10
+    
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
+      xcode-version: ${{ steps.xcode-info.outputs.version }}
+      swift-version: ${{ steps.swift-info.outputs.version }}
+      
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 🍎 Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: 📊 System Information
+      id: xcode-info
+      run: |
+        echo "version=$(xcodebuild -version | head -n1 | awk '{print $2}')" >> $GITHUB_OUTPUT
+        echo "📱 Xcode Version: $(xcodebuild -version | head -n1)"
+        echo "🛠️  Available SDKs:"
+        xcodebuild -showsdks | grep -E "(iOS|macOS|watchOS|tvOS)"
+        
+    - name: 🔧 Swift Information
+      id: swift-info
+      run: |
+        echo "version=$(swift --version | head -n1 | awk '{print $4}')" >> $GITHUB_OUTPUT
+        echo "⚡ Swift Version: $(swift --version | head -n1)"
+        
+    - name: 🔑 Cache Key Generation
+      id: cache-key
+      run: |
+        CACHE_KEY="v1-testing-${{ runner.os }}-$(date +'%Y-%m')-$(shasum Package.swift Package.resolved 2>/dev/null | shasum | head -c8)"
+        echo "key=${CACHE_KEY}" >> $GITHUB_OUTPUT
+        echo "🔑 Cache Key: ${CACHE_KEY}"
+
+  # ===========================================================================
+  # UNIT TESTS
+  # ===========================================================================
+  
+  unit-tests:
+    name: 🧪 Unit Tests
+    runs-on: macos-15
+    needs: setup
+    timeout-minutes: ${{ env.TEST_TIMEOUT }}
+    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'unit' || github.event.inputs.test_type == ''
+    
+    strategy:
+      matrix:
+        configuration: [debug, release]
+        platform: [iOS, macOS]
+        
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🍎 Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: 📦 Cache Dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          .build
+          DerivedData
+        key: ${{ needs.setup.outputs.cache-key }}-unit-${{ matrix.platform }}-${{ matrix.configuration }}
+        restore-keys: |
+          ${{ needs.setup.outputs.cache-key }}-unit-${{ matrix.platform }}-
+          ${{ needs.setup.outputs.cache-key }}-
+          
+    - name: 🔨 Build for Testing
+      run: |
+        echo "🔨 Building ${{ matrix.platform }} unit tests in ${{ matrix.configuration }} mode..."
+        
+        case "${{ matrix.platform }}" in
+          iOS)
+            DESTINATION="platform=iOS Simulator,name=iPhone 15 Pro"
+            SCHEME="HealthAI2030"
+            ;;
+          macOS)
+            DESTINATION="platform=macOS"
+            SCHEME="HealthAI2030-macOS"
+            ;;
+        esac
+        
+        xcodebuild \
+          -scheme "$SCHEME" \
+          -destination "$DESTINATION" \
+          -configuration "${{ matrix.configuration }}" \
+          -derivedDataPath "DerivedData-${{ matrix.platform }}-${{ matrix.configuration }}" \
+          -enableCodeCoverage YES \
+          build-for-testing
+          
+    - name: 🧪 Run Unit Tests
+      run: |
+        echo "🧪 Running ${{ matrix.platform }} unit tests in ${{ matrix.configuration }} mode..."
+        
+        case "${{ matrix.platform }}" in
+          iOS)
+            DESTINATION="platform=iOS Simulator,name=iPhone 15 Pro"
+            SCHEME="HealthAI2030"
+            ;;
+          macOS)
+            DESTINATION="platform=macOS"
+            SCHEME="HealthAI2030-macOS"
+            ;;
+        esac
+        
+        xcodebuild \
+          -scheme "$SCHEME" \
+          -destination "$DESTINATION" \
+          -configuration "${{ matrix.configuration }}" \
+          -derivedDataPath "DerivedData-${{ matrix.platform }}-${{ matrix.configuration }}" \
+          -enableCodeCoverage YES \
+          test-without-building \
+          -resultBundlePath "TestResults-${{ matrix.platform }}-${{ matrix.configuration }}.xcresult"
+          
+    - name: 📊 Generate Coverage Report
+      if: matrix.configuration == 'debug'
+      run: |
+        echo "📊 Generating coverage report for ${{ matrix.platform }}..."
+        
+        # Generate coverage data
+        xcrun xccov view --report \
+          "TestResults-${{ matrix.platform }}-${{ matrix.configuration }}.xcresult" \
+          > "coverage-${{ matrix.platform }}.txt"
+          
+        # Extract coverage percentage
+        COVERAGE=$(xcrun xccov view --report \
+          "TestResults-${{ matrix.platform }}-${{ matrix.configuration }}.xcresult" \
+          | grep "TOTAL" | awk '{print $2}' | sed 's/%//')
+          
+        echo "coverage=$COVERAGE" >> $GITHUB_ENV
+        echo "📈 Coverage: $COVERAGE%"
+        
+    - name: 📋 Upload Test Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: unit-test-results-${{ matrix.platform }}-${{ matrix.configuration }}
+        path: |
+          TestResults-${{ matrix.platform }}-${{ matrix.configuration }}.xcresult
+          coverage-${{ matrix.platform }}.txt
+        retention-days: 30
+        
+    - name: 📈 Upload Coverage to Codecov
+      if: matrix.configuration == 'debug'
+      uses: codecov/codecov-action@v3
+      with:
+        file: coverage-${{ matrix.platform }}.txt
+        flags: unit-tests-${{ matrix.platform }}
+        name: codecov-${{ matrix.platform }}
+        fail_ci_if_error: false
+
+  # ===========================================================================
+  # UI TESTS
+  # ===========================================================================
+  
+  ui-tests:
+    name: 🖥️ UI Tests
+    runs-on: macos-15
+    needs: setup
+    timeout-minutes: ${{ env.TEST_TIMEOUT }}
+    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'ui' || github.event.inputs.test_type == ''
+    
+    strategy:
+      matrix:
+        device: [iPhone 15 Pro, iPhone 15 Pro Max, iPad Pro (12.9-inch)]
+        
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🍎 Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: 📦 Cache Dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          .build
+          DerivedData
+        key: ${{ needs.setup.outputs.cache-key }}-ui-${{ matrix.device }}
+        restore-keys: |
+          ${{ needs.setup.outputs.cache-key }}-ui-
+          ${{ needs.setup.outputs.cache-key }}-
+          
+    - name: 🧪 Run UI Tests
+      run: |
+        echo "🖥️ Running UI tests on ${{ matrix.device }}..."
+        
+        xcodebuild \
+          -scheme "HealthAI2030UITests" \
+          -destination "platform=iOS Simulator,name=${{ matrix.device }}" \
+          -configuration Debug \
+          test-without-building \
+          -resultBundlePath "UITestResults-${{ matrix.device }}.xcresult"
+          
+    - name: 📋 Upload UI Test Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: ui-test-results-${{ matrix.device }}
+        path: UITestResults-${{ matrix.device }}.xcresult
+        retention-days: 30
+
+  # ===========================================================================
+  # INTEGRATION TESTS
+  # ===========================================================================
+  
+  integration-tests:
+    name: 🔗 Integration Tests
+    runs-on: macos-15
+    needs: setup
+    timeout-minutes: ${{ env.TEST_TIMEOUT }}
+    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'integration' || github.event.inputs.test_type == ''
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🍎 Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: 📦 Cache Dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          .build
+          DerivedData
+        key: ${{ needs.setup.outputs.cache-key }}-integration
+        restore-keys: |
+          ${{ needs.setup.outputs.cache-key }}-
+          
+    - name: 🧪 Run Integration Tests
+      run: |
+        echo "🔗 Running integration tests..."
+        
+        xcodebuild \
+          -scheme "HealthAI2030IntegrationTests" \
+          -destination "platform=iOS Simulator,name=iPhone 15 Pro" \
+          -configuration Debug \
+          test-without-building \
+          -resultBundlePath "IntegrationTestResults.xcresult"
+          
+    - name: 📋 Upload Integration Test Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: integration-test-results
+        path: IntegrationTestResults.xcresult
+        retention-days: 30
+
+  # ===========================================================================
+  # PERFORMANCE TESTS
+  # ===========================================================================
+  
+  performance-tests:
+    name: ⚡ Performance Tests
+    runs-on: macos-15
+    needs: setup
+    timeout-minutes: ${{ env.TEST_TIMEOUT }}
+    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'performance' || github.event.inputs.test_type == ''
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🍎 Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: 📦 Cache Dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          .build
+          DerivedData
+        key: ${{ needs.setup.outputs.cache-key }}-performance
+        restore-keys: |
+          ${{ needs.setup.outputs.cache-key }}-
+          
+    - name: ⚡ Run Performance Tests
+      run: |
+        echo "⚡ Running performance tests..."
+        
+        xcodebuild \
+          -scheme "HealthAI2030PerformanceTests" \
+          -destination "platform=iOS Simulator,name=iPhone 15 Pro" \
+          -configuration Release \
+          test-without-building \
+          -resultBundlePath "PerformanceTestResults.xcresult"
+          
+    - name: 📊 Analyze Performance Results
+      run: |
+        echo "📊 Analyzing performance test results..."
+        
+        # Extract performance metrics
+        xcrun xctestrun --result-bundle PerformanceTestResults.xcresult \
+          | grep -E "(duration|memory|cpu)" > performance-metrics.txt
+        
+        echo "📈 Performance metrics extracted"
+        
+    - name: 📋 Upload Performance Test Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-test-results
+        path: |
+          PerformanceTestResults.xcresult
+          performance-metrics.txt
+        retention-days: 30
+
+  # ===========================================================================
+  # SECURITY TESTS
+  # ===========================================================================
+  
+  security-tests:
+    name: 🔒 Security Tests
+    runs-on: macos-15
+    needs: setup
+    timeout-minutes: ${{ env.TEST_TIMEOUT }}
+    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'security' || github.event.inputs.test_type == ''
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🍎 Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: 🔒 Run Security Tests
+      run: |
+        echo "🔒 Running security tests..."
+        
+        xcodebuild \
+          -scheme "HealthAI2030SecurityTests" \
+          -destination "platform=iOS Simulator,name=iPhone 15 Pro" \
+          -configuration Debug \
+          test-without-building \
+          -resultBundlePath "SecurityTestResults.xcresult"
+          
+    - name: 🔍 Security Analysis
+      run: |
+        echo "🔍 Performing security analysis..."
+        
+        # Run static analysis for security vulnerabilities
+        xcodebuild analyze \
+          -scheme "HealthAI2030" \
+          -destination "platform=iOS Simulator,name=iPhone 15 Pro" \
+          -configuration Debug \
+          -resultBundlePath "SecurityAnalysis.xcresult"
+          
+    - name: 📋 Upload Security Test Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-test-results
+        path: |
+          SecurityTestResults.xcresult
+          SecurityAnalysis.xcresult
+        retention-days: 30
+
+  # ===========================================================================
+  # COVERAGE ANALYSIS
+  # ===========================================================================
+  
+  coverage-analysis:
+    name: 📊 Coverage Analysis
+    runs-on: macos-15
+    needs: [unit-tests, ui-tests, integration-tests]
+    timeout-minutes: 15
+    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'coverage' || github.event.inputs.test_type == ''
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🍎 Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+        
+    - name: 📥 Download Coverage Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: coverage-artifacts
+        
+    - name: 📊 Generate Combined Coverage Report
+      run: |
+        echo "📊 Generating combined coverage report..."
+        
+        # Combine coverage from all test types
+        echo "# HealthAI 2030 - Combined Test Coverage Report" > combined-coverage.md
+        echo "" >> combined-coverage.md
+        echo "## Coverage Summary" >> combined-coverage.md
+        echo "" >> combined-coverage.md
+        
+        # Process unit test coverage
+        if [ -f "coverage-artifacts/coverage-iOS.txt" ]; then
+          echo "### Unit Tests (iOS)" >> combined-coverage.md
+          cat coverage-artifacts/coverage-iOS.txt >> combined-coverage.md
+          echo "" >> combined-coverage.md
+        fi
+        
+        if [ -f "coverage-artifacts/coverage-macOS.txt" ]; then
+          echo "### Unit Tests (macOS)" >> combined-coverage.md
+          cat coverage-artifacts/coverage-macOS.txt >> combined-coverage.md
+          echo "" >> combined-coverage.md
+        fi
+        
+        # Calculate overall coverage
+        OVERALL_COVERAGE=$(grep "TOTAL" coverage-artifacts/coverage-*.txt | awk '{sum+=$2} END {print sum/NR}')
+        echo "### Overall Coverage: ${OVERALL_COVERAGE}%" >> combined-coverage.md
+        
+        # Check coverage threshold
+        if (( $(echo "$OVERALL_COVERAGE >= $COVERAGE_THRESHOLD" | bc -l) )); then
+          echo "✅ Coverage threshold met: ${OVERALL_COVERAGE}% >= ${COVERAGE_THRESHOLD}%"
+          echo "coverage_status=passed" >> $GITHUB_ENV
+        else
+          echo "❌ Coverage threshold not met: ${OVERALL_COVERAGE}% < ${COVERAGE_THRESHOLD}%"
+          echo "coverage_status=failed" >> $GITHUB_ENV
+        fi
+        
+    - name: 📋 Upload Combined Coverage Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: combined-coverage-report
+        path: combined-coverage.md
+        retention-days: 30
+
+  # ===========================================================================
+  # TEST SUMMARY & QUALITY GATES
+  # ===========================================================================
+  
+  test-summary:
+    name: 📋 Test Summary & Quality Gates
+    runs-on: macos-15
+    needs: [unit-tests, ui-tests, integration-tests, performance-tests, security-tests, coverage-analysis]
+    timeout-minutes: 10
+    if: always()
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 📥 Download Test Results
+      uses: actions/download-artifact@v4
+      with:
+        path: test-results
+        
+    - name: 📊 Generate Test Summary
+      run: |
+        echo "📊 Generating test summary..."
+        
+        # Create test summary report
+        echo "# HealthAI 2030 - Test Summary Report" > test-summary.md
+        echo "" >> test-summary.md
+        echo "## Test Results Summary" >> test-summary.md
+        echo "" >> test-summary.md
+        echo "- **Unit Tests**: ${{ needs.unit-tests.result }}" >> test-summary.md
+        echo "- **UI Tests**: ${{ needs.ui-tests.result }}" >> test-summary.md
+        echo "- **Integration Tests**: ${{ needs.integration-tests.result }}" >> test-summary.md
+        echo "- **Performance Tests**: ${{ needs.performance-tests.result }}" >> test-summary.md
+        echo "- **Security Tests**: ${{ needs.security-tests.result }}" >> test-summary.md
+        echo "- **Coverage Analysis**: ${{ needs.coverage-analysis.result }}" >> test-summary.md
+        echo "" >> test-summary.md
+        
+        # Quality gates
+        echo "## Quality Gates" >> test-summary.md
+        echo "" >> test-summary.md
+        
+        # Check if all tests passed
+        if [[ "${{ needs.unit-tests.result }}" == "success" && \
+              "${{ needs.ui-tests.result }}" == "success" && \
+              "${{ needs.integration-tests.result }}" == "success" && \
+              "${{ needs.performance-tests.result }}" == "success" && \
+              "${{ needs.security-tests.result }}" == "success" ]]; then
+          echo "✅ **All Tests Passed**" >> test-summary.md
+          echo "quality_gate=passed" >> $GITHUB_ENV
+        else
+          echo "❌ **Some Tests Failed**" >> test-summary.md
+          echo "quality_gate=failed" >> $GITHUB_ENV
+        fi
+        
+        # Check coverage threshold
+        if [[ "${{ needs.coverage-analysis.outputs.coverage_status }}" == "passed" ]]; then
+          echo "✅ **Coverage Threshold Met**" >> test-summary.md
+        else
+          echo "❌ **Coverage Threshold Not Met**" >> test-summary.md
+        fi
+        
+        echo "" >> test-summary.md
+        echo "## Next Steps" >> test-summary.md
+        echo "" >> test-summary.md
+        
+        if [[ "${{ env.quality_gate }}" == "passed" ]]; then
+          echo "🎉 All quality gates passed! Ready for deployment." >> test-summary.md
+        else
+          echo "⚠️ Quality gates failed. Please review and fix issues before deployment." >> test-summary.md
+        fi
+        
+    - name: 📋 Upload Test Summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-summary-report
+        path: test-summary.md
+        retention-days: 30
+        
+    - name: 📧 Send Test Summary Notification
+      if: always()
+      run: |
+        echo "📧 Sending test summary notification..."
+        
+        # Create notification message
+        if [[ "${{ env.quality_gate }}" == "passed" ]]; then
+          MESSAGE="✅ HealthAI 2030 - All tests passed! Ready for deployment."
+          COLOR="good"
+        else
+          MESSAGE="❌ HealthAI 2030 - Some tests failed. Please review the test summary."
+          COLOR="danger"
+        fi
+        
+        # Send notification (example for Slack)
+        if [[ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]]; then
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"$MESSAGE\",\"attachments\":[{\"color\":\"$COLOR\",\"title\":\"Test Summary\",\"text\":\"View full report in GitHub Actions\"}]}" \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
+        fi
+
+  # ===========================================================================
+  # DEPLOYMENT GATE
+  # ===========================================================================
+  
+  deployment-gate:
+    name: 🚀 Deployment Gate
+    runs-on: macos-15
+    needs: test-summary
+    timeout-minutes: 5
+    if: github.ref == 'refs/heads/main' && needs.test-summary.outputs.quality_gate == 'passed'
+    
+    steps:
+    - name: ✅ Verify Quality Gates
+      run: |
+        echo "✅ All quality gates passed!"
+        echo "🚀 Ready for deployment to production"
+        
+    - name: 🏷️ Create Release Tag
+      run: |
+        echo "🏷️ Creating release tag..."
+        git tag -a "v$(date +'%Y.%m.%d')-$(git rev-parse --short HEAD)" \
+          -m "Release $(date +'%Y-%m-%d') - All tests passed"
+        git push origin --tags
+        
+    - name: 📋 Update Deployment Status
+      run: |
+        echo "📋 Updating deployment status..."
+        echo "DEPLOYMENT_READY=true" >> $GITHUB_ENV 
