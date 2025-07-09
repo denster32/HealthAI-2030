@@ -4,6 +4,7 @@ import Charts
 struct HealthDashboardView: View {
     @StateObject private var dashboardVM = HealthDashboardViewModel()
     @State private var showingCoachingDashboard = false
+    @State private var showingSleepDashboard = false
     
     var body: some View {
         ScrollView {
@@ -18,6 +19,11 @@ struct HealthDashboardView: View {
                 // Health Coaching Card
                 HealthCoachingCard {
                     showingCoachingDashboard = true
+                }
+                
+                // Advanced Sleep Intelligence Card
+                AdvancedSleepIntelligenceCard {
+                    showingSleepDashboard = true
                 }
                 
                 // Sleep architecture visualization
@@ -45,6 +51,13 @@ struct HealthDashboardView: View {
         }
         .sheet(isPresented: $showingCoachingDashboard) {
             RealTimeCoachingDashboardView(
+                healthDataManager: HealthDataManager(),
+                predictionEngine: AdvancedHealthPredictionEngine(),
+                analyticsEngine: AnalyticsEngine()
+            )
+        }
+        .sheet(isPresented: $showingSleepDashboard) {
+            AdvancedSleepDashboardView(
                 healthDataManager: HealthDataManager(),
                 predictionEngine: AdvancedHealthPredictionEngine(),
                 analyticsEngine: AnalyticsEngine()
@@ -185,6 +198,54 @@ struct HealthCoachingCard: View {
                     Spacer()
                     
                     Label("5 Recommendations", systemImage: "lightbulb")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.vertical)
+        }
+        .onTapGesture {
+            onTap()
+        }
+    }
+}
+
+struct AdvancedSleepIntelligenceCard: View {
+    let onTap: () -> Void
+    
+    var body: some View {
+        CardContainer(title: "Advanced Sleep Intelligence") {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Image(systemName: "bed.double.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(.indigo)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Sleep Intelligence")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                        
+                        Text("AI-powered sleep analysis and optimization")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.title3)
+                        .foregroundColor(.indigo)
+                }
+                
+                HStack {
+                    Label("Sleep Score: 85", systemImage: "star.fill")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Spacer()
+                    
+                    Label("3 Optimizations", systemImage: "lightbulb")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
