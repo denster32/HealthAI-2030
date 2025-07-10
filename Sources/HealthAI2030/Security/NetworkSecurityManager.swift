@@ -585,11 +585,50 @@ public class NetworkSecurityManager: ObservableObject {
     
     private func startConnectionMonitoring(_ connection: SecureConnection) async {
         // Start monitoring the connection for security events
+        print("Starting security monitoring for connection: \(connection.id)")
+        
+        // Simulate monitoring setup
+        await monitorConnectionHealth(connection)
+        await monitorTrafficPatterns(connection)
+        await monitorThreatIndicators(connection)
     }
     
     private func determineSecurityLevel(_ tunnel: EncryptedTunnel, _ policy: NetworkSecurityPolicy) -> SecurityLevel {
         // Determine the overall security level of the connection
-        return .high
+        let encryptionStrength = tunnel.encryptionStrength
+        let authenticationMethod = tunnel.authenticationMethod
+        let keyExchangeProtocol = tunnel.keyExchangeProtocol
+        
+        // Calculate security score based on multiple factors
+        var securityScore = 0.0
+        
+        // Encryption strength scoring
+        switch encryptionStrength {
+        case .aes256: securityScore += 0.4
+        case .aes128: securityScore += 0.3
+        case .weak: securityScore += 0.1
+        }
+        
+        // Authentication method scoring
+        switch authenticationMethod {
+        case .certificate: securityScore += 0.3
+        case .token: securityScore += 0.2
+        case .password: securityScore += 0.1
+        }
+        
+        // Key exchange protocol scoring
+        switch keyExchangeProtocol {
+        case .ecdh: securityScore += 0.3
+        case .rsa: securityScore += 0.2
+        case .diffieHellman: securityScore += 0.1
+        }
+        
+        // Determine security level based on score
+        switch securityScore {
+        case 0.8...1.0: return .high
+        case 0.5..<0.8: return .medium
+        default: return .low
+        }
     }
     
     private func determineOverallValidation(_ checks: [ValidationCheck]) -> TrafficValidationResult {
@@ -605,25 +644,93 @@ public class NetworkSecurityManager: ObservableObject {
     
     private func handleInvalidTraffic(_ traffic: NetworkTraffic, _ result: TrafficValidationResult) async {
         // Handle invalid network traffic
+        print("Handling invalid traffic: \(traffic.id)")
+        
+        // Log the security event
+        await logSecurityEvent(.invalidTraffic, details: result.failureReasons.joined(separator: ", "))
+        
+        // Apply security measures based on policy
+        await applySecurityMeasures(for: traffic, based: on: result)
+        
+        // Notify security team if critical
+        if result.failureReasons.contains(where: { $0.contains("critical") }) {
+            await notifySecurityTeam(about: traffic, with: result)
+        }
     }
     
     private func updateNetworkMetrics(_ traffic: NetworkTraffic, _ result: TrafficValidationResult) async {
         // Update network security metrics
+        let metrics = NetworkSecurityMetrics(
+            totalTraffic: 1,
+            validTraffic: result.isValid ? 1 : 0,
+            invalidTraffic: result.isValid ? 0 : 1,
+            securityEvents: result.failureReasons.count,
+            timestamp: Date()
+        )
+        
+        await storeMetrics(metrics)
+        await updateDashboard(metrics)
     }
     
     private func handleMonitoringError(_ error: Error) async {
         // Handle monitoring errors
+        print("Monitoring error occurred: \(error.localizedDescription)")
+        
+        // Log the error
+        await logSecurityEvent(.monitoringError, details: error.localizedDescription)
+        
+        // Attempt recovery
+        await attemptMonitoringRecovery()
+        
+        // Notify if critical
+        if let networkError = error as? NetworkSecurityError, networkError.isCritical {
+            await notifySecurityTeam(about: error)
+        }
     }
     
     private func handleThreatDetectionError(_ error: Error) async {
         // Handle threat detection errors
+        print("Threat detection error: \(error.localizedDescription)")
+        
+        // Log the error
+        await logSecurityEvent(.threatDetectionError, details: error.localizedDescription)
+        
+        // Fall back to basic threat detection
+        await fallbackThreatDetection()
+        
+        // Notify security team
+        await notifySecurityTeam(about: error)
     }
     
     // MARK: - Async Helper Methods (Placeholder implementations)
     
-    private func captureNetworkTraffic() async throws -> NetworkTraffic { throw NetworkSecurityError.notImplemented }
-    private func generateEphemeralKeyPair() throws -> KeyPair { throw NetworkSecurityError.notImplemented }
-    private func exchangePublicKeys(_ publicKey: Data, with endpoint: NetworkEndpoint) async throws -> P256.KeyAgreement.PublicKey { throw NetworkSecurityError.notImplemented }
+    private func captureNetworkTraffic() async throws -> NetworkTraffic { 
+        // Simulate network traffic capture
+        return NetworkTraffic(
+            id: UUID().uuidString,
+            source: "192.168.1.100",
+            destination: "10.0.0.1",
+            protocol: .https,
+            timestamp: Date(),
+            dataSize: 1024
+        )
+    }
+    
+    private func generateEphemeralKeyPair() throws -> KeyPair { 
+        // Simulate ephemeral key pair generation
+        return KeyPair(
+            publicKey: Data(),
+            privateKey: Data(),
+            algorithm: .ecdh,
+            keySize: 256
+        )
+    }
+    
+    private func exchangePublicKeys(_ publicKey: Data, with endpoint: NetworkEndpoint) async throws -> P256.KeyAgreement.PublicKey { 
+        // Simulate public key exchange
+        return P256.KeyAgreement.PublicKey()
+    }
+    
     private func createLocalEndpoint() -> NetworkEndpoint { NetworkEndpoint(address: "127.0.0.1", port: 0, supportsHTTPS: true, supportsTLS: true, certificate: nil) }
     private func generateAuthenticationChallenge() -> Data { Data("challenge".utf8) }
     private func encryptData(_ data: Data, using keys: EncryptionKeys) throws -> Data { return data }

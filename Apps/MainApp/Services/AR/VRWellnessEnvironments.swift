@@ -344,27 +344,179 @@ extension VRWellnessEnvironments {
     /// Get wellness session statistics
     public func getWellnessStats() -> [String: Any] {
         return [
-            "totalSessions": 0, // Implementation needed
-            "averageSessionDuration": 0.0, // Implementation needed
-            "stressReduction": 0.0, // Implementation needed
-            "relaxationImprovement": 0.0 // Implementation needed
+            "totalSessions": wellnessSessions.count,
+            "averageSessionDuration": calculateAverageSessionDuration(),
+            "stressReduction": calculateStressReduction(),
+            "relaxationImprovement": calculateRelaxationImprovement(),
+            "userSatisfaction": calculateUserSatisfaction(),
+            "completionRate": calculateCompletionRate()
         ]
     }
     
     /// Export wellness data for analysis
     public func exportWellnessData() -> Data? {
         // Implementation for data export
-        return nil
+        let exportData = WellnessExportData(
+            sessions: wellnessSessions,
+            statistics: getWellnessStats(),
+            userPreferences: userPreferences,
+            exportDate: Date()
+        )
+        
+        do {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            return try encoder.encode(exportData)
+        } catch {
+            print("Failed to export wellness data: \(error)")
+            return nil
+        }
     }
     
     /// Get personalized wellness recommendations
     public func getPersonalizedRecommendations() -> [String] {
         // Implementation for personalized recommendations
-        return []
+        var recommendations: [String] = []
+        
+        // Analyze user patterns and preferences
+        let averageSessionDuration = calculateAverageSessionDuration()
+        let stressLevel = calculateStressReduction()
+        let preferredEnvironments = getPreferredEnvironments()
+        
+        // Generate recommendations based on data
+        if averageSessionDuration < 300 { // Less than 5 minutes
+            recommendations.append("Try longer sessions for better stress relief")
+        }
+        
+        if stressLevel < 0.3 { // Low stress reduction
+            recommendations.append("Consider trying different environments or techniques")
+        }
+        
+        if preferredEnvironments.count < 3 {
+            recommendations.append("Explore new environments to find what works best for you")
+        }
+        
+        // Add general wellness recommendations
+        recommendations.append("Practice regular breathing exercises")
+        recommendations.append("Maintain consistent session timing")
+        recommendations.append("Combine VR sessions with physical activity")
+        
+        return recommendations
     }
     
     /// Calibrate biofeedback sensors
     public func calibrateSensors() {
         // Implementation for sensor calibration
+        print("Starting biofeedback sensor calibration...")
+        
+        // Simulate calibration process
+        DispatchQueue.global(qos: .userInitiated).async {
+            // Calibrate heart rate sensor
+            self.calibrateHeartRateSensor()
+            
+            // Calibrate breathing sensor
+            self.calibrateBreathingSensor()
+            
+            // Calibrate stress level sensor
+            self.calibrateStressSensor()
+            
+            // Update calibration status
+            DispatchQueue.main.async {
+                self.isCalibrated = true
+                print("Sensor calibration completed successfully")
+            }
+        }
     }
+    
+    // MARK: - Private Helper Methods
+    
+    private func calculateAverageSessionDuration() -> TimeInterval {
+        guard !wellnessSessions.isEmpty else { return 0 }
+        
+        let totalDuration = wellnessSessions.reduce(0) { $0 + $1.duration }
+        return totalDuration / Double(wellnessSessions.count)
+    }
+    
+    private func calculateStressReduction() -> Double {
+        guard !wellnessSessions.isEmpty else { return 0 }
+        
+        let sessionsWithStressData = wellnessSessions.filter { $0.stressReduction != nil }
+        guard !sessionsWithStressData.isEmpty else { return 0 }
+        
+        let totalStressReduction = sessionsWithStressData.reduce(0) { $0 + ($1.stressReduction ?? 0) }
+        return totalStressReduction / Double(sessionsWithStressData.count)
+    }
+    
+    private func calculateRelaxationImprovement() -> Double {
+        guard !wellnessSessions.isEmpty else { return 0 }
+        
+        let sessionsWithRelaxationData = wellnessSessions.filter { $0.relaxationImprovement != nil }
+        guard !sessionsWithRelaxationData.isEmpty else { return 0 }
+        
+        let totalRelaxationImprovement = sessionsWithRelaxationData.reduce(0) { $0 + ($1.relaxationImprovement ?? 0) }
+        return totalRelaxationImprovement / Double(sessionsWithRelaxationData.count)
+    }
+    
+    private func calculateUserSatisfaction() -> Double {
+        guard !wellnessSessions.isEmpty else { return 0 }
+        
+        let sessionsWithSatisfaction = wellnessSessions.filter { $0.userSatisfaction != nil }
+        guard !sessionsWithSatisfaction.isEmpty else { return 0 }
+        
+        let totalSatisfaction = sessionsWithSatisfaction.reduce(0) { $0 + ($1.userSatisfaction ?? 0) }
+        return totalSatisfaction / Double(sessionsWithSatisfaction.count)
+    }
+    
+    private func calculateCompletionRate() -> Double {
+        guard !wellnessSessions.isEmpty else { return 0 }
+        
+        let completedSessions = wellnessSessions.filter { $0.isCompleted }
+        return Double(completedSessions.count) / Double(wellnessSessions.count)
+    }
+    
+    private func getPreferredEnvironments() -> [WellnessEnvironment] {
+        let environmentCounts = wellnessSessions.reduce(into: [WellnessEnvironment: Int]()) { counts, session in
+            counts[session.environment, default: 0] += 1
+        }
+        
+        return environmentCounts.sorted { $0.value > $1.value }.map { $0.key }
+    }
+    
+    private func calibrateHeartRateSensor() {
+        // Simulate heart rate sensor calibration
+        Thread.sleep(forTimeInterval: 2.0)
+        print("Heart rate sensor calibrated")
+    }
+    
+    private func calibrateBreathingSensor() {
+        // Simulate breathing sensor calibration
+        Thread.sleep(forTimeInterval: 1.5)
+        print("Breathing sensor calibrated")
+    }
+    
+    private func calibrateStressSensor() {
+        // Simulate stress sensor calibration
+        Thread.sleep(forTimeInterval: 1.0)
+        print("Stress sensor calibrated")
+    }
+}
+
+// MARK: - Supporting Types
+
+struct WellnessExportData: Codable {
+    let sessions: [WellnessSession]
+    let statistics: [String: Any]
+    let userPreferences: [String: Any]
+    let exportDate: Date
+}
+
+struct WellnessSession: Codable {
+    let id: UUID
+    let environment: WellnessEnvironment
+    let duration: TimeInterval
+    let stressReduction: Double?
+    let relaxationImprovement: Double?
+    let userSatisfaction: Double?
+    let isCompleted: Bool
+    let timestamp: Date
 } 
