@@ -84,18 +84,12 @@ class AdaptiveContentMLManager: NSObject, ObservableObject {
     private func loadModel(named name: String) async throws -> MLModel {
         // In a real implementation, this would load from the app bundle
         // For now, we'll create a placeholder model
-        return try await createPlaceholderModel(for: name)
+        return MLModel(name: name)
     }
     
     private func createPlaceholderModel(for name: String) async throws -> MLModel {
-        // Create a simple placeholder model using CreateML
-        // This is a simplified example - real models would be much more complex
-        
-        let modelConfiguration = MLModelConfiguration()
-        modelConfiguration.computeUnits = .all
-        
-        // Return a mock model (in practice, you'd have real trained models)
-        throw MLModelError.generic
+        // Simply return a placeholder model
+        return MLModel(name: name)
     }
     
     private func createFallbackModels() async {

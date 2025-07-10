@@ -920,19 +920,7 @@ private func loadModels() {
 // Placeholder method for model loading
 private func loadModel(named: String, configuration: MLModelConfiguration) async throws -> MLModel {
     // Implement actual model loading logic here
-    // For now, we'll create a simulated model loading process
-    let startTime = Date()
-    
-    // Simulate model loading time
-    try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second simulation
-    
-    // Create a mock model with basic functionality
-    let mockModel = MockMLModel(name: named, configuration: configuration)
-    
-    // Log successful model loading
-    print("Successfully loaded model: \(named) in \(Date().timeIntervalSince(startTime)) seconds")
-    
-    return mockModel
+    return MLModel(name: named)
 }
 
 // MARK: - Mock MLModel for demonstration

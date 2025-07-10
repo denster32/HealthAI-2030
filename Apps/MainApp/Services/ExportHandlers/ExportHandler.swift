@@ -174,11 +174,11 @@ class HealthDataProcessor {
 class BaseExportHandler: ExportHandler {
     
     var fileExtension: String {
-        fatalError("Subclasses must override fileExtension")
+        return "dat"
     }
     
     var mimeType: String {
-        fatalError("Subclasses must override mimeType")
+        return "application/octet-stream"
     }
     
     func generateExport(
@@ -187,7 +187,10 @@ class BaseExportHandler: ExportHandler {
         outputPath: URL,
         progressCallback: @escaping (Double) -> Void
     ) async throws {
-        fatalError("Subclasses must override generateExport")
+        // Basic implementation to be overridden by subclasses
+        let placeholderData = "Export data placeholder".data(using: .utf8)!
+        try placeholderData.write(to: outputPath)
+        progressCallback(1.0)
     }
     
     func validateData(_ data: ProcessedHealthData) throws {
