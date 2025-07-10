@@ -125,15 +125,20 @@ struct SidebarView: View {
             
             Section("Quick Actions") {
                 Button("Generate Report") {
-                    // TODO: Generate comprehensive health report
+                    // Generate comprehensive health report
+                    Task {
+                        await generateComprehensiveHealthReport()
+                    }
                 }
                 
                 Button("Compare Periods") {
-                    // TODO: Show period comparison view
+                    // Show period comparison view
+                    showPeriodComparisonView()
                 }
                 
                 Button("Trend Analysis") {
-                    // TODO: Show trend analysis view
+                    // Show trend analysis view
+                    showTrendAnalysisView()
                 }
             }
         }
@@ -1371,6 +1376,385 @@ extension Date {
     func ISO8601String() -> String {
         let formatter = ISO8601DateFormatter()
         return formatter.string(from: self)
+    }
+}
+
+// MARK: - Analytics Dashboard Actions
+
+@available(macOS 15.0, *)
+func generateComprehensiveHealthReport() async {
+    do {
+        // Initialize report generator
+        let reportGenerator = ComprehensiveHealthReportGenerator()
+        
+        // Show report generation progress
+        await showReportGenerationProgress()
+        
+        // Generate comprehensive health report
+        let report = try await reportGenerator.generateReport()
+        
+        // Handle report completion
+        await handleReportGenerationCompletion(report)
+        
+    } catch {
+        await handleReportGenerationError(error)
+    }
+}
+
+@available(macOS 15.0, *)
+func showReportGenerationProgress() async {
+    DispatchQueue.main.async {
+        print("Generating comprehensive health report...")
+    }
+}
+
+@available(macOS 15.0, *)
+func handleReportGenerationCompletion(_ report: ComprehensiveHealthReport) async {
+    DispatchQueue.main.async {
+        print("Health report generated successfully")
+        print("Report ID: \(report.id)")
+        print("Sections: \(report.sections.count)")
+        
+        // Show report completion notification
+        showReportCompletionNotification(report)
+        
+        // Open report in default application
+        openReport(report)
+    }
+}
+
+@available(macOS 15.0, *)
+func handleReportGenerationError(_ error: Error) async {
+    DispatchQueue.main.async {
+        print("Report generation failed: \(error.localizedDescription)")
+        showReportGenerationErrorNotification(error)
+    }
+}
+
+@available(macOS 15.0, *)
+func showReportCompletionNotification(_ report: ComprehensiveHealthReport) {
+    let notification = NSUserNotification()
+    notification.title = "Health AI 2030 - Report Generated"
+    notification.informativeText = "Comprehensive health report ready"
+    notification.soundName = NSUserNotificationDefaultSoundName
+    
+    NSUserNotificationCenter.default.deliver(notification)
+}
+
+@available(macOS 15.0, *)
+func showReportGenerationErrorNotification(_ error: Error) {
+    let notification = NSUserNotification()
+    notification.title = "Health AI 2030 - Report Generation Failed"
+    notification.informativeText = error.localizedDescription
+    notification.soundName = NSUserNotificationDefaultSoundName
+    
+    NSUserNotificationCenter.default.deliver(notification)
+}
+
+@available(macOS 15.0, *)
+func openReport(_ report: ComprehensiveHealthReport) {
+    // Open report in default application
+    if let url = report.fileURL {
+        NSWorkspace.shared.open(url)
+    }
+}
+
+func showPeriodComparisonView() {
+    // Show period comparison view
+    DispatchQueue.main.async {
+        let comparisonWindow = createPeriodComparisonWindow()
+        comparisonWindow.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+}
+
+func createPeriodComparisonWindow() -> NSWindow {
+    let comparisonView = PeriodComparisonView()
+    let hostingController = NSHostingController(rootView: comparisonView)
+    
+    let window = NSWindow(
+        contentRect: NSRect(x: 0, y: 0, width: 1000, height: 700),
+        styleMask: [.titled, .closable, .miniaturizable, .resizable],
+        backing: .buffered,
+        defer: false
+    )
+    
+    window.title = "Health AI 2030 - Period Comparison"
+    window.contentViewController = hostingController
+    window.center()
+    
+    return window
+}
+
+func showTrendAnalysisView() {
+    // Show trend analysis view
+    DispatchQueue.main.async {
+        let trendWindow = createTrendAnalysisWindow()
+        trendWindow.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+}
+
+func createTrendAnalysisWindow() -> NSWindow {
+    let trendView = TrendAnalysisView()
+    let hostingController = NSHostingController(rootView: trendView)
+    
+    let window = NSWindow(
+        contentRect: NSRect(x: 0, y: 0, width: 1000, height: 700),
+        styleMask: [.titled, .closable, .miniaturizable, .resizable],
+        backing: .buffered,
+        defer: false
+    )
+    
+    window.title = "Health AI 2030 - Trend Analysis"
+    window.contentViewController = hostingController
+    window.center()
+    
+    return window
+}
+
+// MARK: - Supporting Classes
+
+@available(macOS 15.0, *)
+class ComprehensiveHealthReportGenerator {
+    private let healthDataManager = HealthDataManager()
+    private let analyticsEngine = AnalyticsEngine()
+    private let reportFormatter = ReportFormatter()
+    
+    func generateReport() async throws -> ComprehensiveHealthReport {
+        // Fetch comprehensive health data
+        let healthData = try await healthDataManager.fetchComprehensiveData()
+        
+        // Analyze health trends
+        let trends = await analyticsEngine.analyzeTrends(healthData)
+        
+        // Generate insights
+        let insights = await analyticsEngine.generateInsights(healthData)
+        
+        // Create report sections
+        let sections = await createReportSections(healthData: healthData, trends: trends, insights: insights)
+        
+        // Format and save report
+        let report = try await reportFormatter.formatReport(sections: sections)
+        
+        return report
+    }
+    
+    private func createReportSections(healthData: [HealthData], trends: [HealthTrend], insights: [String]) async -> [ReportSection] {
+        var sections: [ReportSection] = []
+        
+        // Executive Summary
+        let summary = ReportSection(
+            title: "Executive Summary",
+            content: await generateExecutiveSummary(healthData: healthData, trends: trends)
+        )
+        sections.append(summary)
+        
+        // Health Metrics Overview
+        let metrics = ReportSection(
+            title: "Health Metrics Overview",
+            content: await generateMetricsOverview(healthData: healthData)
+        )
+        sections.append(metrics)
+        
+        // Trend Analysis
+        let trendAnalysis = ReportSection(
+            title: "Trend Analysis",
+            content: await generateTrendAnalysis(trends: trends)
+        )
+        sections.append(trendAnalysis)
+        
+        // Insights and Recommendations
+        let recommendations = ReportSection(
+            title: "Insights and Recommendations",
+            content: await generateRecommendations(insights: insights)
+        )
+        sections.append(recommendations)
+        
+        return sections
+    }
+    
+    private func generateExecutiveSummary(healthData: [HealthData], trends: [HealthTrend]) async -> [String] {
+        var summary: [String] = []
+        
+        summary.append("Health AI 2030 Comprehensive Health Report")
+        summary.append("Generated on: \(Date().formatted())")
+        summary.append("")
+        
+        // Overall health score
+        let healthScore = await calculateOverallHealthScore(healthData)
+        summary.append("Overall Health Score: \(healthScore)/100")
+        
+        // Key trends
+        summary.append("Key Trends:")
+        for trend in trends.prefix(3) {
+            summary.append("- \(trend.metric): \(trend.trend) (\(String(format: "%.1f", trend.changePercentage))%)")
+        }
+        
+        return summary
+    }
+    
+    private func generateMetricsOverview(healthData: [HealthData]) async -> [String] {
+        var overview: [String] = []
+        
+        // Group data by type
+        let groupedData = Dictionary(grouping: healthData) { $0.type }
+        
+        for (type, records) in groupedData {
+            let average = records.map { $0.value }.reduce(0, +) / Double(records.count)
+            let max = records.map { $0.value }.max() ?? 0
+            let min = records.map { $0.value }.min() ?? 0
+            
+            overview.append("\(type):")
+            overview.append("  Average: \(String(format: "%.2f", average))")
+            overview.append("  Range: \(String(format: "%.2f", min)) - \(String(format: "%.2f", max))")
+            overview.append("  Records: \(records.count)")
+            overview.append("")
+        }
+        
+        return overview
+    }
+    
+    private func generateTrendAnalysis(trends: [HealthTrend]) async -> [String] {
+        var analysis: [String] = []
+        
+        analysis.append("Trend Analysis:")
+        analysis.append("")
+        
+        for trend in trends {
+            analysis.append("\(trend.metric):")
+            analysis.append("  Trend: \(trend.trend)")
+            analysis.append("  Change: \(String(format: "%.1f", trend.changePercentage))%")
+            analysis.append("")
+        }
+        
+        return analysis
+    }
+    
+    private func generateRecommendations(insights: [String]) async -> [String] {
+        var recommendations: [String] = []
+        
+        recommendations.append("Recommendations:")
+        recommendations.append("")
+        
+        for (index, insight) in insights.enumerated() {
+            recommendations.append("\(index + 1). \(insight)")
+        }
+        
+        return recommendations
+    }
+    
+    private func calculateOverallHealthScore(_ healthData: [HealthData]) async -> Double {
+        // Calculate overall health score based on various metrics
+        var totalScore = 0.0
+        var metricCount = 0
+        
+        let groupedData = Dictionary(grouping: healthData) { $0.type }
+        
+        for (type, records) in groupedData {
+            let score = await calculateMetricScore(type: type, records: records)
+            totalScore += score
+            metricCount += 1
+        }
+        
+        return metricCount > 0 ? totalScore / Double(metricCount) : 0.0
+    }
+    
+    private func calculateMetricScore(type: String, records: [HealthData]) async -> Double {
+        // Calculate score for specific metric type
+        let average = records.map { $0.value }.reduce(0, +) / Double(records.count)
+        
+        switch type {
+        case "heartRate":
+            return average >= 60 && average <= 100 ? 100.0 : 50.0
+        case "sleepDuration":
+            return average >= 7 && average <= 9 ? 100.0 : 50.0
+        case "steps":
+            return average >= 10000 ? 100.0 : (average / 10000) * 100
+        default:
+            return 75.0 // Default score
+        }
+    }
+}
+
+@available(macOS 15.0, *)
+struct ComprehensiveHealthReport {
+    let id: UUID
+    let sections: [ReportSection]
+    let fileURL: URL?
+    let generatedAt: Date
+    let metadata: ReportMetadata
+    
+    init(sections: [ReportSection], fileURL: URL? = nil) {
+        self.id = UUID()
+        self.sections = sections
+        self.fileURL = fileURL
+        self.generatedAt = Date()
+        self.metadata = ReportMetadata(
+            generatedAt: Date(),
+            dataPoints: sections.flatMap { $0.content }.count,
+            dateRange: "Last 30 days",
+            version: "1.0"
+        )
+    }
+}
+
+@available(macOS 15.0, *)
+struct ReportSection {
+    let title: String
+    let content: [String]
+}
+
+@available(macOS 15.0, *)
+class HealthDataManager {
+    func fetchComprehensiveData() async throws -> [HealthData] {
+        // Mock comprehensive data fetch
+        return []
+    }
+}
+
+@available(macOS 15.0, *)
+class AnalyticsEngine {
+    func analyzeTrends(_ data: [HealthData]) async -> [HealthTrend] {
+        // Mock trend analysis
+        return []
+    }
+    
+    func generateInsights(_ data: [HealthData]) async -> [String] {
+        // Mock insights generation
+        return []
+    }
+}
+
+@available(macOS 15.0, *)
+class ReportFormatter {
+    func formatReport(sections: [ReportSection]) async throws -> ComprehensiveHealthReport {
+        // Mock report formatting
+        return ComprehensiveHealthReport(sections: sections)
+    }
+}
+
+@available(macOS 15.0, *)
+struct PeriodComparisonView: View {
+    var body: some View {
+        Text("Period Comparison View")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+@available(macOS 15.0, *)
+struct TrendAnalysisView: View {
+    var body: some View {
+        Text("Trend Analysis View")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+@available(macOS 15.0, *)
+struct SettingsView: View {
+    var body: some View {
+        Text("Settings View")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

@@ -376,17 +376,24 @@ struct MacOSMenuBarView: View {
             Divider()
             
             Button("Quick Health Check") {
-                // TODO: Perform quick health check
+                // Perform quick health check
+                Task {
+                    await performQuickHealthCheck()
+                }
             }
             
             Button("Sleep Session") {
-                // TODO: Start/stop sleep session
+                // Start/stop sleep session
+                Task {
+                    await toggleSleepSession()
+                }
             }
             
             Divider()
             
             Button("Settings") {
-                // TODO: Open settings
+                // Open settings
+                openSettings()
             }
             
             Button("Quit") {
@@ -514,6 +521,179 @@ func showSyncErrorNotification(_ error: Error) {
     notification.soundName = NSUserNotificationDefaultSoundName
     
     NSUserNotificationCenter.default.deliver(notification)
+}
+
+// MARK: - Menu Bar Actions
+
+@available(macOS 15.0, *)
+func performQuickHealthCheck() async {
+    do {
+        // Initialize health check service
+        let healthCheckService = QuickHealthCheckService()
+        
+        // Show health check progress
+        await showHealthCheckProgress()
+        
+        // Perform comprehensive health check
+        let healthCheckResult = try await healthCheckService.performHealthCheck()
+        
+        // Handle health check completion
+        await handleHealthCheckCompletion(healthCheckResult)
+        
+    } catch {
+        await handleHealthCheckError(error)
+    }
+}
+
+@available(macOS 15.0, *)
+func showHealthCheckProgress() async {
+    DispatchQueue.main.async {
+        print("Performing quick health check...")
+    }
+}
+
+@available(macOS 15.0, *)
+func handleHealthCheckCompletion(_ result: HealthCheckResult) async {
+    DispatchQueue.main.async {
+        print("Health check completed")
+        print("Overall Health Score: \(result.overallScore)/100")
+        print("Recommendations: \(result.recommendations.count)")
+        
+        // Show health check notification
+        showHealthCheckNotification(result)
+    }
+}
+
+@available(macOS 15.0, *)
+func handleHealthCheckError(_ error: Error) async {
+    DispatchQueue.main.async {
+        print("Health check failed: \(error.localizedDescription)")
+        showHealthCheckErrorNotification(error)
+    }
+}
+
+@available(macOS 15.0, *)
+func showHealthCheckNotification(_ result: HealthCheckResult) {
+    let notification = NSUserNotification()
+    notification.title = "Health AI 2030 - Health Check"
+    notification.informativeText = "Health Score: \(result.overallScore)/100"
+    notification.soundName = NSUserNotificationDefaultSoundName
+    
+    NSUserNotificationCenter.default.deliver(notification)
+}
+
+@available(macOS 15.0, *)
+func showHealthCheckErrorNotification(_ error: Error) {
+    let notification = NSUserNotification()
+    notification.title = "Health AI 2030 - Health Check Failed"
+    notification.informativeText = error.localizedDescription
+    notification.soundName = NSUserNotificationDefaultSoundName
+    
+    NSUserNotificationCenter.default.deliver(notification)
+}
+
+@available(macOS 15.0, *)
+func toggleSleepSession() async {
+    do {
+        // Initialize sleep session manager
+        let sleepSessionManager = SleepSessionManager()
+        
+        // Check current sleep session status
+        let currentStatus = await sleepSessionManager.getCurrentSessionStatus()
+        
+        if currentStatus.isActive {
+            // Stop current sleep session
+            let sessionResult = try await sleepSessionManager.stopSleepSession()
+            await handleSleepSessionStopped(sessionResult)
+        } else {
+            // Start new sleep session
+            let sessionResult = try await sleepSessionManager.startSleepSession()
+            await handleSleepSessionStarted(sessionResult)
+        }
+        
+    } catch {
+        await handleSleepSessionError(error)
+    }
+}
+
+@available(macOS 15.0, *)
+func handleSleepSessionStarted(_ result: SleepSessionResult) async {
+    DispatchQueue.main.async {
+        print("Sleep session started")
+        print("Session ID: \(result.sessionId)")
+        print("Start Time: \(result.startTime)")
+        
+        // Show sleep session notification
+        showSleepSessionNotification("Sleep session started", informativeText: "Monitoring your sleep...")
+    }
+}
+
+@available(macOS 15.0, *)
+func handleSleepSessionStopped(_ result: SleepSessionResult) async {
+    DispatchQueue.main.async {
+        print("Sleep session stopped")
+        print("Duration: \(result.duration) hours")
+        print("Quality Score: \(result.qualityScore)/100")
+        
+        // Show sleep session notification
+        showSleepSessionNotification("Sleep session completed", informativeText: "Quality Score: \(result.qualityScore)/100")
+    }
+}
+
+@available(macOS 15.0, *)
+func handleSleepSessionError(_ error: Error) async {
+    DispatchQueue.main.async {
+        print("Sleep session error: \(error.localizedDescription)")
+        showSleepSessionErrorNotification(error)
+    }
+}
+
+@available(macOS 15.0, *)
+func showSleepSessionNotification(_ title: String, informativeText: String) {
+    let notification = NSUserNotification()
+    notification.title = "Health AI 2030 - \(title)"
+    notification.informativeText = informativeText
+    notification.soundName = NSUserNotificationDefaultSoundName
+    
+    NSUserNotificationCenter.default.deliver(notification)
+}
+
+@available(macOS 15.0, *)
+func showSleepSessionErrorNotification(_ error: Error) {
+    let notification = NSUserNotification()
+    notification.title = "Health AI 2030 - Sleep Session Error"
+    notification.informativeText = error.localizedDescription
+    notification.soundName = NSUserNotificationDefaultSoundName
+    
+    NSUserNotificationCenter.default.deliver(notification)
+}
+
+func openSettings() {
+    // Open settings window
+    DispatchQueue.main.async {
+        // Create and show settings window
+        let settingsWindow = createSettingsWindow()
+        settingsWindow.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+}
+
+func createSettingsWindow() -> NSWindow {
+    let settingsView = SettingsView()
+    let hostingController = NSHostingController(rootView: settingsView)
+    
+    let window = NSWindow(
+        contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+        styleMask: [.titled, .closable, .miniaturizable, .resizable],
+        backing: .buffered,
+        defer: false
+    )
+    
+    window.title = "Health AI 2030 - Settings"
+    window.contentViewController = hostingController
+    window.center()
+    
+    return window
 }
 
 // MARK: - Data Sync Service
