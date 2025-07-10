@@ -179,7 +179,7 @@ class HealthDataManager: HealthDataManaging, ObservableObject {
                     sourceDevice: entry.source,
                     dataType: dataType,
                     metricValue: entry.value ?? 0.0,
-                    unit: "", // TODO: Add unit support
+                    unit: getUnitForDataType(dataType), // Add unit support
                     metadata: nil
                 )
             }
@@ -300,6 +300,85 @@ class HealthDataManager: HealthDataManaging, ObservableObject {
             
             healthKitStore.execute(query)
         }
+    }
+    
+    // MARK: - Unit Support
+    
+    private func getUnitForDataType(_ dataType: CoreHealthDataModel.HealthDataType) -> String {
+        switch dataType {
+        case .heartRate:
+            return "BPM"
+        case .sleepAnalysis:
+            return "hours"
+        case .respiratoryRate:
+            return "breaths/min"
+        case .bloodOxygen:
+            return "%"
+        case .bloodPressure:
+            return "mmHg"
+        case .activity:
+            return "steps"
+        case .nutrition:
+            return "calories"
+        case .cognitive:
+            return "minutes"
+        }
+    }
+    
+    private func getHealthKitUnit(for dataType: CoreHealthDataModel.HealthDataType) -> HKUnit {
+        switch dataType {
+        case .heartRate:
+            return .count().unitDivided(by: .minute())
+        case .sleepAnalysis:
+            return .hour()
+        case .respiratoryRate:
+            return .count().unitDivided(by: .minute())
+        case .bloodOxygen:
+            return .percent()
+        case .bloodPressure:
+            return .millimeterOfMercury()
+        case .activity:
+            return .count()
+        case .nutrition:
+            return .kilocalorie()
+        case .cognitive:
+            return .minute()
+        }
+    }
+    
+    private func convertValue(_ value: Double, from sourceUnit: String, to targetUnit: String) -> Double {
+        // Convert between different units if needed
+        switch (sourceUnit, targetUnit) {
+        case ("BPM", "beats/min"):
+            return value // Same unit, different representation
+        case ("hours", "minutes"):
+            return value * 60
+        case ("minutes", "hours"):
+            return value / 60
+        case ("calories", "kcal"):
+            return value // Same unit, different representation
+        default:
+            return value // No conversion needed or not supported
+        }
+    }
+    
+    private func validateUnit(_ unit: String, for dataType: CoreHealthDataModel.HealthDataType) -> Bool {
+        let expectedUnit = getUnitForDataType(dataType)
+        return unit == expectedUnit || isCompatibleUnit(unit, expectedUnit: expectedUnit)
+    }
+    
+    private func isCompatibleUnit(_ unit: String, expectedUnit: String) -> Bool {
+        // Check if units are compatible (e.g., "BPM" and "beats/min")
+        let compatibleUnits: [String: [String]] = [
+            "BPM": ["beats/min", "BPM"],
+            "hours": ["hours", "hrs", "h"],
+            "minutes": ["minutes", "mins", "min"],
+            "calories": ["calories", "kcal", "Cal"],
+            "steps": ["steps", "count"],
+            "%": ["%", "percent"]
+        ]
+        
+        return compatibleUnits[expectedUnit]?.contains(unit) ?? false
     }
 }
 
