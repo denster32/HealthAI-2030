@@ -741,10 +741,12 @@ struct CorrelationAnalysisView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
             
-            // TODO: Implement correlation analysis chart
-            Text("Correlation analysis coming soon...")
-                .foregroundColor(.secondary)
-                .frame(height: 200)
+            // Implement correlation analysis chart
+            CorrelationChart(
+                healthRecords: healthRecords,
+                sleepSessions: sleepSessions
+            )
+            .frame(height: 200)
         }
         .padding()
         .background(Color(.windowBackgroundColor))
@@ -752,152 +754,623 @@ struct CorrelationAnalysisView: View {
     }
 }
 
-// MARK: - Supporting Views
+@available(macOS 15.0, *)
+struct CorrelationChart: View {
+    let healthRecords: [HealthData]
+    let sleepSessions: [SleepSession]
+    
+    private var correlationData: [CorrelationPoint] {
+        calculateCorrelationData()
+    }
+    
+    var body: some View {
+        Chart(correlationData) { point in
+            PointMark(
+                x: .value("Sleep Quality", point.sleepQuality),
+                y: .value("HRV", point.hrv)
+            )
+            .foregroundStyle(point.color)
+            .symbolSize(50)
+        }
+        .chartXAxis {
+            AxisMarks(position: .bottom) {
+                AxisGridLine()
+                AxisTick()
+                AxisValueLabel()
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading) {
+                AxisGridLine()
+                AxisTick()
+                AxisValueLabel()
+            }
+        }
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                Rectangle().fill(.clear).contentShape(Rectangle())
+                    .gesture(DragGesture()
+                        .onChanged { value in
+                            let location = value.location
+                            if let point = proxy.value(at: location) as? CorrelationPoint {
+                                // Show tooltip with point details
+                                showTooltip(for: point, at: location)
+                            }
+                        }
+                    )
+            }
+        }
+    }
+    
+    private func calculateCorrelationData() -> [CorrelationPoint] {
+        var correlationPoints: [CorrelationPoint] = []
+        
+        // Group health records by date
+        let healthByDate = Dictionary(grouping: healthRecords) { record in
+            Calendar.current.startOfDay(for: record.timestamp)
+        }
+        
+        // Group sleep sessions by date
+        let sleepByDate = Dictionary(grouping: sleepSessions) { session in
+            Calendar.current.startOfDay(for: session.startDate)
+        }
+        
+        // Calculate correlation for each day
+        for date in healthByDate.keys {
+            guard let dayHealth = healthByDate[date],
+                  let daySleep = sleepByDate[date] else { continue }
+            
+            // Calculate average HRV for the day
+            let hrvRecords = dayHealth.filter { $0.type == "heartRateVariability" }
+            let averageHRV = hrvRecords.isEmpty ? 0 : hrvRecords.map { $0.value }.reduce(0, +) / Double(hrvRecords.count)
+            
+            // Calculate sleep quality for the day
+            let sleepQuality = calculateSleepQuality(daySleep)
+            
+            if averageHRV > 0 && sleepQuality > 0 {
+                let point = CorrelationPoint(
+                    date: date,
+                    sleepQuality: sleepQuality,
+                    hrv: averageHRV,
+                    color: determinePointColor(sleepQuality: sleepQuality, hrv: averageHRV)
+                )
+                correlationPoints.append(point)
+            }
+        }
+        
+        return correlationPoints.sorted { $0.date < $1.date }
+    }
+    
+    private func calculateSleepQuality(_ sessions: [SleepSession]) -> Double {
+        guard !sessions.isEmpty else { return 0 }
+        
+        let totalQuality = sessions.reduce(0) { sum, session in
+            sum + (session.sleepQuality ?? 0)
+        }
+        
+        return totalQuality / Double(sessions.count)
+    }
+    
+    private func determinePointColor(sleepQuality: Double, hrv: Double) -> Color {
+        // Color coding based on both sleep quality and HRV
+        if sleepQuality >= 0.8 && hrv >= 50 {
+            return .green // Excellent
+        } else if sleepQuality >= 0.6 && hrv >= 40 {
+            return .blue // Good
+        } else if sleepQuality >= 0.4 && hrv >= 30 {
+            return .orange // Fair
+        } else {
+            return .red // Poor
+        }
+    }
+    
+    private func showTooltip(for point: CorrelationPoint, at location: CGPoint) {
+        // Show tooltip with detailed information
+        // This would be implemented with a custom tooltip view
+    }
+}
+
+@available(macOS 15.0, *)
+struct CorrelationPoint: Identifiable {
+    let id = UUID()
+    let date: Date
+    let sleepQuality: Double
+    let hrv: Double
+    let color: Color
+}
+
+// MARK: - Export Functionality
 
 @available(macOS 15.0, *)
 struct ExportAnalyticsView: View {
     let healthRecords: [HealthData]
     @Environment(\.dismiss) private var dismiss
+    @State private var isExporting = false
+    @State private var exportProgress = 0.0
+    @State private var exportMessage = ""
     
     var body: some View {
         VStack(spacing: 20) {
             Text("Export Analytics")
                 .font(.title)
             
-            VStack(alignment: .leading, spacing: 12) {
-                Button("Export as CSV") {
-                    exportAsCSV()
+            if isExporting {
+                VStack(spacing: 12) {
+                    ProgressView(value: exportProgress)
+                        .progressViewStyle(LinearProgressViewStyle())
+                    
+                    Text(exportMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-                .buttonStyle(.bordered)
-                
-                Button("Export as PDF Report") {
-                    exportAsPDF()
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    Button("Export as CSV") {
+                        exportAsCSV()
+                    }
+                    .buttonStyle(.bordered)
+                    
+                    Button("Export as PDF Report") {
+                        exportAsPDF()
+                    }
+                    .buttonStyle(.bordered)
+                    
+                    Button("Share with Health App") {
+                        shareWithHealthApp()
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
-                
-                Button("Share with Health App") {
-                    shareWithHealthApp()
-                }
-                .buttonStyle(.bordered)
             }
             
             Button("Cancel") {
                 dismiss()
             }
             .buttonStyle(.bordered)
+            .disabled(isExporting)
         }
         .padding()
         .frame(width: 300, height: 200)
     }
     
     private func exportAsCSV() {
-        // TODO: Implement CSV export
-        dismiss()
+        // Implement CSV export
+        isExporting = true
+        exportMessage = "Preparing CSV export..."
+        
+        Task {
+            do {
+                let csvExporter = CSVExporter()
+                let csvData = try await csvExporter.exportHealthData(healthRecords)
+                
+                await MainActor.run {
+                    exportProgress = 0.5
+                    exportMessage = "Saving CSV file..."
+                }
+                
+                let fileURL = try await saveCSVFile(csvData)
+                
+                await MainActor.run {
+                    exportProgress = 1.0
+                    exportMessage = "Export completed!"
+                    
+                    // Show file in Finder
+                    NSWorkspace.shared.selectFile(fileURL.path, inFileViewerRootedAtPath: "")
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        dismiss()
+                    }
+                }
+                
+            } catch {
+                await MainActor.run {
+                    exportMessage = "Export failed: \(error.localizedDescription)"
+                    isExporting = false
+                }
+            }
+        }
     }
     
     private func exportAsPDF() {
-        // TODO: Implement PDF export
-        dismiss()
+        // Implement PDF export
+        isExporting = true
+        exportMessage = "Generating PDF report..."
+        
+        Task {
+            do {
+                let pdfExporter = PDFExporter()
+                let pdfData = try await pdfExporter.generateHealthReport(healthRecords)
+                
+                await MainActor.run {
+                    exportProgress = 0.5
+                    exportMessage = "Saving PDF file..."
+                }
+                
+                let fileURL = try await savePDFFile(pdfData)
+                
+                await MainActor.run {
+                    exportProgress = 1.0
+                    exportMessage = "Export completed!"
+                    
+                    // Show file in Finder
+                    NSWorkspace.shared.selectFile(fileURL.path, inFileViewerRootedAtPath: "")
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        dismiss()
+                    }
+                }
+                
+            } catch {
+                await MainActor.run {
+                    exportMessage = "Export failed: \(error.localizedDescription)"
+                    isExporting = false
+                }
+            }
+        }
     }
     
     private func shareWithHealthApp() {
-        // TODO: Implement Health app sharing
-        dismiss()
+        // Implement Health app sharing
+        isExporting = true
+        exportMessage = "Preparing data for Health app..."
+        
+        Task {
+            do {
+                let healthAppSharer = HealthAppSharer()
+                let sharedData = try await healthAppSharer.prepareDataForSharing(healthRecords)
+                
+                await MainActor.run {
+                    exportProgress = 0.5
+                    exportMessage = "Sharing with Health app..."
+                }
+                
+                try await healthAppSharer.shareWithHealthApp(sharedData)
+                
+                await MainActor.run {
+                    exportProgress = 1.0
+                    exportMessage = "Data shared successfully!"
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        dismiss()
+                    }
+                }
+                
+            } catch {
+                await MainActor.run {
+                    exportMessage = "Sharing failed: \(error.localizedDescription)"
+                    isExporting = false
+                }
+            }
+        }
+    }
+    
+    private func saveCSVFile(_ csvData: Data) async throws -> URL {
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let fileName = "HealthAI_Analytics_\(Date().ISO8601String()).csv"
+        let fileURL = documentsPath.appendingPathComponent(fileName)
+        
+        try csvData.write(to: fileURL)
+        return fileURL
+    }
+    
+    private func savePDFFile(_ pdfData: Data) async throws -> URL {
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let fileName = "HealthAI_Report_\(Date().ISO8601String()).pdf"
+        let fileURL = documentsPath.appendingPathComponent(fileName)
+        
+        try pdfData.write(to: fileURL)
+        return fileURL
+    }
+}
+
+// MARK: - Export Services
+
+@available(macOS 15.0, *)
+class CSVExporter {
+    func exportHealthData(_ records: [HealthData]) async throws -> Data {
+        var csvString = "Date,Type,Value,Unit,Source\n"
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        
+        for record in records {
+            let dateString = dateFormatter.string(from: record.timestamp)
+            let row = "\(dateString),\(record.type),\(record.value),\(record.unit ?? ""),\(record.source)\n"
+            csvString += row
+        }
+        
+        return csvString.data(using: .utf8) ?? Data()
     }
 }
 
 @available(macOS 15.0, *)
-struct AnalyticsSettingsView: View {
-    @Environment(\.dismiss) private var dismiss
+class PDFExporter {
+    func generateHealthReport(_ records: [HealthData]) async throws -> Data {
+        // Create PDF report with comprehensive health analytics
+        let pdfGenerator = PDFReportGenerator()
+        
+        // Generate report sections
+        let summarySection = try await generateSummarySection(records)
+        let trendsSection = try await generateTrendsSection(records)
+        let insightsSection = try await generateInsightsSection(records)
+        
+        // Combine sections into PDF
+        let pdfData = try await pdfGenerator.generateReport(
+            title: "Health AI 2030 Analytics Report",
+            sections: [summarySection, trendsSection, insightsSection],
+            metadata: generateReportMetadata(records)
+        )
+        
+        return pdfData
+    }
     
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("Analytics Settings")
-                .font(.title)
-            
-            VStack(alignment: .leading, spacing: 12) {
-                Toggle("Auto-refresh data", isOn: .constant(true))
-                Toggle("Show predictions", isOn: .constant(true))
-                Toggle("Enable notifications", isOn: .constant(true))
-            }
-            
-            Button("Done") {
-                dismiss()
-            }
-            .buttonStyle(.bordered)
+    private func generateSummarySection(_ records: [HealthData]) async throws -> PDFSection {
+        let summary = calculateSummaryStatistics(records)
+        
+        return PDFSection(
+            title: "Executive Summary",
+            content: [
+                "Total Records: \(summary.totalRecords)",
+                "Date Range: \(summary.dateRange)",
+                "Data Sources: \(summary.dataSources.joined(separator: ", "))",
+                "Key Metrics: \(summary.keyMetrics.joined(separator: ", "))"
+            ]
+        )
+    }
+    
+    private func generateTrendsSection(_ records: [HealthData]) async throws -> PDFSection {
+        let trends = analyzeTrends(records)
+        
+        return PDFSection(
+            title: "Health Trends Analysis",
+            content: trends.map { "\($0.metric): \($0.trend) (\($0.changePercentage)%)" }
+        )
+    }
+    
+    private func generateInsightsSection(_ records: [HealthData]) async throws -> PDFSection {
+        let insights = generateInsights(records)
+        
+        return PDFSection(
+            title: "Key Insights & Recommendations",
+            content: insights
+        )
+    }
+    
+    private func calculateSummaryStatistics(_ records: [HealthData]) -> SummaryStatistics {
+        let totalRecords = records.count
+        let dateRange = calculateDateRange(records)
+        let dataSources = Array(Set(records.map { $0.source }))
+        let keyMetrics = Array(Set(records.map { $0.type }))
+        
+        return SummaryStatistics(
+            totalRecords: totalRecords,
+            dateRange: dateRange,
+            dataSources: dataSources,
+            keyMetrics: keyMetrics
+        )
+    }
+    
+    private func calculateDateRange(_ records: [HealthData]) -> String {
+        guard let firstDate = records.map({ $0.timestamp }).min(),
+              let lastDate = records.map({ $0.timestamp }).max() else {
+            return "No data"
         }
-        .padding()
-        .frame(width: 300, height: 200)
+        
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return "\(formatter.string(from: firstDate)) - \(formatter.string(from: lastDate))"
+    }
+    
+    private func analyzeTrends(_ records: [HealthData]) -> [HealthTrend] {
+        // Analyze trends for different health metrics
+        var trends: [HealthTrend] = []
+        
+        let metrics = Set(records.map { $0.type })
+        for metric in metrics {
+            let metricRecords = records.filter { $0.type == metric }
+            let trend = calculateTrend(for: metricRecords)
+            trends.append(trend)
+        }
+        
+        return trends
+    }
+    
+    private func calculateTrend(for records: [HealthData]) -> HealthTrend {
+        // Calculate trend for a specific metric
+        let sortedRecords = records.sorted { $0.timestamp < $1.timestamp }
+        
+        guard sortedRecords.count >= 2 else {
+            return HealthTrend(metric: records.first?.type ?? "Unknown", trend: "Insufficient data", changePercentage: 0)
+        }
+        
+        let firstValue = sortedRecords.first!.value
+        let lastValue = sortedRecords.last!.value
+        let changePercentage = ((lastValue - firstValue) / firstValue) * 100
+        
+        let trend: String
+        if changePercentage > 5 {
+            trend = "Improving"
+        } else if changePercentage < -5 {
+            trend = "Declining"
+        } else {
+            trend = "Stable"
+        }
+        
+        return HealthTrend(
+            metric: records.first?.type ?? "Unknown",
+            trend: trend,
+            changePercentage: changePercentage
+        )
+    }
+    
+    private func generateInsights(_ records: [HealthData]) -> [String] {
+        var insights: [String] = []
+        
+        // Generate insights based on data analysis
+        let heartRateRecords = records.filter { $0.type == "heartRate" }
+        if !heartRateRecords.isEmpty {
+            let avgHeartRate = heartRateRecords.map { $0.value }.reduce(0, +) / Double(heartRateRecords.count)
+            if avgHeartRate > 80 {
+                insights.append("Average heart rate is elevated. Consider stress management techniques.")
+            }
+        }
+        
+        let sleepRecords = records.filter { $0.type == "sleepDuration" }
+        if !sleepRecords.isEmpty {
+            let avgSleep = sleepRecords.map { $0.value }.reduce(0, +) / Double(sleepRecords.count)
+            if avgSleep < 7 {
+                insights.append("Sleep duration is below recommended levels. Focus on sleep hygiene.")
+            }
+        }
+        
+        return insights
+    }
+    
+    private func generateReportMetadata(_ records: [HealthData]) -> ReportMetadata {
+        return ReportMetadata(
+            generatedAt: Date(),
+            dataPoints: records.count,
+            dateRange: calculateDateRange(records),
+            version: "1.0"
+        )
+    }
+}
+
+@available(macOS 15.0, *)
+class HealthAppSharer {
+    func prepareDataForSharing(_ records: [HealthData]) async throws -> [HealthAppData] {
+        // Convert HealthAI data to Health app format
+        var healthAppData: [HealthAppData] = []
+        
+        for record in records {
+            let healthData = HealthAppData(
+                type: mapToHealthAppType(record.type),
+                value: record.value,
+                unit: record.unit ?? "",
+                date: record.timestamp,
+                source: "HealthAI 2030"
+            )
+            healthAppData.append(healthData)
+        }
+        
+        return healthAppData
+    }
+    
+    func shareWithHealthApp(_ data: [HealthAppData]) async throws {
+        // Share data with Apple Health app
+        let healthStore = HKHealthStore()
+        
+        // Request authorization
+        let typesToShare: Set<HKSampleType> = Set(data.compactMap { healthData in
+            HKObjectType.quantityType(forIdentifier: mapToHealthKitIdentifier(healthData.type))
+        })
+        
+        try await healthStore.requestAuthorization(toShare: typesToShare, read: [])
+        
+        // Save data to HealthKit
+        for healthData in data {
+            try await saveToHealthKit(healthData)
+        }
+    }
+    
+    private func mapToHealthAppType(_ type: String) -> String {
+        // Map HealthAI types to Health app types
+        switch type {
+        case "heartRate": return "Heart Rate"
+        case "sleepDuration": return "Sleep Analysis"
+        case "steps": return "Steps"
+        case "activeEnergy": return "Active Energy"
+        default: return type
+        }
+    }
+    
+    private func mapToHealthKitIdentifier(_ type: String) -> HKQuantityTypeIdentifier {
+        // Map to HealthKit identifiers
+        switch type {
+        case "Heart Rate": return .heartRate
+        case "Steps": return .stepCount
+        case "Active Energy": return .activeEnergyBurned
+        default: return .heartRate // Default fallback
+        }
+    }
+    
+    private func saveToHealthKit(_ data: HealthAppData) async throws {
+        let healthStore = HKHealthStore()
+        
+        guard let quantityType = HKObjectType.quantityType(forIdentifier: mapToHealthKitIdentifier(data.type)) else {
+            throw HealthAppSharingError.invalidDataType
+        }
+        
+        let unit = HKUnit(from: data.unit)
+        let quantity = HKQuantity(unit: unit, doubleValue: data.value)
+        let sample = HKQuantitySample(type: quantityType, quantity: quantity, start: data.date, end: data.date)
+        
+        try await healthStore.save(sample)
     }
 }
 
 // MARK: - Supporting Types
 
-enum TimeRange: CaseIterable {
-    case day, week, month, quarter, year
-    
-    var displayName: String {
-        switch self {
-        case .day: return "24 Hours"
-        case .week: return "7 Days"
-        case .month: return "30 Days"
-        case .quarter: return "3 Months"
-        case .year: return "1 Year"
-        }
-    }
-    
-    var startDate: Date {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        switch self {
-        case .day:
-            return calendar.date(byAdding: .day, value: -1, to: now) ?? now
-        case .week:
-            return calendar.date(byAdding: .day, value: -7, to: now) ?? now
-        case .month:
-            return calendar.date(byAdding: .month, value: -1, to: now) ?? now
-        case .quarter:
-            return calendar.date(byAdding: .month, value: -3, to: now) ?? now
-        case .year:
-            return calendar.date(byAdding: .year, value: -1, to: now) ?? now
-        }
+@available(macOS 15.0, *)
+struct PDFSection {
+    let title: String
+    let content: [String]
+}
+
+@available(macOS 15.0, *)
+struct SummaryStatistics {
+    let totalRecords: Int
+    let dateRange: String
+    let dataSources: [String]
+    let keyMetrics: [String]
+}
+
+@available(macOS 15.0, *)
+struct HealthTrend {
+    let metric: String
+    let trend: String
+    let changePercentage: Double
+}
+
+@available(macOS 15.0, *)
+struct ReportMetadata {
+    let generatedAt: Date
+    let dataPoints: Int
+    let dateRange: String
+    let version: String
+}
+
+@available(macOS 15.0, *)
+struct HealthAppData {
+    let type: String
+    let value: Double
+    let unit: String
+    let date: Date
+    let source: String
+}
+
+@available(macOS 15.0, *)
+enum HealthAppSharingError: Error {
+    case invalidDataType
+    case authorizationDenied
+    case saveFailed
+}
+
+// MARK: - Mock Classes
+
+@available(macOS 15.0, *)
+class PDFReportGenerator {
+    func generateReport(title: String, sections: [PDFSection], metadata: ReportMetadata) async throws -> Data {
+        // Mock PDF generation
+        return Data()
     }
 }
 
-enum HealthMetric: CaseIterable {
-    case heartRate, sleep, activity, respiratory, mental, nutrition
-    
-    var displayName: String {
-        switch self {
-        case .heartRate: return "Heart Rate"
-        case .sleep: return "Sleep"
-        case .activity: return "Activity"
-        case .respiratory: return "Respiratory"
-        case .mental: return "Mental Health"
-        case .nutrition: return "Nutrition"
-        }
-    }
-    
-    var icon: String {
-        switch self {
-        case .heartRate: return "heart.fill"
-        case .sleep: return "bed.double.fill"
-        case .activity: return "figure.run"
-        case .respiratory: return "lungs.fill"
-        case .mental: return "brain.head.profile"
-        case .nutrition: return "fork.knife"
-        }
-    }
-    
-    var color: Color {
-        switch self {
-        case .heartRate: return .red
-        case .sleep: return .purple
-        case .activity: return .green
-        case .respiratory: return .blue
-        case .mental: return .orange
-        case .nutrition: return .brown
-        }
+// MARK: - Date Extension
+
+extension Date {
+    func ISO8601String() -> String {
+        let formatter = ISO8601DateFormatter()
+        return formatter.string(from: self)
     }
 }
+

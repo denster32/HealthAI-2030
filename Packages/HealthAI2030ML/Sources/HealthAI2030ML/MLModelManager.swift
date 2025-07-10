@@ -33,14 +33,32 @@ public class MLModelManager {
     private var currentDistributions: [String: [Double]] = [:]
     
     private init() {
-        // Set up model storage directory
-        guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            fatalError("Unable to access document directory")
+        // Set up model storage directory with fallback options
+        if let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
+            modelStorageDirectory = documentsDirectory.appendingPathComponent("MLModels", isDirectory: true)
+        } else if let cachesDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first {
+            // Fallback to caches directory
+            modelStorageDirectory = cachesDirectory.appendingPathComponent("MLModels", isDirectory: true)
+            logger.warning("Using caches directory for model storage - document directory not accessible")
+        } else if let tempDirectory = fileManager.urls(for: .itemReplacementDirectory, in: .userDomainMask).first {
+            // Fallback to temporary directory
+            modelStorageDirectory = tempDirectory.appendingPathComponent("MLModels", isDirectory: true)
+            logger.warning("Using temporary directory for model storage - other directories not accessible")
+        } else {
+            // Last resort: use current working directory
+            let currentDirectory = URL(fileURLWithPath: fileManager.currentDirectoryPath)
+            modelStorageDirectory = currentDirectory.appendingPathComponent("MLModels", isDirectory: true)
+            logger.error("Using current directory for model storage - all standard directories inaccessible")
         }
-        modelStorageDirectory = documentsDirectory.appendingPathComponent("MLModels", isDirectory: true)
         
         // Create directory if it doesn't exist
-        try? fileManager.createDirectory(at: modelStorageDirectory, withIntermediateDirectories: true)
+        do {
+            try fileManager.createDirectory(at: modelStorageDirectory, withIntermediateDirectories: true, attributes: nil)
+            logger.info("Model storage directory created/verified at: \(modelStorageDirectory.path)")
+        } catch {
+            logger.error("Failed to create model storage directory: \(error.localizedDescription)")
+            // Continue with existing directory if it exists
+        }
     }
     
     /// Securely store an ML model

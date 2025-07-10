@@ -19,9 +19,10 @@ class MetalOptimizer {
     }
     
     // Add GPU-accelerated ML model inference
-    func setupGPUAcceleratedML() -> MLGPUAccelerator {
+    func setupGPUAcceleratedML() -> MLGPUAccelerator? {
         guard let device = device else {
-            fatalError("Metal device not available")
+            os_log("Metal device not available - falling back to CPU", type: .error)
+            return nil
         }
         
         let accelerator = MLGPUAccelerator(device: device)
@@ -38,9 +39,10 @@ class MetalOptimizer {
     }
     
     // Implement GPU-accelerated data processing pipelines
-    func createGPUDataPipeline() -> GPUDataPipeline {
+    func createGPUDataPipeline() -> GPUDataPipeline? {
         guard let device = device, let commandQueue = commandQueue else {
-            fatalError("Metal setup incomplete")
+            os_log("Metal setup incomplete - falling back to CPU pipeline", type: .error)
+            return nil
         }
         
         let pipeline = GPUDataPipeline(device: device, commandQueue: commandQueue)
@@ -55,9 +57,10 @@ class MetalOptimizer {
     }
     
     // Add GPU-accelerated image and video processing
-    func setupGPUImageProcessing() -> GPUImageProcessor {
+    func setupGPUImageProcessing() -> GPUImageProcessor? {
         guard let device = device else {
-            fatalError("Metal device not available")
+            os_log("Metal device not available - falling back to CPU image processing", type: .error)
+            return nil
         }
         
         let processor = GPUImageProcessor(device: device)
@@ -74,9 +77,10 @@ class MetalOptimizer {
     }
     
     // Implement GPU-accelerated scientific computing
-    func setupGPUScientificComputing() -> GPUScientificComputer {
+    func setupGPUScientificComputing() -> GPUScientificComputer? {
         guard let device = device else {
-            fatalError("Metal device not available")
+            os_log("Metal device not available - falling back to CPU scientific computing", type: .error)
+            return nil
         }
         
         let computer = GPUScientificComputer(device: device)
@@ -94,6 +98,11 @@ class MetalOptimizer {
     
     // Add GPU memory management and optimization
     func manageGPUMemory() {
+        guard let device = device else {
+            os_log("Metal device not available - skipping GPU memory management", type: .warning)
+            return
+        }
+        
         let memoryManager = GPUMemoryManager(device: device)
         
         // Monitor GPU memory usage
@@ -108,7 +117,12 @@ class MetalOptimizer {
     }
     
     // Create GPU performance monitoring and analytics
-    func monitorGPUPerformance() -> GPUPerformanceReport {
+    func monitorGPUPerformance() -> GPUPerformanceReport? {
+        guard let device = device else {
+            os_log("Metal device not available - cannot monitor GPU performance", type: .warning)
+            return nil
+        }
+        
         let monitor = GPUPerformanceMonitor(device: device)
         
         let report = monitor.generateReport()
@@ -119,6 +133,11 @@ class MetalOptimizer {
     
     // Implement GPU workload balancing and scheduling
     func balanceGPUWorkload() {
+        guard let device = device else {
+            os_log("Metal device not available - skipping GPU workload balancing", type: .warning)
+            return
+        }
+        
         let balancer = GPUWorkloadBalancer(device: device)
         
         // Analyze current workload
@@ -132,6 +151,11 @@ class MetalOptimizer {
     
     // Add GPU error handling and recovery
     func setupGPUErrorHandling() {
+        guard let device = device else {
+            os_log("Metal device not available - skipping GPU error handling setup", type: .warning)
+            return
+        }
+        
         let errorHandler = GPUErrorHandler(device: device)
         
         // Configure error handling
@@ -150,9 +174,10 @@ class MetalOptimizer {
     }
     
     // Create GPU-accelerated visualization and rendering
-    func setupGPURendering() -> GPURenderer {
+    func setupGPURendering() -> GPURenderer? {
         guard let device = device else {
-            fatalError("Metal device not available")
+            os_log("Metal device not available - falling back to CPU rendering", type: .error)
+            return nil
         }
         
         let renderer = GPURenderer(device: device)
@@ -170,6 +195,11 @@ class MetalOptimizer {
     
     // Implement GPU security and isolation
     func secureGPU() {
+        guard let device = device else {
+            os_log("Metal device not available - skipping GPU security setup", type: .warning)
+            return
+        }
+        
         let securityManager = GPUSecurityManager(device: device)
         
         // Apply security measures
@@ -182,6 +212,11 @@ class MetalOptimizer {
     
     // Optimize all compute-intensive operations for GPU
     func optimizeComputeOperations() {
+        guard let device = device else {
+            os_log("Metal device not available - skipping GPU compute optimization", type: .warning)
+            return
+        }
+        
         let optimizer = GPUComputeOptimizer(device: device)
         
         // Optimize compute kernels
@@ -197,9 +232,10 @@ class MetalOptimizer {
     }
     
     // Add GPU-accelerated health data analysis
-    func setupGPUHealthAnalysis() -> GPUHealthAnalyzer {
+    func setupGPUHealthAnalysis() -> GPUHealthAnalyzer? {
         guard let device = device else {
-            fatalError("Metal device not available")
+            os_log("Metal device not available - falling back to CPU health analysis", type: .error)
+            return nil
         }
         
         let analyzer = GPUHealthAnalyzer(device: device)
@@ -216,18 +252,19 @@ class MetalOptimizer {
     }
     
     // Implement GPU-accelerated pattern recognition
-    func setupGPUPatternRecognition() -> GPUPatternRecognizer {
+    func setupGPUPatternRecognition() -> GPUPatternRecognizer? {
         guard let device = device else {
-            fatalError("Metal device not available")
+            os_log("Metal device not available - falling back to CPU pattern recognition", type: .error)
+            return nil
         }
         
         let recognizer = GPUPatternRecognizer(device: device)
         
-        // Configure pattern recognition
+        // Configure pattern recognition capabilities
         recognizer.configure(
-            patternTypes: [.temporal, .spatial, .statistical],
-            sensitivity: 0.8,
-            falsePositiveRate: 0.05
+            patternTypes: [.temporal, .spatial, .frequency],
+            enableRealTime: true,
+            maxPatterns: 1000
         )
         
         os_log("GPU pattern recognition setup completed", type: .info)
