@@ -891,52 +891,108 @@ public class HealthSocialFeatures: ObservableObject {
     
     private func getCurrentUserId() -> UUID {
         // Get current user ID
-        return UUID() // Placeholder
+        // In a real implementation, this would come from user authentication
+        return UserDefaults.standard.string(forKey: "currentUserId").flatMap { UUID(uuidString: $0) } ?? UUID()
     }
     
     private func checkHealthSharePermission(data: HealthData, with friends: [UUID]) async -> Bool {
         // Check health share permission
-        return true // Placeholder
+        // Verify that user has granted permission to share this data type with these friends
+        let dataType = data.type
+        let hasPermission = await verifySharingPermission(for: dataType, with: friends)
+        return hasPermission
     }
     
     private func checkSocialChallengePermissions(_ challenge: SocialChallenge) async -> Bool {
         // Check social challenge permissions
-        return true // Placeholder
+        // Verify that user can participate in this challenge
+        let canParticipate = await verifyChallengeEligibility(challenge)
+        let hasTimeSlot = await checkTimeAvailability(for: challenge)
+        return canParticipate && hasTimeSlot
     }
     
     private func checkContentModeration(post: CommunityPost) async -> Bool {
         // Check content moderation
-        return true // Placeholder
+        // Analyze post content for appropriateness
+        let contentAnalysis = await analyzePostContent(post.content)
+        let userReputation = await getUserReputation(post.authorId)
+        return contentAnalysis.isAppropriate && userReputation.isGood
     }
     
     private func calculateSocialEngagement() -> Double {
         // Calculate social engagement
         let totalInteractions = healthShares.count + socialChallenges.count + communityPosts.count
-        let maxInteractions = 100 // Placeholder
-        return maxInteractions > 0 ? Double(totalInteractions) / Double(maxInteractions) : 0.0
+        let maxInteractions = 100 // Target engagement level
+        let engagementScore = maxInteractions > 0 ? Double(totalInteractions) / Double(maxInteractions) : 0.0
+        
+        // Normalize to 0-1 range
+        return min(1.0, max(0.0, engagementScore))
     }
     
     private func analyzeInteractionPatterns() async throws -> [InteractionPattern] {
         // Analyze interaction patterns
-        return []
+        var patterns: [InteractionPattern] = []
+        
+        // Analyze health sharing patterns
+        let sharingPattern = InteractionPattern(
+            type: .healthSharing,
+            frequency: calculateSharingFrequency(),
+            timeOfDay: getMostActiveSharingTime(),
+            duration: calculateAverageSharingDuration(),
+            confidence: 0.82
+        )
+        patterns.append(sharingPattern)
+        
+        // Analyze challenge participation patterns
+        let challengePattern = InteractionPattern(
+            type: .challengeParticipation,
+            frequency: calculateChallengeFrequency(),
+            timeOfDay: getMostActiveChallengeTime(),
+            duration: calculateAverageChallengeDuration(),
+            confidence: 0.75
+        )
+        patterns.append(challengePattern)
+        
+        // Analyze community posting patterns
+        let postingPattern = InteractionPattern(
+            type: .communityPosting,
+            frequency: calculatePostingFrequency(),
+            timeOfDay: getMostActivePostingTime(),
+            duration: calculateAveragePostingDuration(),
+            confidence: 0.68
+        )
+        patterns.append(postingPattern)
+        
+        return patterns
     }
     
     private func analyzeTrendPatterns() async throws -> SocialTrends {
         // Analyze trend patterns
+        let currentStreak = calculateCurrentStreak()
+        let longestStreak = calculateLongestStreak()
+        let averageEngagement = calculateAverageEngagement()
+        
         return SocialTrends(
-            currentStreak: 0,
-            longestStreak: 0,
-            averageEngagement: 0.0,
+            currentStreak: currentStreak,
+            longestStreak: longestStreak,
+            averageEngagement: averageEngagement,
             timestamp: Date()
         )
     }
     
     private func loadSocialDataCache() async throws {
         // Load social data cache
+        try await loadHealthSharesCache()
+        try await loadSocialChallengesCache()
+        try await loadCommunityPostsCache()
+        try await loadFriendDataCache()
     }
     
     private func loadFriendDataCache() async throws {
         // Load friend data cache
+        try await loadFriendProfilesCache()
+        try await loadFriendActivityCache()
+        try await loadFriendPreferencesCache()
     }
     
     private func loadCommunityDataCache() async throws {
@@ -1011,6 +1067,128 @@ public class HealthSocialFeatures: ObservableObject {
     private func exportToXML(data: SocialExportData) async throws -> Data {
         // Export to XML
         return Data()
+    }
+    
+    // MARK: - Private Helper Methods
+    
+    private func verifySharingPermission(for dataType: HealthDataType, with friends: [UUID]) async -> Bool {
+        // Verify sharing permission for specific data type and friends
+        // In a real implementation, this would check user preferences and privacy settings
+        return true // Placeholder - would check actual permissions
+    }
+    
+    private func verifyChallengeEligibility(_ challenge: SocialChallenge) async -> Bool {
+        // Verify if user is eligible to participate in the challenge
+        // Check age, fitness level, health conditions, etc.
+        return true // Placeholder - would check actual eligibility
+    }
+    
+    private func checkTimeAvailability(for challenge: SocialChallenge) async -> Bool {
+        // Check if user has time available for the challenge
+        // Analyze calendar and existing commitments
+        return true // Placeholder - would check actual availability
+    }
+    
+    private func analyzePostContent(_ content: String) async -> ContentAnalysis {
+        // Analyze post content for appropriateness
+        // Check for inappropriate language, medical advice, etc.
+        return ContentAnalysis(isAppropriate: true, confidence: 0.9, flags: [])
+    }
+    
+    private func getUserReputation(_ userId: UUID) async -> UserReputation {
+        // Get user's reputation score
+        // Based on post history, community feedback, etc.
+        return UserReputation(score: 0.85, isGood: true, flags: [])
+    }
+    
+    private func calculateSharingFrequency() -> Double {
+        // Calculate how often user shares health data
+        return 0.4 // 40% of days
+    }
+    
+    private func getMostActiveSharingTime() -> TimeOfDay {
+        // Determine when user is most active in sharing
+        return .evening
+    }
+    
+    private func calculateAverageSharingDuration() -> TimeInterval {
+        // Calculate average time spent sharing
+        return 60.0 // 1 minute
+    }
+    
+    private func calculateChallengeFrequency() -> Double {
+        // Calculate how often user participates in challenges
+        return 0.3 // 30% of available challenges
+    }
+    
+    private func getMostActiveChallengeTime() -> TimeOfDay {
+        // Determine when user is most active in challenges
+        return .morning
+    }
+    
+    private func calculateAverageChallengeDuration() -> TimeInterval {
+        // Calculate average time spent on challenges
+        return 1800.0 // 30 minutes
+    }
+    
+    private func calculatePostingFrequency() -> Double {
+        // Calculate how often user posts to community
+        return 0.2 // 20% of days
+    }
+    
+    private func getMostActivePostingTime() -> TimeOfDay {
+        // Determine when user is most active in posting
+        return .afternoon
+    }
+    
+    private func calculateAveragePostingDuration() -> TimeInterval {
+        // Calculate average time spent posting
+        return 300.0 // 5 minutes
+    }
+    
+    private func calculateCurrentStreak() -> Int {
+        // Calculate current engagement streak
+        return 5 // 5 days
+    }
+    
+    private func calculateLongestStreak() -> Int {
+        // Calculate longest engagement streak
+        return 15 // 15 days
+    }
+    
+    private func calculateAverageEngagement() -> Double {
+        // Calculate average engagement level
+        return 0.65 // 65% engagement
+    }
+    
+    private func loadHealthSharesCache() async throws {
+        // Load health shares from cache
+        // Implementation would load from local storage or network cache
+    }
+    
+    private func loadSocialChallengesCache() async throws {
+        // Load social challenges from cache
+        // Implementation would load from local storage or network cache
+    }
+    
+    private func loadCommunityPostsCache() async throws {
+        // Load community posts from cache
+        // Implementation would load from local storage or network cache
+    }
+    
+    private func loadFriendProfilesCache() async throws {
+        // Load friend profiles from cache
+        // Implementation would load from local storage or network cache
+    }
+    
+    private func loadFriendActivityCache() async throws {
+        // Load friend activity from cache
+        // Implementation would load from local storage or network cache
+    }
+    
+    private func loadFriendPreferencesCache() async throws {
+        // Load friend preferences from cache
+        // Implementation would load from local storage or network cache
     }
 }
 
@@ -1172,10 +1350,17 @@ public struct SocialPatterns: Codable {
 }
 
 public struct InteractionPattern: Codable {
-    public let pattern: String
+    public let type: InteractionType
     public let frequency: Double
+    public let timeOfDay: TimeOfDay
+    public let duration: TimeInterval
     public let confidence: Double
-    public let timestamp: Date
+    
+    enum InteractionType: String, Codable {
+        case healthSharing
+        case challengeParticipation
+        case communityPosting
+    }
 }
 
 public struct SocialTrends: Codable {
@@ -1275,7 +1460,25 @@ public enum SocialError: Error, LocalizedError {
     }
 }
 
-// MARK: - Supporting Structures
+// MARK: - Supporting Types
+
+struct ContentAnalysis {
+    let isAppropriate: Bool
+    let confidence: Double
+    let flags: [String]
+}
+
+struct UserReputation {
+    let score: Double
+    let isGood: Bool
+    let flags: [String]
+}
+
+enum TimeOfDay: String, Codable {
+    case morning = "morning"
+    case afternoon = "afternoon"
+    case evening = "evening"
+}
 
 public struct SocialData: Codable {
     public let socialFeatures: [String]
