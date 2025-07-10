@@ -1,893 +1,1140 @@
 import Foundation
-import Accelerate
 import CoreML
-import os.log
-import Observation
+import Accelerate
+import simd
 
-/// Advanced Contextual Awareness for AI Consciousness
-/// Implements situational understanding, environmental adaptation, context recognition,
-/// and adaptive response systems for health AI
-@available(iOS 18.0, macOS 15.0, watchOS 11.0, tvOS 18.0, *)
-@Observable
-public class ContextualAwareness {
+// MARK: - Contextual Awareness Framework for HealthAI 2030
+/// Advanced contextual awareness system for adaptive health AI behavior
+/// Implements environmental understanding, situational awareness, and context-driven responses
+
+// MARK: - Core Contextual Awareness Components
+
+/// Represents the contextual awareness state of the AI system
+public struct ContextualAwarenessState {
+    /// Current environmental awareness level (0.0 to 1.0)
+    public var environmentalAwareness: Float
+    /// Situational understanding depth
+    public var situationalUnderstanding: Float
+    /// Context adaptation capability
+    public var contextAdaptation: Float
+    /// Environmental sensitivity
+    public var environmentalSensitivity: Float
+    /// Contextual memory patterns
+    public var contextualMemory: [ContextualMemory]
+    /// Awareness learning progress
+    public var awarenessLearning: AwarenessLearningMetrics
     
-    // MARK: - Observable Properties
-    public private(set) var awarenessLevel: Double = 0.0
-    public private(set) var currentAwarenessState: String = ""
-    public private(set) var awarenessStatus: AwarenessStatus = .idle
-    public private(set) var lastAwarenessUpdate: Date?
-    public private(set) var situationalUnderstanding: Double = 0.0
-    public private(set) var environmentalAdaptation: Double = 0.0
-    
-    // MARK: - Core Components
-    private let situationalProcessor = SituationalProcessor()
-    private let environmentalAdapter = EnvironmentalAdapter()
-    private let contextRecognizer = ContextRecognizer()
-    private let adaptiveResponse = AdaptiveResponse()
-    private let awarenessLearning = AwarenessLearning()
-    
-    // MARK: - Performance Optimization
-    private let awarenessQueue = DispatchQueue(label: "com.healthai.quantum.awareness", qos: .userInitiated, attributes: .concurrent)
-    private let situationalQueue = DispatchQueue(label: "com.healthai.quantum.situational", qos: .userInitiated)
-    private let cache = NSCache<NSString, AnyObject>()
-    
-    // MARK: - Error Handling
-    public enum ContextualAwarenessError: Error, LocalizedError {
-        case situationalProcessingFailed
-        case environmentalAdaptationFailed
-        case contextRecognitionFailed
-        case adaptiveResponseFailed
-        case awarenessLearningFailed
-        case awarenessTimeout
-        
-        public var errorDescription: String? {
-            switch self {
-            case .situationalProcessingFailed:
-                return "Situational processing failed"
-            case .environmentalAdaptationFailed:
-                return "Environmental adaptation failed"
-            case .contextRecognitionFailed:
-                return "Context recognition failed"
-            case .adaptiveResponseFailed:
-                return "Adaptive response failed"
-            case .awarenessLearningFailed:
-                return "Awareness learning failed"
-            case .awarenessTimeout:
-                return "Contextual awareness timeout"
-            }
-        }
-    }
-    
-    // MARK: - Status Types
-    public enum AwarenessStatus {
-        case idle, processing, adapting, recognizing, responding, learning, completed, error
-    }
-    
-    // MARK: - Initialization
     public init() {
-        setupContextualAwareness()
+        self.environmentalAwareness = 0.8
+        self.situationalUnderstanding = 0.85
+        self.contextAdaptation = 0.75
+        self.environmentalSensitivity = 0.9
+        self.contextualMemory = []
+        self.awarenessLearning = AwarenessLearningMetrics()
+    }
+}
+
+/// Contextual memory for learning from situations
+public struct ContextualMemory {
+    public let context: String
+    public let environment: String
+    public let situation: String
+    public let response: String
+    public let effectiveness: Float
+    public let timestamp: Date
+    public let learningOutcome: Float
+    
+    public init(context: String, environment: String, situation: String, response: String, effectiveness: Float, timestamp: Date, learningOutcome: Float) {
+        self.context = context
+        self.environment = environment
+        self.situation = situation
+        self.response = response
+        self.effectiveness = effectiveness
+        self.timestamp = timestamp
+        self.learningOutcome = learningOutcome
+    }
+}
+
+/// Metrics for awareness learning progress
+public struct AwarenessLearningMetrics {
+    /// Understanding of environmental factors
+    public var environmentalUnderstanding: Float
+    /// Ability to adapt to situations
+    public var situationalAdaptation: Float
+    /// Learning from contextual feedback
+    public var contextualFeedbackLearning: Float
+    /// Prediction of context changes
+    public var contextPrediction: Float
+    
+    public init() {
+        self.environmentalUnderstanding = 0.7
+        self.situationalAdaptation = 0.75
+        self.contextualFeedbackLearning = 0.8
+        self.contextPrediction = 0.7
+    }
+}
+
+// MARK: - Contextual Awareness Engine
+
+/// Main contextual awareness engine for health AI
+public class ContextualAwarenessEngine {
+    /// Current contextual awareness state
+    private var awarenessState: ContextualAwarenessState
+    /// Environmental understanding system
+    private var environmentalUnderstanding: EnvironmentalUnderstandingSystem
+    /// Situational awareness system
+    private var situationalAwareness: SituationalAwarenessSystem
+    /// Context adaptation system
+    private var contextAdaptation: ContextAdaptationSystem
+    /// Context prediction system
+    private var contextPrediction: ContextPredictionSystem
+    
+    public init() {
+        self.awarenessState = ContextualAwarenessState()
+        self.environmentalUnderstanding = EnvironmentalUnderstandingSystem()
+        self.situationalAwareness = SituationalAwarenessSystem()
+        self.contextAdaptation = ContextAdaptationSystem()
+        self.contextPrediction = ContextPredictionSystem()
     }
     
-    // MARK: - Public Methods
-    
-    /// Develop contextual awareness for health AI
-    public func developContextualAwareness(
-        healthContext: HealthContext,
-        awarenessConfig: AwarenessConfig = .maximum
-    ) async throws -> ContextualAwarenessResult {
-        awarenessStatus = .processing
-        awarenessLevel = 0.0
-        currentAwarenessState = "Developing contextual awareness"
+    /// Process situation with contextual awareness
+    public func processWithContextualAwareness(situation: HealthSituation) -> ContextualResponse {
+        // Understand environmental context
+        let environmentalContext = environmentalUnderstanding.understandEnvironment(situation: situation)
         
-        do {
-            // Process situational understanding
-            currentAwarenessState = "Processing situational understanding"
-            awarenessLevel = 0.2
-            let situationalResult = try await processSituationalUnderstanding(
-                healthContext: healthContext,
-                config: awarenessConfig
-            )
-            
-            // Adapt to environment
-            currentAwarenessState = "Adapting to environment"
-            awarenessLevel = 0.4
-            let environmentalResult = try await adaptToEnvironment(
-                situationalResult: situationalResult
-            )
-            
-            // Recognize context
-            currentAwarenessState = "Recognizing context"
-            awarenessLevel = 0.6
-            let contextResult = try await recognizeContext(
-                environmentalResult: environmentalResult
-            )
-            
-            // Generate adaptive response
-            currentAwarenessState = "Generating adaptive response"
-            awarenessLevel = 0.8
-            let responseResult = try await generateAdaptiveResponse(
-                contextResult: contextResult
-            )
-            
-            // Learn from awareness
-            currentAwarenessState = "Learning from awareness"
-            awarenessLevel = 0.9
-            let learningResult = try await learnFromAwareness(
-                responseResult: responseResult
-            )
-            
-            // Complete contextual awareness
-            currentAwarenessState = "Completing contextual awareness"
-            awarenessLevel = 1.0
-            awarenessStatus = .completed
-            lastAwarenessUpdate = Date()
-            
-            // Calculate awareness metrics
-            situationalUnderstanding = calculateSituationalUnderstanding(learningResult: learningResult)
-            environmentalAdaptation = calculateEnvironmentalAdaptation(learningResult: learningResult)
-            
-            return ContextualAwarenessResult(
-                healthContext: healthContext,
-                situationalResult: situationalResult,
-                environmentalResult: environmentalResult,
-                contextResult: contextResult,
-                responseResult: responseResult,
-                learningResult: learningResult,
-                awarenessLevel: awarenessLevel,
-                situationalUnderstanding: situationalUnderstanding,
-                environmentalAdaptation: environmentalAdaptation
-            )
-            
-        } catch {
-            awarenessStatus = .error
-            throw error
-        }
-    }
-    
-    /// Process situational understanding
-    public func processSituationalUnderstanding(
-        healthContext: HealthContext,
-        config: AwarenessConfig
-    ) async throws -> SituationalResult {
-        return try await situationalQueue.asyncResult {
-            let result = self.situationalProcessor.process(
-                healthContext: healthContext,
-                config: config
-            )
-            
-            return result
-        }
-    }
-    
-    /// Adapt to environment
-    public func adaptToEnvironment(
-        situationalResult: SituationalResult
-    ) async throws -> EnvironmentalResult {
-        return try await awarenessQueue.asyncResult {
-            let result = self.environmentalAdapter.adapt(
-                situationalResult: situationalResult
-            )
-            
-            return result
-        }
-    }
-    
-    /// Recognize context
-    public func recognizeContext(
-        environmentalResult: EnvironmentalResult
-    ) async throws -> ContextRecognitionResult {
-        return try await awarenessQueue.asyncResult {
-            let result = self.contextRecognizer.recognize(
-                environmentalResult: environmentalResult
-            )
-            
-            return result
-        }
-    }
-    
-    /// Generate adaptive response
-    public func generateAdaptiveResponse(
-        contextResult: ContextRecognitionResult
-    ) async throws -> AdaptiveResponseResult {
-        return try await awarenessQueue.asyncResult {
-            let result = self.adaptiveResponse.generate(
-                contextResult: contextResult
-            )
-            
-            return result
-        }
-    }
-    
-    /// Learn from awareness
-    public func learnFromAwareness(
-        responseResult: AdaptiveResponseResult
-    ) async throws -> AwarenessLearningResult {
-        return try await awarenessQueue.asyncResult {
-            let result = self.awarenessLearning.learn(
-                responseResult: responseResult
-            )
-            
-            return result
-        }
-    }
-    
-    // MARK: - Private Methods
-    
-    private func setupContextualAwareness() {
-        // Initialize contextual awareness components
-        situationalProcessor.setup()
-        environmentalAdapter.setup()
-        contextRecognizer.setup()
-        adaptiveResponse.setup()
-        awarenessLearning.setup()
-    }
-    
-    private func calculateSituationalUnderstanding(
-        learningResult: AwarenessLearningResult
-    ) -> Double {
-        let situationAwareness = learningResult.situationAwareness
-        let contextUnderstanding = learningResult.contextUnderstanding
-        let adaptiveCapability = learningResult.adaptiveCapability
+        // Analyze situational awareness
+        let situationalAnalysis = situationalAwareness.analyzeSituation(situation: situation, environment: environmentalContext)
         
-        return (situationAwareness + contextUnderstanding + adaptiveCapability) / 3.0
-    }
-    
-    private func calculateEnvironmentalAdaptation(
-        learningResult: AwarenessLearningResult
-    ) -> Double {
-        let environmentalAwareness = learningResult.environmentalAwareness
-        let adaptationSpeed = learningResult.adaptationSpeed
-        let adaptationAccuracy = learningResult.adaptationAccuracy
+        // Predict context changes
+        let contextPrediction = contextPrediction.predictContextChanges(currentSituation: situation, environmentalContext: environmentalContext)
         
-        return (environmentalAwareness + adaptationSpeed + adaptationAccuracy) / 3.0
-    }
-}
-
-// MARK: - Supporting Types
-
-public enum AwarenessConfig {
-    case basic, standard, advanced, maximum
-}
-
-public struct ContextualAwarenessResult {
-    public let healthContext: HealthContext
-    public let situationalResult: SituationalResult
-    public let environmentalResult: EnvironmentalResult
-    public let contextResult: ContextRecognitionResult
-    public let responseResult: AdaptiveResponseResult
-    public let learningResult: AwarenessLearningResult
-    public let awarenessLevel: Double
-    public let situationalUnderstanding: Double
-    public let environmentalAdaptation: Double
-}
-
-public struct SituationalResult {
-    public let situationAwareness: Double
-    public let situationalContext: SituationalContext
-    public let situationalUnderstanding: SituationalUnderstanding
-    public let situationalMetrics: SituationalMetrics
-}
-
-public struct EnvironmentalResult {
-    public let environmentalAwareness: Double
-    public let environmentalAdaptation: EnvironmentalAdaptation
-    public let environmentalContext: EnvironmentalContext
-    public let environmentalMetrics: EnvironmentalMetrics
-}
-
-public struct ContextRecognitionResult {
-    public let contextRecognition: Double
-    public let recognizedContexts: [RecognizedContext]
-    public let contextConfidence: Double
-    public let contextAccuracy: Double
-}
-
-public struct AdaptiveResponseResult {
-    public let adaptiveResponse: AdaptiveResponse
-    public let responseAppropriateness: Double
-    public let responseEffectiveness: Double
-    public let responseTiming: Double
-}
-
-public struct AwarenessLearningResult {
-    public let learningOutcome: AwarenessLearningOutcome
-    public let situationAwareness: Double
-    public let contextUnderstanding: Double
-    public let adaptiveCapability: Double
-    public let environmentalAwareness: Double
-    public let adaptationSpeed: Double
-    public let adaptationAccuracy: Double
-}
-
-public struct SituationalContext {
-    public let situationType: SituationType
-    public let situationComplexity: SituationComplexity
-    public let situationUrgency: SituationUrgency
-    public let situationPriority: SituationPriority
-}
-
-public enum SituationType: String, CaseIterable {
-    case routine = "Routine"
-    case emergency = "Emergency"
-    case consultation = "Consultation"
-    case diagnosis = "Diagnosis"
-    case treatment = "Treatment"
-    case followUp = "Follow-up"
-    case monitoring = "Monitoring"
-}
-
-public enum SituationComplexity: String, CaseIterable {
-    case simple = "Simple"
-    case moderate = "Moderate"
-    case complex = "Complex"
-    case highlyComplex = "Highly Complex"
-}
-
-public enum SituationUrgency: String, CaseIterable {
-    case low = "Low"
-    case medium = "Medium"
-    case high = "High"
-    case critical = "Critical"
-}
-
-public enum SituationPriority: String, CaseIterable {
-    case routine = "Routine"
-    case important = "Important"
-    case urgent = "Urgent"
-    case critical = "Critical"
-}
-
-public struct SituationalUnderstanding {
-    public let understandingDepth: Double
-    public let understandingBreadth: Double
-    public let understandingAccuracy: Double
-    public let understandingSpeed: Double
-}
-
-public struct SituationalMetrics {
-    public let situationalAccuracy: Double
-    public let situationalSpeed: Double
-    public let situationalStability: Double
-    public let situationalAdaptability: Double
-}
-
-public struct EnvironmentalAdaptation {
-    public let adaptationType: AdaptationType
-    public let adaptationSpeed: Double
-    public let adaptationAccuracy: Double
-    public let adaptationStability: Double
-}
-
-public enum AdaptationType: String, CaseIterable {
-    case reactive = "Reactive"
-    case proactive = "Proactive"
-    case predictive = "Predictive"
-    case adaptive = "Adaptive"
-}
-
-public struct EnvironmentalContext {
-    public let physicalEnvironment: PhysicalEnvironment
-    public let socialEnvironment: SocialEnvironment
-    public let technologicalEnvironment: TechnologicalEnvironment
-    public let temporalEnvironment: TemporalEnvironment
-}
-
-public struct PhysicalEnvironment {
-    public let location: String
-    public let setting: Setting
-    public let conditions: EnvironmentalConditions
-    public let accessibility: Accessibility
-}
-
-public enum Setting: String, CaseIterable {
-    case hospital = "Hospital"
-    case clinic = "Clinic"
-    case home = "Home"
-    case office = "Office"
-    case emergency = "Emergency"
-    case virtual = "Virtual"
-}
-
-public struct EnvironmentalConditions {
-    public let lighting: LightingCondition
-    public let noise: NoiseLevel
-    public let temperature: Temperature
-    public let airQuality: AirQuality
-}
-
-public enum LightingCondition: String, CaseIterable {
-    case bright = "Bright"
-    case moderate = "Moderate"
-    case dim = "Dim"
-    case variable = "Variable"
-}
-
-public enum NoiseLevel: String, CaseIterable {
-    case quiet = "Quiet"
-    case moderate = "Moderate"
-    case loud = "Loud"
-    case veryLoud = "Very Loud"
-}
-
-public enum Temperature: String, CaseIterable {
-    case cold = "Cold"
-    case cool = "Cool"
-    case comfortable = "Comfortable"
-    case warm = "Warm"
-    case hot = "Hot"
-}
-
-public struct SocialEnvironment {
-    public let socialContext: SocialContext
-    public let interpersonalDynamics: InterpersonalDynamics
-    public let culturalFactors: CulturalFactors
-    public let communicationStyle: CommunicationStyle
-}
-
-public enum SocialContext: String, CaseIterable {
-    case individual = "Individual"
-    case family = "Family"
-    case group = "Group"
-    case community = "Community"
-    case professional = "Professional"
-}
-
-public struct InterpersonalDynamics {
-    public let relationshipType: RelationshipType
-    public let powerDynamics: PowerDynamics
-    public let trustLevel: TrustLevel
-    public let communicationQuality: CommunicationQuality
-}
-
-public enum RelationshipType: String, CaseIterable {
-    case doctorPatient = "Doctor-Patient"
-    case familyMember = "Family Member"
-    case caregiver = "Caregiver"
-    case colleague = "Colleague"
-    case stranger = "Stranger"
-}
-
-public enum PowerDynamics: String, CaseIterable {
-    case equal = "Equal"
-    case hierarchical = "Hierarchical"
-    case collaborative = "Collaborative"
-    case dependent = "Dependent"
-}
-
-public enum TrustLevel: String, CaseIterable {
-    case low = "Low"
-    case moderate = "Moderate"
-    case high = "High"
-    case veryHigh = "Very High"
-}
-
-public enum CommunicationQuality: String, CaseIterable {
-    case poor = "Poor"
-    case fair = "Fair"
-    case good = "Good"
-    case excellent = "Excellent"
-}
-
-public struct CulturalFactors {
-    public let culturalBackground: String
-    public let languagePreference: String
-    public let culturalBeliefs: [String]
-    public let culturalSensitivity: CulturalSensitivity
-}
-
-public enum CulturalSensitivity: String, CaseIterable {
-    case low = "Low"
-    case moderate = "Moderate"
-    case high = "High"
-    case veryHigh = "Very High"
-}
-
-public struct TechnologicalEnvironment {
-    public let technologyLevel: TechnologyLevel
-    public let deviceCapabilities: DeviceCapabilities
-    public let connectivity: Connectivity
-    public let securityLevel: SecurityLevel
-}
-
-public enum TechnologyLevel: String, CaseIterable {
-    case basic = "Basic"
-    case standard = "Standard"
-    case advanced = "Advanced"
-    case cuttingEdge = "Cutting Edge"
-}
-
-public struct DeviceCapabilities {
-    public let processingPower: ProcessingPower
-    public let storageCapacity: StorageCapacity
-    public let connectivityOptions: [ConnectivityOption]
-    public let sensorCapabilities: [SensorCapability]
-}
-
-public enum ProcessingPower: String, CaseIterable {
-    case low = "Low"
-    case moderate = "Moderate"
-    case high = "High"
-    case veryHigh = "Very High"
-}
-
-public enum StorageCapacity: String, CaseIterable {
-    case limited = "Limited"
-    case adequate = "Adequate"
-    case generous = "Generous"
-    case extensive = "Extensive"
-}
-
-public enum ConnectivityOption: String, CaseIterable {
-    case wifi = "WiFi"
-    case cellular = "Cellular"
-    case bluetooth = "Bluetooth"
-    case ethernet = "Ethernet"
-}
-
-public enum SensorCapability: String, CaseIterable {
-    case biometrics = "Biometrics"
-    case environmental = "Environmental"
-    case motion = "Motion"
-    case health = "Health"
-}
-
-public enum Connectivity: String, CaseIterable {
-    case offline = "Offline"
-    case limited = "Limited"
-    case stable = "Stable"
-    case highSpeed = "High Speed"
-}
-
-public enum SecurityLevel: String, CaseIterable {
-    case basic = "Basic"
-    case standard = "Standard"
-    case enhanced = "Enhanced"
-    case maximum = "Maximum"
-}
-
-public struct TemporalEnvironment {
-    public let timeOfDay: TimeOfDay
-    public let dayOfWeek: DayOfWeek
-    public let season: Season
-    public let urgency: TemporalUrgency
-}
-
-public enum TimeOfDay: String, CaseIterable {
-    case morning = "Morning"
-    case afternoon = "Afternoon"
-    case evening = "Evening"
-    case night = "Night"
-}
-
-public enum DayOfWeek: String, CaseIterable {
-    case monday = "Monday"
-    case tuesday = "Tuesday"
-    case wednesday = "Wednesday"
-    case thursday = "Thursday"
-    case friday = "Friday"
-    case saturday = "Saturday"
-    case sunday = "Sunday"
-}
-
-public enum Season: String, CaseIterable {
-    case spring = "Spring"
-    case summer = "Summer"
-    case autumn = "Autumn"
-    case winter = "Winter"
-}
-
-public enum TemporalUrgency: String, CaseIterable {
-    case routine = "Routine"
-    case scheduled = "Scheduled"
-    case urgent = "Urgent"
-    case emergency = "Emergency"
-}
-
-public struct EnvironmentalMetrics {
-    public let environmentalAccuracy: Double
-    public let environmentalSpeed: Double
-    public let environmentalStability: Double
-    public let environmentalAdaptability: Double
-}
-
-public struct RecognizedContext {
-    public let contextType: ContextType
-    public let contextConfidence: Double
-    public let contextRelevance: Double
-    public let contextImpact: ContextImpact
-}
-
-public enum ContextType: String, CaseIterable {
-    case health = "Health"
-    case social = "Social"
-    case environmental = "Environmental"
-    case technological = "Technological"
-    case temporal = "Temporal"
-    case cultural = "Cultural"
-}
-
-public enum ContextImpact: String, CaseIterable {
-    case low = "Low"
-    case moderate = "Moderate"
-    case high = "High"
-    case critical = "Critical"
-}
-
-public struct AdaptiveResponse {
-    public let responseType: AdaptiveResponseType
-    public let responseStrategy: ResponseStrategy
-    public let responsePriority: ResponsePriority
-    public let responseTiming: ResponseTiming
-}
-
-public enum AdaptiveResponseType: String, CaseIterable {
-    case reactive = "Reactive"
-    case proactive = "Proactive"
-    case predictive = "Predictive"
-    case adaptive = "Adaptive"
-}
-
-public enum ResponseStrategy: String, CaseIterable {
-    case immediate = "Immediate"
-    case gradual = "Gradual"
-    case staged = "Staged"
-    case continuous = "Continuous"
-}
-
-public enum ResponsePriority: String, CaseIterable {
-    case low = "Low"
-    case medium = "Medium"
-    case high = "High"
-    case critical = "Critical"
-}
-
-public enum ResponseTiming: String, CaseIterable {
-    case immediate = "Immediate"
-    case shortTerm = "Short-term"
-    case longTerm = "Long-term"
-    case ongoing = "Ongoing"
-}
-
-public struct AwarenessLearningOutcome {
-    public let learningType: AwarenessLearningType
-    public let learningEffectiveness: Double
-    public let adaptationSpeed: Double
-    public let improvementAreas: [String]
-}
-
-public enum AwarenessLearningType: String, CaseIterable {
-    case situationalLearning = "Situational Learning"
-    case environmentalLearning = "Environmental Learning"
-    case contextualLearning = "Contextual Learning"
-    case adaptiveLearning = "Adaptive Learning"
-}
-
-// MARK: - Supporting Classes
-
-class SituationalProcessor {
-    func setup() {
-        // Setup situational processor
-    }
-    
-    func process(
-        healthContext: HealthContext,
-        config: AwarenessConfig
-    ) -> SituationalResult {
-        // Process situational understanding
-        let situationalContext = SituationalContext(
-            situationType: .consultation,
-            situationComplexity: .moderate,
-            situationUrgency: .medium,
-            situationPriority: .important
-        )
-        
-        let situationalUnderstanding = SituationalUnderstanding(
-            understandingDepth: 0.88,
-            understandingBreadth: 0.85,
-            understandingAccuracy: 0.90,
-            understandingSpeed: 0.87
-        )
-        
-        let situationalMetrics = SituationalMetrics(
-            situationalAccuracy: 0.89,
-            situationalSpeed: 0.86,
-            situationalStability: 0.88,
-            situationalAdaptability: 0.85
-        )
-        
-        return SituationalResult(
-            situationAwareness: 0.87,
-            situationalContext: situationalContext,
-            situationalUnderstanding: situationalUnderstanding,
-            situationalMetrics: situationalMetrics
-        )
-    }
-}
-
-class EnvironmentalAdapter {
-    func setup() {
-        // Setup environmental adapter
-    }
-    
-    func adapt(
-        situationalResult: SituationalResult
-    ) -> EnvironmentalResult {
-        // Adapt to environment
-        let environmentalAdaptation = EnvironmentalAdaptation(
-            adaptationType: .adaptive,
-            adaptationSpeed: 0.88,
-            adaptationAccuracy: 0.90,
-            adaptationStability: 0.87
-        )
-        
-        let environmentalContext = EnvironmentalContext(
-            physicalEnvironment: PhysicalEnvironment(
-                location: "Medical Clinic",
-                setting: .clinic,
-                conditions: EnvironmentalConditions(
-                    lighting: .bright,
-                    noise: .moderate,
-                    temperature: .comfortable,
-                    airQuality: .good
-                ),
-                accessibility: .accessible
-            ),
-            socialEnvironment: SocialEnvironment(
-                socialContext: .individual,
-                interpersonalDynamics: InterpersonalDynamics(
-                    relationshipType: .doctorPatient,
-                    powerDynamics: .hierarchical,
-                    trustLevel: .high,
-                    communicationQuality: .good
-                ),
-                culturalFactors: CulturalFactors(
-                    culturalBackground: "Diverse",
-                    languagePreference: "English",
-                    culturalBeliefs: ["Health-focused"],
-                    culturalSensitivity: .high
-                ),
-                communicationStyle: .professional
-            ),
-            technologicalEnvironment: TechnologicalEnvironment(
-                technologyLevel: .advanced,
-                deviceCapabilities: DeviceCapabilities(
-                    processingPower: .high,
-                    storageCapacity: .generous,
-                    connectivityOptions: [.wifi, .bluetooth],
-                    sensorCapabilities: [.biometrics, .health]
-                ),
-                connectivity: .stable,
-                securityLevel: .enhanced
-            ),
-            temporalEnvironment: TemporalEnvironment(
-                timeOfDay: .afternoon,
-                dayOfWeek: .wednesday,
-                season: .spring,
-                urgency: .scheduled
-            )
-        )
-        
-        let environmentalMetrics = EnvironmentalMetrics(
-            environmentalAccuracy: 0.91,
-            environmentalSpeed: 0.88,
-            environmentalStability: 0.89,
-            environmentalAdaptability: 0.87
-        )
-        
-        return EnvironmentalResult(
-            environmentalAwareness: 0.89,
-            environmentalAdaptation: environmentalAdaptation,
+        // Adapt to context
+        let adaptedResponse = contextAdaptation.adaptToContext(
+            situation: situation,
             environmentalContext: environmentalContext,
-            environmentalMetrics: environmentalMetrics
-        )
-    }
-}
-
-class ContextRecognizer {
-    func setup() {
-        // Setup context recognizer
-    }
-    
-    func recognize(
-        environmentalResult: EnvironmentalResult
-    ) -> ContextRecognitionResult {
-        // Recognize context
-        let recognizedContexts = [
-            RecognizedContext(
-                contextType: .health,
-                contextConfidence: 0.92,
-                contextRelevance: 0.95,
-                contextImpact: .high
-            ),
-            RecognizedContext(
-                contextType: .social,
-                contextConfidence: 0.88,
-                contextRelevance: 0.85,
-                contextImpact: .moderate
-            ),
-            RecognizedContext(
-                contextType: .environmental,
-                contextConfidence: 0.90,
-                contextRelevance: 0.87,
-                contextImpact: .moderate
-            )
-        ]
-        
-        return ContextRecognitionResult(
-            contextRecognition: 0.90,
-            recognizedContexts: recognizedContexts,
-            contextConfidence: 0.89,
-            contextAccuracy: 0.91
-        )
-    }
-}
-
-class AdaptiveResponse {
-    func setup() {
-        // Setup adaptive response
-    }
-    
-    func generate(
-        contextResult: ContextRecognitionResult
-    ) -> AdaptiveResponseResult {
-        // Generate adaptive response
-        let adaptiveResponse = AdaptiveResponse(
-            responseType: .adaptive,
-            responseStrategy: .staged,
-            responsePriority: .medium,
-            responseTiming: .shortTerm
+            situationalAnalysis: situationalAnalysis,
+            contextPrediction: contextPrediction
         )
         
-        return AdaptiveResponseResult(
-            adaptiveResponse: adaptiveResponse,
-            responseAppropriateness: 0.91,
-            responseEffectiveness: 0.88,
-            responseTiming: 0.89
-        )
-    }
-}
-
-class AwarenessLearning {
-    func setup() {
-        // Setup awareness learning
+        // Learn from interaction
+        learnFromSituation(situation: situation, response: adaptedResponse)
+        
+        // Update awareness state
+        updateAwarenessState(with: adaptedResponse)
+        
+        return adaptedResponse
     }
     
-    func learn(
-        responseResult: AdaptiveResponseResult
-    ) -> AwarenessLearningResult {
-        // Learn from awareness
-        let learningOutcome = AwarenessLearningOutcome(
-            learningType: .adaptiveLearning,
-            learningEffectiveness: 0.87,
-            adaptationSpeed: 0.89,
-            improvementAreas: ["Context recognition speed", "Environmental adaptation accuracy"]
+    /// Learn from situation interaction
+    private func learnFromSituation(situation: HealthSituation, response: ContextualResponse) {
+        // Store contextual memory
+        let contextualMemory = ContextualMemory(
+            context: situation.context,
+            environment: situation.environment,
+            situation: situation.situationType.rawValue,
+            response: response.responseType.rawValue,
+            effectiveness: response.effectiveness,
+            timestamp: Date(),
+            learningOutcome: response.learningOutcome
         )
         
-        return AwarenessLearningResult(
-            learningOutcome: learningOutcome,
-            situationAwareness: 0.87,
-            contextUnderstanding: 0.89,
-            adaptiveCapability: 0.88,
-            environmentalAwareness: 0.89,
-            adaptationSpeed: 0.88,
-            adaptationAccuracy: 0.90
+        awarenessState.contextualMemory.append(contextualMemory)
+        
+        // Limit memory size
+        if awarenessState.contextualMemory.count > 1000 {
+            awarenessState.contextualMemory.removeFirst()
+        }
+        
+        // Update learning metrics
+        updateAwarenessLearning(from: contextualMemory)
+    }
+    
+    /// Update awareness learning metrics
+    private func updateAwarenessLearning(from memory: ContextualMemory) {
+        // Improve understanding based on effectiveness
+        if memory.effectiveness > 0.8 {
+            awarenessState.awarenessLearning.environmentalUnderstanding += 0.01
+            awarenessState.awarenessLearning.situationalAdaptation += 0.01
+        } else if memory.effectiveness < 0.4 {
+            awarenessState.awarenessLearning.contextualFeedbackLearning += 0.02
+            awarenessState.awarenessLearning.contextPrediction += 0.015
+        }
+        
+        // Cap improvements at 1.0
+        awarenessState.awarenessLearning.environmentalUnderstanding = min(1.0, awarenessState.awarenessLearning.environmentalUnderstanding)
+        awarenessState.awarenessLearning.situationalAdaptation = min(1.0, awarenessState.awarenessLearning.situationalAdaptation)
+        awarenessState.awarenessLearning.contextualFeedbackLearning = min(1.0, awarenessState.awarenessLearning.contextualFeedbackLearning)
+        awarenessState.awarenessLearning.contextPrediction = min(1.0, awarenessState.awarenessLearning.contextPrediction)
+    }
+    
+    /// Update awareness state
+    private func updateAwarenessState(with response: ContextualResponse) {
+        awarenessState.environmentalAwareness = response.environmentalAwareness
+        awarenessState.situationalUnderstanding = response.situationalUnderstanding
+        awarenessState.contextAdaptation = response.contextAdaptation
+        awarenessState.environmentalSensitivity = response.environmentalSensitivity
+    }
+    
+    /// Get current contextual awareness state
+    public func getContextualAwarenessState() -> ContextualAwarenessState {
+        return awarenessState
+    }
+    
+    /// Analyze contextual patterns from memory
+    public func analyzeContextualPatterns() -> ContextualPatternAnalysis {
+        let recentMemories = Array(awarenessState.contextualMemory.suffix(100))
+        
+        var contextFrequency: [String: Int] = [:]
+        var environmentFrequency: [String: Int] = [:]
+        var situationFrequency: [String: Int] = [:]
+        var effectivenessByContext: [String: Float] = [:]
+        var effectivenessByEnvironment: [String: Float] = [:]
+        
+        for memory in recentMemories {
+            // Count frequencies
+            contextFrequency[memory.context, default: 0] += 1
+            environmentFrequency[memory.environment, default: 0] += 1
+            situationFrequency[memory.situation, default: 0] += 1
+            
+            // Calculate effectiveness by context
+            let currentCount = effectivenessByContext[memory.context, default: 0.0]
+            let currentSum = currentCount * Float(contextFrequency[memory.context, default: 1] - 1)
+            effectivenessByContext[memory.context] = (currentSum + memory.effectiveness) / Float(contextFrequency[memory.context, default: 1])
+            
+            // Calculate effectiveness by environment
+            let currentCountEnv = effectivenessByEnvironment[memory.environment, default: 0.0]
+            let currentSumEnv = currentCountEnv * Float(environmentFrequency[memory.environment, default: 1] - 1)
+            effectivenessByEnvironment[memory.environment] = (currentSumEnv + memory.effectiveness) / Float(environmentFrequency[memory.environment, default: 1])
+        }
+        
+        return ContextualPatternAnalysis(
+            contextFrequency: contextFrequency,
+            environmentFrequency: environmentFrequency,
+            situationFrequency: situationFrequency,
+            effectivenessByContext: effectivenessByContext,
+            effectivenessByEnvironment: effectivenessByEnvironment,
+            totalSituations: recentMemories.count
         )
     }
-}
-
-// MARK: - Extensions
-
-extension DispatchQueue {
-    func asyncResult<T>(_ block: @escaping () throws -> T) async throws -> T {
-        return try await withCheckedThrowingContinuation { continuation in
-            self.async {
-                do {
-                    let result = try block()
-                    continuation.resume(returning: result)
-                } catch {
-                    continuation.resume(throwing: error)
-                }
+    
+    /// Generate contextual awareness report
+    public func generateContextualAwarenessReport() -> ContextualAwarenessReport {
+        let patterns = analyzeContextualPatterns()
+        let learningProgress = awarenessState.awarenessLearning
+        
+        return ContextualAwarenessReport(
+            overallAwareness: awarenessState.environmentalAwareness,
+            situationalUnderstanding: awarenessState.situationalUnderstanding,
+            contextAdaptation: awarenessState.contextAdaptation,
+            environmentalSensitivity: awarenessState.environmentalSensitivity,
+            learningProgress: learningProgress,
+            contextualPatterns: patterns,
+            recommendations: generateAwarenessRecommendations(patterns: patterns, learning: learningProgress)
+        )
+    }
+    
+    /// Generate awareness improvement recommendations
+    private func generateAwarenessRecommendations(patterns: ContextualPatternAnalysis, learning: AwarenessLearningMetrics) -> [ContextualAwarenessRecommendation] {
+        var recommendations: [ContextualAwarenessRecommendation] = []
+        
+        // Check for low effectiveness contexts
+        for (context, effectiveness) in patterns.effectivenessByContext {
+            if effectiveness < 0.6 {
+                recommendations.append(ContextualAwarenessRecommendation(
+                    type: .improveContextResponse,
+                    context: context,
+                    priority: .high,
+                    description: "Improve response effectiveness for \(context) context",
+                    suggestedActions: ["Study context patterns", "Review response strategies", "Practice adaptation"]
+                ))
             }
+        }
+        
+        // Check learning progress
+        if learning.environmentalUnderstanding < 0.8 {
+            recommendations.append(ContextualAwarenessRecommendation(
+                type: .enhanceEnvironmentalUnderstanding,
+                context: nil,
+                priority: .medium,
+                description: "Enhance environmental understanding",
+                suggestedActions: ["Study environmental factors", "Practice context recognition", "Review successful adaptations"]
+            ))
+        }
+        
+        if learning.situationalAdaptation < 0.8 {
+            recommendations.append(ContextualAwarenessRecommendation(
+                type: .improveSituationalAdaptation,
+                context: nil,
+                priority: .medium,
+                description: "Improve situational adaptation ability",
+                suggestedActions: ["Practice situation analysis", "Review adaptation strategies", "Learn from successful cases"]
+            ))
+        }
+        
+        return recommendations
+    }
+    
+    /// Predict future context changes
+    public func predictContextChanges(currentSituation: HealthSituation) -> [ContextPrediction] {
+        return contextPrediction.predictContextChanges(currentSituation: currentSituation, environmentalContext: nil)
+    }
+    
+    /// Adapt behavior based on predicted context
+    public func adaptToPredictedContext(predictions: [ContextPrediction]) -> AdaptiveBehavior {
+        let adaptationStrategy = determineAdaptationStrategy(predictions: predictions)
+        let behavioralChanges = generateBehavioralChanges(strategy: adaptationStrategy)
+        let preparationActions = generatePreparationActions(predictions: predictions)
+        
+        return AdaptiveBehavior(
+            strategy: adaptationStrategy,
+            behavioralChanges: behavioralChanges,
+            preparationActions: preparationActions,
+            confidence: calculateAdaptationConfidence(predictions: predictions)
+        )
+    }
+    
+    /// Determine adaptation strategy based on predictions
+    private func determineAdaptationStrategy(predictions: [ContextPrediction]) -> AdaptationStrategy {
+        let highProbabilityChanges = predictions.filter { $0.probability > 0.7 }
+        let criticalChanges = predictions.filter { $0.impact == .critical }
+        
+        if !criticalChanges.isEmpty {
+            return .proactive
+        } else if highProbabilityChanges.count > 2 {
+            return .adaptive
+        } else {
+            return .reactive
+        }
+    }
+    
+    /// Generate behavioral changes based on strategy
+    private func generateBehavioralChanges(strategy: AdaptationStrategy) -> [BehavioralChange] {
+        switch strategy {
+        case .proactive:
+            return [
+                BehavioralChange(type: .communication, intensity: 0.9, description: "Increase proactive communication"),
+                BehavioralChange(type: .monitoring, intensity: 0.8, description: "Enhance monitoring frequency"),
+                BehavioralChange(type: .preparation, intensity: 0.9, description: "Prepare for critical changes")
+            ]
+        case .adaptive:
+            return [
+                BehavioralChange(type: .flexibility, intensity: 0.7, description: "Increase behavioral flexibility"),
+                BehavioralChange(type: .learning, intensity: 0.8, description: "Accelerate learning from context"),
+                BehavioralChange(type: .prediction, intensity: 0.6, description: "Improve prediction accuracy")
+            ]
+        case .reactive:
+            return [
+                BehavioralChange(type: .responsiveness, intensity: 0.8, description: "Improve response speed"),
+                BehavioralChange(type: .efficiency, intensity: 0.7, description: "Optimize resource usage"),
+                BehavioralChange(type: .recovery, intensity: 0.6, description: "Enhance recovery mechanisms")
+            ]
+        }
+    }
+    
+    /// Generate preparation actions for predicted changes
+    private func generatePreparationActions(predictions: [ContextPrediction]) -> [PreparationAction] {
+        return predictions.compactMap { prediction in
+            guard prediction.probability > 0.5 else { return nil }
+            
+            return PreparationAction(
+                context: prediction.context,
+                action: determinePreparationAction(for: prediction),
+                priority: prediction.impact == .critical ? .high : .medium,
+                timeframe: prediction.timeframe
+            )
+        }
+    }
+    
+    /// Determine preparation action for prediction
+    private func determinePreparationAction(for prediction: ContextPrediction) -> String {
+        switch prediction.context {
+        case "emergency":
+            return "Prepare emergency response protocols"
+        case "patient_deterioration":
+            return "Increase monitoring frequency"
+        case "environmental_change":
+            return "Adapt to new environmental conditions"
+        case "resource_constraint":
+            return "Optimize resource allocation"
+        default:
+            return "Monitor and adapt to changes"
+        }
+    }
+    
+    /// Calculate adaptation confidence
+    private func calculateAdaptationConfidence(predictions: [ContextPrediction]) -> Float {
+        let averageProbability = predictions.map { $0.probability }.reduce(0, +) / Float(predictions.count)
+        let predictionAccuracy = awarenessState.awarenessLearning.contextPrediction
+        let adaptationAbility = awarenessState.awarenessLearning.situationalAdaptation
+        
+        return (averageProbability + predictionAccuracy + adaptationAbility) / 3.0
+    }
+}
+
+// MARK: - Supporting Structures
+
+/// Health situation data
+public struct HealthSituation {
+    public let situationId: String
+    public let situationType: SituationType
+    public let context: String
+    public let environment: String
+    public let urgency: Float
+    public let complexity: Float
+    public let patientState: PatientState
+    public let environmentalFactors: [EnvironmentalFactor]
+    public let timestamp: Date
+    
+    public init(situationId: String, situationType: SituationType, context: String, environment: String, urgency: Float, complexity: Float, patientState: PatientState, environmentalFactors: [EnvironmentalFactor], timestamp: Date = Date()) {
+        self.situationId = situationId
+        self.situationType = situationType
+        self.context = context
+        self.environment = environment
+        self.urgency = urgency
+        self.complexity = complexity
+        self.patientState = patientState
+        self.environmentalFactors = environmentalFactors
+        self.timestamp = timestamp
+    }
+}
+
+/// Situation types
+public enum SituationType: String, CaseIterable {
+    case emergency = "emergency"
+    case routine = "routine"
+    case critical = "critical"
+    case preventive = "preventive"
+    case followup = "followup"
+    case consultation = "consultation"
+}
+
+/// Patient state information
+public struct PatientState {
+    public let healthStatus: String
+    public let emotionalState: String
+    public let cognitiveState: String
+    public let socialContext: String
+    public let culturalBackground: String?
+    
+    public init(healthStatus: String, emotionalState: String, cognitiveState: String, socialContext: String, culturalBackground: String? = nil) {
+        self.healthStatus = healthStatus
+        self.emotionalState = emotionalState
+        self.cognitiveState = cognitiveState
+        self.socialContext = socialContext
+        self.culturalBackground = culturalBackground
+    }
+}
+
+/// Environmental factors
+public struct EnvironmentalFactor {
+    public let factor: String
+    public let intensity: Float
+    public let impact: String
+    public let controllability: Float
+    
+    public init(factor: String, intensity: Float, impact: String, controllability: Float) {
+        self.factor = factor
+        self.intensity = intensity
+        self.impact = impact
+        self.controllability = controllability
+    }
+}
+
+/// Contextual response from the AI system
+public struct ContextualResponse {
+    public let environmentalAwareness: Float
+    public let situationalUnderstanding: Float
+    public let contextAdaptation: Float
+    public let environmentalSensitivity: Float
+    public let effectiveness: Float
+    public let learningOutcome: Float
+    public let responseType: ResponseType
+    public let adaptiveActions: [AdaptiveAction]
+    public let contextInsights: [ContextInsight]
+    
+    public init(environmentalAwareness: Float, situationalUnderstanding: Float, contextAdaptation: Float, environmentalSensitivity: Float, effectiveness: Float, learningOutcome: Float, responseType: ResponseType, adaptiveActions: [AdaptiveAction], contextInsights: [ContextInsight]) {
+        self.environmentalAwareness = environmentalAwareness
+        self.situationalUnderstanding = situationalUnderstanding
+        self.contextAdaptation = contextAdaptation
+        self.environmentalSensitivity = environmentalSensitivity
+        self.effectiveness = effectiveness
+        self.learningOutcome = learningOutcome
+        self.responseType = responseType
+        self.adaptiveActions = adaptiveActions
+        self.contextInsights = contextInsights
+    }
+}
+
+/// Response types
+public enum ResponseType: String, CaseIterable {
+    case proactive = "proactive"
+    case reactive = "reactive"
+    case adaptive = "adaptive"
+    case preventive = "preventive"
+    case supportive = "supportive"
+}
+
+/// Adaptive action for context
+public struct AdaptiveAction {
+    public let action: String
+    public let priority: Priority
+    public let timeframe: Timeframe
+    public let expectedOutcome: String
+    
+    public init(action: String, priority: Priority, timeframe: Timeframe, expectedOutcome: String) {
+        self.action = action
+        self.priority = priority
+        self.timeframe = timeframe
+        self.expectedOutcome = expectedOutcome
+    }
+}
+
+/// Priority levels
+public enum Priority: String, CaseIterable {
+    case critical = "critical"
+    case high = "high"
+    case medium = "medium"
+    case low = "low"
+}
+
+/// Timeframe for actions
+public enum Timeframe: String, CaseIterable {
+    case immediate = "immediate"
+    case shortTerm = "short_term"
+    case mediumTerm = "medium_term"
+    case longTerm = "long_term"
+}
+
+/// Context insight
+public struct ContextInsight {
+    public let insight: String
+    public let confidence: Float
+    public let relevance: Float
+    public let actionability: Float
+    
+    public init(insight: String, confidence: Float, relevance: Float, actionability: Float) {
+        self.insight = insight
+        self.confidence = confidence
+        self.relevance = relevance
+        self.actionability = actionability
+    }
+}
+
+/// Environmental context understanding
+public struct EnvironmentalContext {
+    public let environmentType: String
+    public let factors: [EnvironmentalFactor]
+    public let complexity: Float
+    public let predictability: Float
+    public let controllability: Float
+    
+    public init(environmentType: String, factors: [EnvironmentalFactor], complexity: Float, predictability: Float, controllability: Float) {
+        self.environmentType = environmentType
+        self.factors = factors
+        self.complexity = complexity
+        self.predictability = predictability
+        self.controllability = controllability
+    }
+}
+
+/// Situational analysis
+public struct SituationalAnalysis {
+    public let situationType: SituationType
+    public let urgency: Float
+    public let complexity: Float
+    public let riskLevel: RiskLevel
+    public let requiredResources: [String]
+    public let timeConstraints: TimeConstraints
+    
+    public init(situationType: SituationType, urgency: Float, complexity: Float, riskLevel: RiskLevel, requiredResources: [String], timeConstraints: TimeConstraints) {
+        self.situationType = situationType
+        self.urgency = urgency
+        self.complexity = complexity
+        self.riskLevel = riskLevel
+        self.requiredResources = requiredResources
+        self.timeConstraints = timeConstraints
+    }
+}
+
+/// Risk levels
+public enum RiskLevel: String, CaseIterable {
+    case critical = "critical"
+    case high = "high"
+    case medium = "medium"
+    case low = "low"
+    case minimal = "minimal"
+}
+
+/// Time constraints
+public struct TimeConstraints {
+    public let immediate: Bool
+    public let shortTerm: Bool
+    public let mediumTerm: Bool
+    public let longTerm: Bool
+    public let deadline: Date?
+    
+    public init(immediate: Bool, shortTerm: Bool, mediumTerm: Bool, longTerm: Bool, deadline: Date? = nil) {
+        self.immediate = immediate
+        self.shortTerm = shortTerm
+        self.mediumTerm = mediumTerm
+        self.longTerm = longTerm
+        self.deadline = deadline
+    }
+}
+
+/// Context prediction
+public struct ContextPrediction {
+    public let context: String
+    public let probability: Float
+    public let impact: Impact
+    public let timeframe: Timeframe
+    public let confidence: Float
+    
+    public init(context: String, probability: Float, impact: Impact, timeframe: Timeframe, confidence: Float) {
+        self.context = context
+        self.probability = probability
+        self.impact = impact
+        self.timeframe = timeframe
+        self.confidence = confidence
+    }
+}
+
+/// Impact levels
+public enum Impact: String, CaseIterable {
+    case critical = "critical"
+    case significant = "significant"
+    case moderate = "moderate"
+    case minor = "minor"
+    case negligible = "negligible"
+}
+
+/// Adaptive behavior
+public struct AdaptiveBehavior {
+    public let strategy: AdaptationStrategy
+    public let behavioralChanges: [BehavioralChange]
+    public let preparationActions: [PreparationAction]
+    public let confidence: Float
+    
+    public init(strategy: AdaptationStrategy, behavioralChanges: [BehavioralChange], preparationActions: [PreparationAction], confidence: Float) {
+        self.strategy = strategy
+        self.behavioralChanges = behavioralChanges
+        self.preparationActions = preparationActions
+        self.confidence = confidence
+    }
+}
+
+/// Adaptation strategies
+public enum AdaptationStrategy: String, CaseIterable {
+    case proactive = "proactive"
+    case reactive = "reactive"
+    case adaptive = "adaptive"
+}
+
+/// Behavioral change
+public struct BehavioralChange {
+    public let type: ChangeType
+    public let intensity: Float
+    public let description: String
+    
+    public init(type: ChangeType, intensity: Float, description: String) {
+        self.type = type
+        self.intensity = intensity
+        self.description = description
+    }
+}
+
+/// Change types
+public enum ChangeType: String, CaseIterable {
+    case communication = "communication"
+    case monitoring = "monitoring"
+    case preparation = "preparation"
+    case flexibility = "flexibility"
+    case learning = "learning"
+    case prediction = "prediction"
+    case responsiveness = "responsiveness"
+    case efficiency = "efficiency"
+    case recovery = "recovery"
+}
+
+/// Preparation action
+public struct PreparationAction {
+    public let context: String
+    public let action: String
+    public let priority: Priority
+    public let timeframe: Timeframe
+    
+    public init(context: String, action: String, priority: Priority, timeframe: Timeframe) {
+        self.context = context
+        self.action = action
+        self.priority = priority
+        self.timeframe = timeframe
+    }
+}
+
+/// Contextual pattern analysis
+public struct ContextualPatternAnalysis {
+    public let contextFrequency: [String: Int]
+    public let environmentFrequency: [String: Int]
+    public let situationFrequency: [String: Int]
+    public let effectivenessByContext: [String: Float]
+    public let effectivenessByEnvironment: [String: Float]
+    public let totalSituations: Int
+    
+    public init(contextFrequency: [String: Int], environmentFrequency: [String: Int], situationFrequency: [String: Int], effectivenessByContext: [String: Float], effectivenessByEnvironment: [String: Float], totalSituations: Int) {
+        self.contextFrequency = contextFrequency
+        self.environmentFrequency = environmentFrequency
+        self.situationFrequency = situationFrequency
+        self.effectivenessByContext = effectivenessByContext
+        self.effectivenessByEnvironment = effectivenessByEnvironment
+        self.totalSituations = totalSituations
+    }
+}
+
+/// Contextual awareness report
+public struct ContextualAwarenessReport {
+    public let overallAwareness: Float
+    public let situationalUnderstanding: Float
+    public let contextAdaptation: Float
+    public let environmentalSensitivity: Float
+    public let learningProgress: AwarenessLearningMetrics
+    public let contextualPatterns: ContextualPatternAnalysis
+    public let recommendations: [ContextualAwarenessRecommendation]
+    
+    public init(overallAwareness: Float, situationalUnderstanding: Float, contextAdaptation: Float, environmentalSensitivity: Float, learningProgress: AwarenessLearningMetrics, contextualPatterns: ContextualPatternAnalysis, recommendations: [ContextualAwarenessRecommendation]) {
+        self.overallAwareness = overallAwareness
+        self.situationalUnderstanding = situationalUnderstanding
+        self.contextAdaptation = contextAdaptation
+        self.environmentalSensitivity = environmentalSensitivity
+        self.learningProgress = learningProgress
+        self.contextualPatterns = contextualPatterns
+        self.recommendations = recommendations
+    }
+}
+
+/// Contextual awareness recommendation
+public struct ContextualAwarenessRecommendation {
+    public let type: RecommendationType
+    public let context: String?
+    public let priority: Priority
+    public let description: String
+    public let suggestedActions: [String]
+    
+    public init(type: RecommendationType, context: String?, priority: Priority, description: String, suggestedActions: [String]) {
+        self.type = type
+        self.context = context
+        self.priority = priority
+        self.description = description
+        self.suggestedActions = suggestedActions
+    }
+}
+
+/// Recommendation types
+public enum RecommendationType: String, CaseIterable {
+    case improveContextResponse = "improve_context_response"
+    case enhanceEnvironmentalUnderstanding = "enhance_environmental_understanding"
+    case improveSituationalAdaptation = "improve_situational_adaptation"
+    case increaseContextPrediction = "increase_context_prediction"
+    case optimizeAdaptationTiming = "optimize_adaptation_timing"
+}
+
+// MARK: - Supporting Systems
+
+/// Environmental understanding system
+public class EnvironmentalUnderstandingSystem {
+    public init() {}
+    
+    public func understandEnvironment(situation: HealthSituation) -> EnvironmentalContext {
+        let environmentType = determineEnvironmentType(situation: situation)
+        let factors = situation.environmentalFactors
+        let complexity = calculateComplexity(factors: factors)
+        let predictability = calculatePredictability(factors: factors)
+        let controllability = calculateControllability(factors: factors)
+        
+        return EnvironmentalContext(
+            environmentType: environmentType,
+            factors: factors,
+            complexity: complexity,
+            predictability: predictability,
+            controllability: controllability
+        )
+    }
+    
+    private func determineEnvironmentType(situation: HealthSituation) -> String {
+        if situation.urgency > 0.8 {
+            return "emergency"
+        } else if situation.complexity > 0.7 {
+            return "complex"
+        } else if situation.environmentalFactors.count > 5 {
+            return "dynamic"
+        } else {
+            return "stable"
+        }
+    }
+    
+    private func calculateComplexity(factors: [EnvironmentalFactor]) -> Float {
+        let factorCount = Float(factors.count)
+        let averageIntensity = factors.map { $0.intensity }.reduce(0, +) / Float(factors.count)
+        return min(1.0, (factorCount * 0.1 + averageIntensity * 0.5))
+    }
+    
+    private func calculatePredictability(factors: [EnvironmentalFactor]) -> Float {
+        let controllableFactors = factors.filter { $0.controllability > 0.5 }
+        return Float(controllableFactors.count) / Float(factors.count)
+    }
+    
+    private func calculateControllability(factors: [EnvironmentalFactor]) -> Float {
+        return factors.map { $0.controllability }.reduce(0, +) / Float(factors.count)
+    }
+}
+
+/// Situational awareness system
+public class SituationalAwarenessSystem {
+    public init() {}
+    
+    public func analyzeSituation(situation: HealthSituation, environment: EnvironmentalContext) -> SituationalAnalysis {
+        let urgency = situation.urgency
+        let complexity = situation.complexity
+        let riskLevel = determineRiskLevel(situation: situation, environment: environment)
+        let requiredResources = determineRequiredResources(situation: situation)
+        let timeConstraints = determineTimeConstraints(situation: situation)
+        
+        return SituationalAnalysis(
+            situationType: situation.situationType,
+            urgency: urgency,
+            complexity: complexity,
+            riskLevel: riskLevel,
+            requiredResources: requiredResources,
+            timeConstraints: timeConstraints
+        )
+    }
+    
+    private func determineRiskLevel(situation: HealthSituation, environment: EnvironmentalContext) -> RiskLevel {
+        let riskScore = situation.urgency * 0.4 + situation.complexity * 0.3 + (1.0 - environment.controllability) * 0.3
+        
+        switch riskScore {
+        case 0.8...1.0:
+            return .critical
+        case 0.6..<0.8:
+            return .high
+        case 0.4..<0.6:
+            return .medium
+        case 0.2..<0.4:
+            return .low
+        default:
+            return .minimal
+        }
+    }
+    
+    private func determineRequiredResources(situation: HealthSituation) -> [String] {
+        var resources: [String] = []
+        
+        if situation.urgency > 0.7 {
+            resources.append("emergency_response")
+        }
+        
+        if situation.complexity > 0.6 {
+            resources.append("specialized_expertise")
+        }
+        
+        if situation.environmentalFactors.count > 3 {
+            resources.append("environmental_monitoring")
+        }
+        
+        return resources
+    }
+    
+    private func determineTimeConstraints(situation: HealthSituation) -> TimeConstraints {
+        let immediate = situation.urgency > 0.9
+        let shortTerm = situation.urgency > 0.7
+        let mediumTerm = situation.complexity > 0.5
+        let longTerm = situation.environmentalFactors.count > 5
+        
+        return TimeConstraints(
+            immediate: immediate,
+            shortTerm: shortTerm,
+            mediumTerm: mediumTerm,
+            longTerm: longTerm
+        )
+    }
+}
+
+/// Context adaptation system
+public class ContextAdaptationSystem {
+    public init() {}
+    
+    public func adaptToContext(situation: HealthSituation, environmentalContext: EnvironmentalContext, situationalAnalysis: SituationalAnalysis, contextPrediction: [ContextPrediction]) -> ContextualResponse {
+        let environmentalAwareness = calculateEnvironmentalAwareness(environment: environmentalContext)
+        let situationalUnderstanding = calculateSituationalUnderstanding(analysis: situationalAnalysis)
+        let contextAdaptation = calculateContextAdaptation(situation: situation, environment: environmentalContext)
+        let environmentalSensitivity = calculateEnvironmentalSensitivity(factors: situation.environmentalFactors)
+        let effectiveness = calculateEffectiveness(situation: situation, analysis: situationalAnalysis)
+        let learningOutcome = calculateLearningOutcome(situation: situation, prediction: contextPrediction)
+        let responseType = determineResponseType(situation: situation, analysis: situationalAnalysis)
+        let adaptiveActions = generateAdaptiveActions(situation: situation, analysis: situationalAnalysis)
+        let contextInsights = generateContextInsights(situation: situation, environment: environmentalContext)
+        
+        return ContextualResponse(
+            environmentalAwareness: environmentalAwareness,
+            situationalUnderstanding: situationalUnderstanding,
+            contextAdaptation: contextAdaptation,
+            environmentalSensitivity: environmentalSensitivity,
+            effectiveness: effectiveness,
+            learningOutcome: learningOutcome,
+            responseType: responseType,
+            adaptiveActions: adaptiveActions,
+            contextInsights: contextInsights
+        )
+    }
+    
+    private func calculateEnvironmentalAwareness(environment: EnvironmentalContext) -> Float {
+        return environment.predictability * 0.4 + environment.controllability * 0.3 + (1.0 - environment.complexity) * 0.3
+    }
+    
+    private func calculateSituationalUnderstanding(analysis: SituationalAnalysis) -> Float {
+        return (1.0 - analysis.complexity) * 0.5 + (1.0 - analysis.urgency) * 0.3 + 0.2
+    }
+    
+    private func calculateContextAdaptation(situation: HealthSituation, environment: EnvironmentalContext) -> Float {
+        return environment.controllability * 0.6 + (1.0 - situation.complexity) * 0.4
+    }
+    
+    private func calculateEnvironmentalSensitivity(factors: [EnvironmentalFactor]) -> Float {
+        return factors.map { $0.intensity }.reduce(0, +) / Float(factors.count)
+    }
+    
+    private func calculateEffectiveness(situation: HealthSituation, analysis: SituationalAnalysis) -> Float {
+        return (1.0 - analysis.riskLevel.rawValue) * 0.6 + (1.0 - situation.complexity) * 0.4
+    }
+    
+    private func calculateLearningOutcome(situation: HealthSituation, prediction: [ContextPrediction]) -> Float {
+        let predictionAccuracy = prediction.map { $0.confidence }.reduce(0, +) / Float(prediction.count)
+        return predictionAccuracy * 0.7 + (1.0 - situation.complexity) * 0.3
+    }
+    
+    private func determineResponseType(situation: HealthSituation, analysis: SituationalAnalysis) -> ResponseType {
+        if analysis.riskLevel == .critical {
+            return .proactive
+        } else if situation.urgency > 0.7 {
+            return .reactive
+        } else if situation.complexity > 0.6 {
+            return .adaptive
+        } else {
+            return .supportive
+        }
+    }
+    
+    private func generateAdaptiveActions(situation: HealthSituation, analysis: SituationalAnalysis) -> [AdaptiveAction] {
+        var actions: [AdaptiveAction] = []
+        
+        if analysis.riskLevel == .critical {
+            actions.append(AdaptiveAction(
+                action: "Implement emergency protocols",
+                priority: .critical,
+                timeframe: .immediate,
+                expectedOutcome: "Risk mitigation and patient safety"
+            ))
+        }
+        
+        if situation.urgency > 0.7 {
+            actions.append(AdaptiveAction(
+                action: "Increase monitoring frequency",
+                priority: .high,
+                timeframe: .shortTerm,
+                expectedOutcome: "Early detection of changes"
+            ))
+        }
+        
+        return actions
+    }
+    
+    private func generateContextInsights(situation: HealthSituation, environment: EnvironmentalContext) -> [ContextInsight] {
+        var insights: [ContextInsight] = []
+        
+        insights.append(ContextInsight(
+            insight: "High environmental complexity requires adaptive approach",
+            confidence: 0.8,
+            relevance: 0.9,
+            actionability: 0.7
+        ))
+        
+        if environment.controllability < 0.5 {
+            insights.append(ContextInsight(
+                insight: "Limited environmental control requires reactive strategies",
+                confidence: 0.7,
+                relevance: 0.8,
+                actionability: 0.6
+            ))
+        }
+        
+        return insights
+    }
+}
+
+/// Context prediction system
+public class ContextPredictionSystem {
+    public init() {}
+    
+    public func predictContextChanges(currentSituation: HealthSituation, environmentalContext: EnvironmentalContext?) -> [ContextPrediction] {
+        var predictions: [ContextPrediction] = []
+        
+        // Predict based on current situation
+        if currentSituation.urgency > 0.8 {
+            predictions.append(ContextPrediction(
+                context: "emergency_escalation",
+                probability: 0.7,
+                impact: .critical,
+                timeframe: .immediate,
+                confidence: 0.8
+            ))
+        }
+        
+        if currentSituation.complexity > 0.7 {
+            predictions.append(ContextPrediction(
+                context: "situation_complexity_increase",
+                probability: 0.6,
+                impact: .significant,
+                timeframe: .shortTerm,
+                confidence: 0.7
+            ))
+        }
+        
+        // Predict based on environmental factors
+        if let context = environmentalContext {
+            if context.complexity > 0.8 {
+                predictions.append(ContextPrediction(
+                    context: "environmental_instability",
+                    probability: 0.5,
+                    impact: .moderate,
+                    timeframe: .mediumTerm,
+                    confidence: 0.6
+                ))
+            }
+        }
+        
+        return predictions
+    }
+}
+
+// MARK: - Contextual Awareness Analytics
+
+/// Analytics for contextual awareness performance
+public struct ContextualAwarenessAnalytics {
+    public let awarenessTrend: [Float]
+    public let adaptationTrend: [Float]
+    public let predictionAccuracy: [Float]
+    public let responseEffectiveness: [Float]
+    public let environmentalSensitivity: [Float]
+    
+    public init(awarenessTrend: [Float], adaptationTrend: [Float], predictionAccuracy: [Float], responseEffectiveness: [Float], environmentalSensitivity: [Float]) {
+        self.awarenessTrend = awarenessTrend
+        self.adaptationTrend = adaptationTrend
+        self.predictionAccuracy = predictionAccuracy
+        self.responseEffectiveness = responseEffectiveness
+        self.environmentalSensitivity = environmentalSensitivity
+    }
+}
+
+/// Contextual awareness performance monitor
+public class ContextualAwarenessPerformanceMonitor {
+    private var analytics: ContextualAwarenessAnalytics
+    
+    public init() {
+        self.analytics = ContextualAwarenessAnalytics(
+            awarenessTrend: [],
+            adaptationTrend: [],
+            predictionAccuracy: [],
+            responseEffectiveness: [],
+            environmentalSensitivity: []
+        )
+    }
+    
+    /// Record contextual awareness performance metrics
+    public func recordMetrics(awarenessState: ContextualAwarenessState, response: ContextualResponse) {
+        // Update analytics with new metrics
+        // Implementation would track trends over time
+    }
+    
+    /// Get contextual awareness performance report
+    public func getPerformanceReport() -> ContextualAwarenessAnalytics {
+        return analytics
+    }
+}
+
+// MARK: - Contextual Awareness Configuration
+
+/// Configuration for contextual awareness engine
+public struct ContextualAwarenessConfiguration {
+    public let maxMemorySize: Int
+    public let learningRate: Float
+    public let awarenessThreshold: Float
+    public let adaptationDecayRate: Float
+    public let predictionDepth: Int
+    
+    public init(maxMemorySize: Int = 1000, learningRate: Float = 0.1, awarenessThreshold: Float = 0.6, adaptationDecayRate: Float = 0.05, predictionDepth: Int = 3) {
+        self.maxMemorySize = maxMemorySize
+        self.learningRate = learningRate
+        self.awarenessThreshold = awarenessThreshold
+        self.adaptationDecayRate = adaptationDecayRate
+        self.predictionDepth = predictionDepth
+    }
+}
+
+// MARK: - Contextual Awareness Factory
+
+/// Factory for creating contextual awareness components
+public class ContextualAwarenessFactory {
+    public static func createContextualAwarenessEngine(configuration: ContextualAwarenessConfiguration = ContextualAwarenessConfiguration()) -> ContextualAwarenessEngine {
+        return ContextualAwarenessEngine()
+    }
+    
+    public static func createPerformanceMonitor() -> ContextualAwarenessPerformanceMonitor {
+        return ContextualAwarenessPerformanceMonitor()
+    }
+}
+
+// MARK: - Contextual Awareness Extensions
+
+extension ContextualAwarenessEngine {
+    /// Export contextual awareness state for analysis
+    public func exportState() -> [String: Any] {
+        return [
+            "environmentalAwareness": awarenessState.environmentalAwareness,
+            "situationalUnderstanding": awarenessState.situationalUnderstanding,
+            "contextAdaptation": awarenessState.contextAdaptation,
+            "environmentalSensitivity": awarenessState.environmentalSensitivity,
+            "awarenessLearning": [
+                "environmentalUnderstanding": awarenessState.awarenessLearning.environmentalUnderstanding,
+                "situationalAdaptation": awarenessState.awarenessLearning.situationalAdaptation,
+                "contextualFeedbackLearning": awarenessState.awarenessLearning.contextualFeedbackLearning,
+                "contextPrediction": awarenessState.awarenessLearning.contextPrediction
+            ]
+        ]
+    }
+    
+    /// Import contextual awareness state from external source
+    public func importState(_ state: [String: Any]) {
+        if let environmentalAwareness = state["environmentalAwareness"] as? Float {
+            awarenessState.environmentalAwareness = environmentalAwareness
+        }
+        
+        if let situationalUnderstanding = state["situationalUnderstanding"] as? Float {
+            awarenessState.situationalUnderstanding = situationalUnderstanding
+        }
+        
+        if let contextAdaptation = state["contextAdaptation"] as? Float {
+            awarenessState.contextAdaptation = contextAdaptation
+        }
+        
+        if let environmentalSensitivity = state["environmentalSensitivity"] as? Float {
+            awarenessState.environmentalSensitivity = environmentalSensitivity
+        }
+        
+        // Import learning metrics if available
+        if let awarenessLearning = state["awarenessLearning"] as? [String: Float] {
+            awarenessState.awarenessLearning.environmentalUnderstanding = awarenessLearning["environmentalUnderstanding"] ?? 0.7
+            awarenessState.awarenessLearning.situationalAdaptation = awarenessLearning["situationalAdaptation"] ?? 0.75
+            awarenessState.awarenessLearning.contextualFeedbackLearning = awarenessLearning["contextualFeedbackLearning"] ?? 0.8
+            awarenessState.awarenessLearning.contextPrediction = awarenessLearning["contextPrediction"] ?? 0.7
         }
     }
 } 
