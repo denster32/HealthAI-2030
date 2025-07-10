@@ -38,6 +38,7 @@ struct HealthDashboardView: View {
                     
                     // Oxygen Saturation Card
                     OxygenSaturationCard()
+                    
                     // --- New: Advanced Health Prediction Card ---
                     NavigationLink(destination: AdvancedHealthPredictionView(analyticsEngine: AnalyticsEngine())) {
                         HealthMetricCard(
@@ -49,6 +50,71 @@ struct HealthDashboardView: View {
                             trend: .stable,
                             subtitle: "Personalized Insights",
                             detailText: "Tap for advanced predictions"
+                        )
+                    }
+                    
+                    // --- New: AI Health Coaching Card ---
+                    NavigationLink(destination: AdvancedHealthCoachingDashboardView(
+                        healthDataManager: healthDataManager,
+                        analyticsEngine: AnalyticsEngine()
+                    )) {
+                        HealthMetricCard(
+                            title: "AI Health Coaching",
+                            value: "AI",
+                            unit: "",
+                            color: .purple,
+                            icon: "brain.head.profile",
+                            trend: .stable,
+                            subtitle: "Personalized Coaching",
+                            detailText: "Tap for AI coaching"
+                        )
+                    }
+                    
+                    // --- New: Health Analytics Card ---
+                    NavigationLink(destination: AdvancedHealthAnalyticsDashboardView(
+                        healthDataManager: healthDataManager,
+                        analyticsEngine: AnalyticsEngine()
+                    )) {
+                        HealthMetricCard(
+                            title: "Health Analytics",
+                            value: "BI",
+                            unit: "",
+                            color: .orange,
+                            icon: "chart.bar.fill",
+                            trend: .stable,
+                            subtitle: "Business Intelligence",
+                            detailText: "Tap for analytics"
+                        )
+                    }
+                    
+                    // --- New: Privacy & Security Card ---
+                    NavigationLink(destination: AdvancedHealthDataPrivacyDashboardView(
+                        healthDataManager: healthDataManager,
+                        analyticsEngine: AnalyticsEngine()
+                    )) {
+                        HealthMetricCard(
+                            title: "Privacy & Security",
+                            value: "🔒",
+                            unit: "",
+                            color: .red,
+                            icon: "shield.fill",
+                            trend: .stable,
+                            subtitle: "Data Protection",
+                            detailText: "Tap for privacy"
+                        )
+                    }
+                    
+                    // --- New: Device Integration Card ---
+                    NavigationLink(destination: AdvancedHealthDeviceIntegrationDashboardView()) {
+                        HealthMetricCard(
+                            title: "Device Integration",
+                            value: "📱",
+                            unit: "",
+                            color: .cyan,
+                            icon: "devices",
+                            trend: .stable,
+                            subtitle: "IoT Management",
+                            detailText: "Tap for devices"
                         )
                     }
                 }

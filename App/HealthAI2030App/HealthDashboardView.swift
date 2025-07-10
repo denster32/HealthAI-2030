@@ -5,6 +5,10 @@ struct HealthDashboardView: View {
     @StateObject private var dashboardVM = HealthDashboardViewModel()
     @State private var showingCoachingDashboard = false
     @State private var showingSleepDashboard = false
+    @State private var showingMentalHealthDashboard = false
+    @State private var showingBiometricFusionDashboard = false
+    @State private var showingClinicalDecisionSupportDashboard = false
+    @State private var showingHealthResearchDashboard = false
     
     var body: some View {
         ScrollView {
@@ -24,6 +28,26 @@ struct HealthDashboardView: View {
                 // Advanced Sleep Intelligence Card
                 AdvancedSleepIntelligenceCard {
                     showingSleepDashboard = true
+                }
+                
+                // Advanced Mental Health Card
+                AdvancedMentalHealthCard {
+                    showingMentalHealthDashboard = true
+                }
+                
+                // Advanced Biometric Fusion Card
+                AdvancedBiometricFusionCard {
+                    showingBiometricFusionDashboard = true
+                }
+                
+                // Advanced Clinical Decision Support Card
+                AdvancedClinicalDecisionSupportCard {
+                    showingClinicalDecisionSupportDashboard = true
+                }
+                
+                // Health Research Card
+                HealthResearchCard {
+                    showingHealthResearchDashboard = true
                 }
                 
                 // Sleep architecture visualization
@@ -62,6 +86,28 @@ struct HealthDashboardView: View {
                 predictionEngine: AdvancedHealthPredictionEngine(),
                 analyticsEngine: AnalyticsEngine()
             )
+        }
+        .sheet(isPresented: $showingMentalHealthDashboard) {
+            AdvancedMentalHealthDashboardView(
+                healthDataManager: HealthDataManager(),
+                predictionEngine: AdvancedHealthPredictionEngine(),
+                analyticsEngine: AnalyticsEngine()
+            )
+        }
+        .sheet(isPresented: $showingBiometricFusionDashboard) {
+            AdvancedBiometricFusionDashboardView(
+                healthDataManager: HealthDataManager(),
+                analyticsEngine: AnalyticsEngine()
+            )
+        }
+        .sheet(isPresented: $showingClinicalDecisionSupportDashboard) {
+            AdvancedClinicalDecisionSupportDashboardView(
+                healthDataManager: HealthDataManager(),
+                analyticsEngine: AnalyticsEngine()
+            )
+        }
+        .sheet(isPresented: $showingHealthResearchDashboard) {
+            AdvancedHealthResearchDashboardView()
         }
     }
 }
@@ -246,6 +292,198 @@ struct AdvancedSleepIntelligenceCard: View {
                     Spacer()
                     
                     Label("3 Optimizations", systemImage: "lightbulb")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.vertical)
+        }
+        .onTapGesture {
+            onTap()
+        }
+    }
+}
+
+struct AdvancedMentalHealthCard: View {
+    let onTap: () -> Void
+    
+    var body: some View {
+        CardContainer(title: "Advanced Mental Health") {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 40))
+                        .foregroundColor(.purple)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Mental Health Intelligence")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                        
+                        Text("AI-powered mental health monitoring and wellness")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.title3)
+                        .foregroundColor(.purple)
+                }
+                
+                HStack {
+                    Label("Wellness Score: 78", systemImage: "heart.fill")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Spacer()
+                    
+                    Label("4 Recommendations", systemImage: "lightbulb")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.vertical)
+        }
+        .onTapGesture {
+            onTap()
+        }
+    }
+}
+
+struct AdvancedBiometricFusionCard: View {
+    let onTap: () -> Void
+    
+    var body: some View {
+        CardContainer(title: "Advanced Biometric Fusion") {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Image(systemName: "waveform.path.ecg")
+                        .font(.system(size: 40))
+                        .foregroundColor(.teal)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Biometric Fusion")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                        
+                        Text("Multi-modal biometric data integration and analysis")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.title3)
+                        .foregroundColor(.teal)
+                }
+                
+                HStack {
+                    Label("12 Sensors", systemImage: "sensor.tag.radiowaves.forward")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Spacer()
+                    
+                    Label("Fusion Quality: Good", systemImage: "chart.line.uptrend.xyaxis")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.vertical)
+        }
+        .onTapGesture {
+            onTap()
+        }
+    }
+}
+
+struct AdvancedClinicalDecisionSupportCard: View {
+    let onTap: () -> Void
+    
+    var body: some View {
+        CardContainer(title: "Advanced Clinical Decision Support") {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Image(systemName: "stethoscope")
+                        .font(.system(size: 40))
+                        .foregroundColor(.blue)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Clinical Decision Support")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                        
+                        Text("AI-powered clinical insights and evidence-based recommendations")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.title3)
+                        .foregroundColor(.blue)
+                }
+                
+                HStack {
+                    Label("Evidence Level: High", systemImage: "doc.text.fill")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Spacer()
+                    
+                    Label("3 Recommendations", systemImage: "lightbulb")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.vertical)
+        }
+        .onTapGesture {
+            onTap()
+        }
+    }
+}
+
+struct HealthResearchCard: View {
+    let onTap: () -> Void
+    
+    var body: some View {
+        CardContainer(title: "Health Research") {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 40))
+                        .foregroundColor(.orange)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Health Research")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                        
+                        Text("Research studies & clinical trials")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.title3)
+                        .foregroundColor(.orange)
+                }
+                
+                HStack {
+                    Label("3 Active Studies", systemImage: "doc.text.fill")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Spacer()
+                    
+                    Label("2 Clinical Trials", systemImage: "cross.fill")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
