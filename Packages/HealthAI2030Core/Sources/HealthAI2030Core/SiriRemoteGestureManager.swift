@@ -1,6 +1,8 @@
 import SwiftUI
 import GameController
+#if canImport(UIKit)
 import UIKit
+#endif
 
 @available(tvOS 18.0, *)
 class SiriRemoteGestureManager: NSObject, ObservableObject {
@@ -482,7 +484,7 @@ enum VisualizationType {
     case bar
     case scatter
     case heatmap
-    case 3d
+    case threeDimensional
 }
 
 // MARK: - Extensions
@@ -663,7 +665,7 @@ struct VisualizationPreview: View {
                     endRadius: 50
                 ))
             
-        case .3d:
+        case .threeDimensional:
             Rectangle()
                 .fill(color)
                 .rotation3DEffect(.degrees(Double(intensity) * 45), axis: (x: 1, y: 1, z: 0))

@@ -75,8 +75,8 @@ public struct InteractiveCharts {
                                 .onChanged { value in
                                     let x = value.location.x
                                     if let date = proxy.value(atX: x) as Date? {
-                                        let closestPoint = data.min { point in
-                                            abs(point.timestamp.timeIntervalSince(date)) < abs($0.timestamp.timeIntervalSince(date))
+                                        let closestPoint = data.min { point1, point2 in
+                                            abs(point1.timestamp.timeIntervalSince(date)) < abs(point2.timestamp.timeIntervalSince(date))
                                         }
                                         selectedPoint = closestPoint
                                     }
@@ -183,8 +183,8 @@ public struct InteractiveCharts {
                         )
                         .onTapGesture { location in
                             if let date = proxy.value(atX: location.x) as Date? {
-                                let closestPoint = data.min { point in
-                                    abs(point.date.timeIntervalSince(date)) < abs($0.date.timeIntervalSince(date))
+                                let closestPoint = data.min { point1, point2 in
+                                    abs(point1.date.timeIntervalSince(date)) < abs(point2.date.timeIntervalSince(date))
                                 }
                                 selectedBar = closestPoint
                             }
@@ -303,10 +303,10 @@ public struct InteractiveCharts {
                                     let y = value.location.y
                                     if let xValue = proxy.value(atX: x) as Double?,
                                        let yValue = proxy.value(atY: y) as Double? {
-                                        let closestPoint = data.min { point in
-                                            let distance = sqrt(pow(point.xValue - xValue, 2) + pow(point.yValue - yValue, 2))
-                                            let otherDistance = sqrt(pow($0.xValue - xValue, 2) + pow($0.yValue - yValue, 2))
-                                            return distance < otherDistance
+                                        let closestPoint = data.min { point1, point2 in
+                                            let distance1 = sqrt(pow(point1.xValue - xValue, 2) + pow(point1.yValue - yValue, 2))
+                                            let distance2 = sqrt(pow(point2.xValue - xValue, 2) + pow(point2.yValue - yValue, 2))
+                                            return distance1 < distance2
                                         }
                                         selectedPoint = closestPoint
                                     }

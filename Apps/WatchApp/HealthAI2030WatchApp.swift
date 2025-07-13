@@ -1,4 +1,6 @@
 import SwiftUI
+import HealthAI2030UI
+import HealthAI2030Core
 import AVFoundation
 import CoreML
 import OSLog
@@ -29,7 +31,8 @@ struct HealthAI2030WatchApp: App {
     
     var body: some Scene {
         WindowGroup {
-            WatchContentView()
+            ContentView()
+                .environmentObject(HealthAICoordinator())
                 .environmentObject(sessionManager)
                 .environmentObject(connectivityManager)
                 .environmentObject(hapticManager)
@@ -151,7 +154,7 @@ struct HealthAI2030WatchApp: App {
 // MARK: - Main Content View
 
 @available(watchOS 11.0, *)
-struct WatchContentView: View {
+struct ContentView: View {
     @EnvironmentObject var sessionManager: WatchSessionManager
     @EnvironmentObject var connectivityManager: WatchConnectivityManager
     @EnvironmentObject var hapticManager: WatchHapticManager
@@ -159,73 +162,7 @@ struct WatchContentView: View {
     @State private var selectedTab = 0
     
     var body: some View {
-        TabView(selection: $selectedTab) {
-            // Main Health Dashboard
-            WatchHealthDashboardView()
-                .tabItem {
-                    Image(systemName: "heart.fill")
-                    Text("Health")
-                }
-                .tag(0)
-            
-            // Sleep Session
-            WatchSleepSessionView()
-                .tabItem {
-                    Image(systemName: "bed.double.fill")
-                    Text("Sleep")
-                }
-                .tag(1)
-            
-            // Health Monitoring
-            HealthMonitoringView()
-                .tabItem {
-                    Image(systemName: "heart.fill")
-                    Text("Monitor")
-                }
-                .tag(2)
-            
-            // Quick Actions
-            QuickActionsView()
-                .tabItem {
-                    Image(systemName: "bolt.fill")
-                    Text("Actions")
-                }
-                .tag(3)
-            
-            // Complications
-            ComplicationsView()
-                .tabItem {
-                    Image(systemName: "clock.fill")
-                    Text("Complications")
-                }
-                .tag(4)
-            
-            // Settings
-            WatchSettingsView()
-                .tabItem {
-                    Image(systemName: "gear")
-                    Text("Settings")
-                }
-                .tag(5)
-        }
-        .accentColor(.green)
-        .onAppear {
-            // Initialize app state
-            loadAppState()
-        }
-    }
-    
-    private func loadAppState() {
-        if let appState = UserDefaults.standard.dictionary(forKey: "AppState"),
-           let lastActiveTime = appState["lastActiveTime"] as? TimeInterval {
-            
-            let timeSinceLastActive = Date().timeIntervalSince1970 - lastActiveTime
-            
-            // If app was inactive for more than 5 minutes, show welcome back
-            if timeSinceLastActive > 300 {
-                hapticManager.triggerHaptic(type: .reminder)
-            }
-        }
+        WatchHealthDashboardView()
     }
 }
 

@@ -128,6 +128,353 @@ struct WindowConfiguration {
     let minHeight: CGFloat
 }
 
+// MARK: - macOS Menu Bar Integration
+@available(macOS 15.0, *)
+public struct MacMenuBarView: View {
+    @StateObject private var menuBarManager = MacMenuBarManager.shared
+    @State private var showingPopover = false
+    
+    public var body: some View {
+        HStack(spacing: macOSDesignSystem.layout.smallSpacing) {
+            // Health Status Indicator
+            MacHealthStatusIndicator()
+            
+            Divider()
+                .frame(height: 20)
+            
+            // Quick Actions
+            MacQuickActionButtons()
+            
+            Divider()
+                .frame(height: 20)
+            
+            // System Status
+            MacSystemStatusView()
+        }
+        .padding(.horizontal, macOSDesignSystem.layout.padding)
+        .background(VisualEffectView(material: .hudWindow, blendingMode: .behindWindow))
+        .cornerRadius(macOSDesignSystem.layout.cornerRadius)
+        .onTapGesture {
+            showingPopover.toggle()
+        }
+        .popover(isPresented: $showingPopover) {
+            MacMenuBarPopover()
+        }
+    }
+}
+
+// MARK: - macOS Health Status Indicator
+struct MacHealthStatusIndicator: View {
+    @StateObject private var healthManager = HealthDataManager.shared
+    
+    var body: some View {
+        HStack(spacing: macOSDesignSystem.layout.smallSpacing) {
+            Circle()
+                .fill(healthStatusColor)
+                .frame(width: 8, height: 8)
+            
+            Text("\(Int(healthManager.currentHeartRate))")
+                .font(macOSDesignSystem.typography.caption1)
+                .fontWeight(.medium)
+                .foregroundColor(macOSDesignSystem.colors.primaryText)
+        }
+        .onTapGesture {
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+    
+    private var healthStatusColor: Color {
+        let hr = healthManager.currentHeartRate
+        switch hr {
+        case 0..<60: return macOSDesignSystem.colors.accent
+        case 60..<100: return macOSDesignSystem.colors.activity
+        default: return macOSDesignSystem.colors.heartRate
+        }
+    }
+}
+
+// MARK: - macOS Quick Action Buttons
+struct MacQuickActionButtons: View {
+    var body: some View {
+        HStack(spacing: macOSDesignSystem.layout.smallSpacing) {
+            MacQuickActionButton(icon: "heart.fill", action: "Record Heart Rate") {
+                // Record heart rate action
+            }
+            
+            MacQuickActionButton(icon: "bed.double.fill", action: "Sleep Tracking") {
+                // Sleep tracking action
+            }
+            
+            MacQuickActionButton(icon: "figure.walk", action: "Activity") {
+                // Activity action
+            }
+        }
+    }
+}
+
+struct MacQuickActionButton: View {
+    let icon: String
+    let action: String
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(macOSDesignSystem.colors.primaryText)
+                .frame(width: 24, height: 24)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .help(action)
+    }
+}
+
+// MARK: - macOS System Status View
+struct MacSystemStatusView: View {
+    @StateObject private var performanceMonitor = HealthAIPerformance.PerformanceMonitor()
+    
+    var body: some View {
+        HStack(spacing: macOSDesignSystem.layout.smallSpacing) {
+            // CPU Usage
+            MacStatusIndicator(
+                icon: "cpu",
+                value: "\(Int(performanceMonitor.cpuUsage * 100))%",
+                color: performanceMonitor.cpuUsage > 0.8 ? macOSDesignSystem.colors.accent : macOSDesignSystem.colors.activity
+            )
+            
+            // Memory Usage
+            MacStatusIndicator(
+                icon: "memorychip",
+                value: "\(Int(performanceMonitor.memoryUsage * 100))%",
+                color: performanceMonitor.memoryUsage > 0.8 ? macOSDesignSystem.colors.accent : macOSDesignSystem.colors.activity
+            )
+        }
+    }
+}
+
+struct MacStatusIndicator: View {
+    let icon: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(color)
+            
+            Text(value)
+                .font(macOSDesignSystem.typography.caption2)
+                .foregroundColor(macOSDesignSystem.colors.secondaryText)
+        }
+    }
+}
+
+// MARK: - macOS Menu Bar Popover
+struct MacMenuBarPopover: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        VStack(spacing: macOSDesignSystem.layout.spacing) {
+            // Header
+            HStack {
+                Text("HealthAI 2030")
+                    .font(macOSDesignSystem.typography.headline)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+                
+                Button("Close") {
+                    dismiss()
+                }
+                .buttonStyle(.bordered)
+            }
+            
+            Divider()
+            
+            // Quick Actions
+            VStack(spacing: macOSDesignSystem.layout.smallSpacing) {
+                MacPopoverActionButton(title: "Open Dashboard", icon: "heart.text.square") {
+                    NSApp.activate(ignoringOtherApps: true)
+                    dismiss()
+                }
+                
+                MacPopoverActionButton(title: "Record Health Data", icon: "plus.circle") {
+                    // Record health data
+                    dismiss()
+                }
+                
+                MacPopoverActionButton(title: "View Trends", icon: "chart.line.uptrend.xyaxis") {
+                    // View trends
+                    dismiss()
+                }
+            }
+            
+            Divider()
+            
+            // System Controls
+            VStack(spacing: macOSDesignSystem.layout.smallSpacing) {
+                MacPopoverActionButton(title: "Settings", icon: "gear") {
+                    // Open settings
+                    dismiss()
+                }
+                
+                MacPopoverActionButton(title: "Sync Data", icon: "arrow.clockwise") {
+                    // Sync data
+                    dismiss()
+                }
+                
+                MacPopoverActionButton(title: "Export Report", icon: "square.and.arrow.up") {
+                    // Export report
+                    dismiss()
+                }
+            }
+            
+            Divider()
+            
+            // Status Information
+            MacStatusSection()
+        }
+        .padding(macOSDesignSystem.layout.padding)
+        .frame(width: 280)
+    }
+}
+
+struct MacPopoverActionButton: View {
+    let title: String
+    let icon: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(macOSDesignSystem.colors.primary)
+                    .frame(width: 20)
+                
+                Text(title)
+                    .font(macOSDesignSystem.typography.body)
+                    .foregroundColor(macOSDesignSystem.colors.primaryText)
+                
+                Spacer()
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(Color.clear)
+            .cornerRadius(macOSDesignSystem.layout.smallCornerRadius)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onHover { hovering in
+            // Add hover effect
+        }
+    }
+}
+
+struct MacStatusSection: View {
+    @StateObject private var healthManager = HealthDataManager.shared
+    @StateObject private var performanceMonitor = HealthAIPerformance.PerformanceMonitor()
+    
+    var body: some View {
+        VStack(spacing: macOSDesignSystem.layout.smallSpacing) {
+            HStack {
+                Text("System Status")
+                    .font(macOSDesignSystem.typography.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(macOSDesignSystem.colors.primaryText)
+                
+                Spacer()
+            }
+            
+            VStack(spacing: 8) {
+                MacStatusRow(label: "Heart Rate", value: "\(Int(healthManager.currentHeartRate)) BPM", status: .healthy)
+                MacStatusRow(label: "CPU Usage", value: "\(Int(performanceMonitor.cpuUsage * 100))%", status: performanceMonitor.cpuUsage > 0.8 ? .warning : .healthy)
+                MacStatusRow(label: "Memory", value: "\(Int(performanceMonitor.memoryUsage * 100))%", status: performanceMonitor.memoryUsage > 0.8 ? .warning : .healthy)
+            }
+        }
+    }
+}
+
+struct MacStatusRow: View {
+    let label: String
+    let value: String
+    let status: HealthStatus
+    
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(macOSDesignSystem.typography.caption1)
+                .foregroundColor(macOSDesignSystem.colors.secondaryText)
+            
+            Spacer()
+            
+            Text(value)
+                .font(macOSDesignSystem.typography.caption1)
+                .fontWeight(.medium)
+                .foregroundColor(statusColor)
+        }
+    }
+    
+    private var statusColor: Color {
+        switch status {
+        case .healthy: return macOSDesignSystem.colors.activity
+        case .elevated: return macOSDesignSystem.colors.accent
+        case .critical: return macOSDesignSystem.colors.heartRate
+        case .unknown: return macOSDesignSystem.colors.secondaryText
+        }
+    }
+}
+
+// MARK: - macOS Menu Bar Manager
+class MacMenuBarManager: ObservableObject {
+    public static let shared = MacMenuBarManager()
+    
+    @Published public var isMenuBarVisible = true
+    @Published public var currentHealthStatus: HealthStatus = .healthy
+    @Published public var lastSyncTime = Date()
+    
+    private init() {
+        setupMenuBar()
+    }
+    
+    private func setupMenuBar() {
+        // Setup menu bar integration
+        // This would typically involve NSStatusItem setup
+    }
+    
+    public func updateHealthStatus(_ status: HealthStatus) {
+        DispatchQueue.main.async {
+            self.currentHealthStatus = status
+        }
+    }
+    
+    public func syncData() {
+        // Sync health data
+        DispatchQueue.main.async {
+            self.lastSyncTime = Date()
+        }
+    }
+}
+
+// MARK: - Visual Effect View for macOS
+struct VisualEffectView: NSViewRepresentable {
+    let material: NSVisualEffectView.Material
+    let blendingMode: NSVisualEffectView.BlendingMode
+    
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .active
+        return view
+    }
+    
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = material
+        nsView.blendingMode = blendingMode
+    }
+}
+
 // MARK: - macOS-Optimized Components
 
 // MARK: - macOS Sidebar
@@ -198,6 +545,7 @@ struct macOSSidebarItem: View {
                 
                 Text(item.title)
                     .font(macOSDesignSystem.typography.body)
+                    .foregroundColor(isSelected ? macOSDesignSystem.colors.primary : macOSDesignSystem.colors.primaryText)
                 
                 Spacer()
                 
@@ -206,15 +554,15 @@ struct macOSSidebarItem: View {
                         .font(macOSDesignSystem.typography.caption2)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color.red)
+                        .background(macOSDesignSystem.colors.primary)
                         .foregroundColor(.white)
-                        .clipShape(Capsule())
+                        .cornerRadius(8)
                 }
             }
             .padding(.horizontal, macOSDesignSystem.layout.padding)
             .padding(.vertical, macOSDesignSystem.layout.smallPadding)
             .background(isSelected ? macOSDesignSystem.colors.primary.opacity(0.1) : Color.clear)
-            .foregroundColor(isSelected ? macOSDesignSystem.colors.primary : macOSDesignSystem.colors.primaryText)
+            .cornerRadius(macOSDesignSystem.layout.smallCornerRadius)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -222,35 +570,21 @@ struct macOSSidebarItem: View {
 
 // MARK: - macOS Toolbar
 struct macOSHealthToolbar: View {
-    let title: String
-    let leftItems: [ToolbarItem]
-    let rightItems: [ToolbarItem]
+    @Binding var selectedTab: String
+    let tabs: [String]
     
     var body: some View {
-        HStack {
-            HStack(spacing: macOSDesignSystem.layout.smallSpacing) {
-                ForEach(leftItems, id: \.id) { item in
-                    macOSToolbarButton(item: item)
-                }
-            }
-            
-            Spacer()
-            
-            Text(title)
-                .font(macOSDesignSystem.typography.title2)
-                .foregroundColor(macOSDesignSystem.colors.primaryText)
-            
-            Spacer()
-            
-            HStack(spacing: macOSDesignSystem.layout.smallSpacing) {
-                ForEach(rightItems, id: \.id) { item in
-                    macOSToolbarButton(item: item)
+        HStack(spacing: 0) {
+            ForEach(tabs, id: \.self) { tab in
+                macOSToolbarButton(
+                    title: tab,
+                    isSelected: selectedTab == tab
+                ) {
+                    selectedTab = tab
                 }
             }
         }
-        .padding(.horizontal, macOSDesignSystem.layout.padding)
-        .padding(.vertical, macOSDesignSystem.layout.smallPadding)
-        .background(macOSDesignSystem.colors.background)
+        .background(macOSDesignSystem.colors.secondaryBackground)
         .overlay(
             Rectangle()
                 .frame(height: 1)
@@ -260,28 +594,108 @@ struct macOSHealthToolbar: View {
     }
 }
 
-struct ToolbarItem {
-    let id: String
-    let icon: String
-    let title: String
-    let action: () -> Void
-}
-
 struct macOSToolbarButton: View {
-    let item: ToolbarItem
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
     
     var body: some View {
-        Button(action: item.action) {
-            VStack(spacing: 4) {
-                Image(systemName: item.icon)
-                    .font(.title3)
-                
-                Text(item.title)
-                    .font(macOSDesignSystem.typography.caption2)
-            }
-            .foregroundColor(macOSDesignSystem.colors.primary)
+        Button(action: action) {
+            Text(title)
+                .font(macOSDesignSystem.typography.body)
+                .fontWeight(isSelected ? .semibold : .regular)
+                .foregroundColor(isSelected ? macOSDesignSystem.colors.primary : macOSDesignSystem.colors.secondaryText)
+                .padding(.horizontal, macOSDesignSystem.layout.padding)
+                .padding(.vertical, macOSDesignSystem.layout.smallPadding)
+                .background(isSelected ? macOSDesignSystem.colors.primary.opacity(0.1) : Color.clear)
         }
         .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - macOS Status Bar
+struct macOSStatusBar: View {
+    let message: String
+    let status: StatusType
+    
+    enum StatusType {
+        case info, success, warning, error
+    }
+    
+    var body: some View {
+        HStack {
+            Image(systemName: statusIcon)
+                .foregroundColor(statusColor)
+                .font(.system(size: 14, weight: .medium))
+            
+            Text(message)
+                .font(macOSDesignSystem.typography.body)
+                .foregroundColor(macOSDesignSystem.colors.primaryText)
+            
+            Spacer()
+        }
+        .padding(macOSDesignSystem.layout.padding)
+        .background(statusColor.opacity(0.1))
+        .overlay(
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(statusColor.opacity(0.3)),
+            alignment: .top
+        )
+    }
+    
+    private var statusIcon: String {
+        switch status {
+        case .info: return "info.circle"
+        case .success: return "checkmark.circle"
+        case .warning: return "exclamationmark.triangle"
+        case .error: return "xmark.circle"
+        }
+    }
+    
+    private var statusColor: Color {
+        switch status {
+        case .info: return macOSDesignSystem.colors.primary
+        case .success: return macOSDesignSystem.colors.activity
+        case .warning: return macOSDesignSystem.colors.accent
+        case .error: return macOSDesignSystem.colors.heartRate
+        }
+    }
+}
+
+// MARK: - macOS Window Controls
+struct macOSWindowControls: View {
+    let onClose: () -> Void
+    let onMinimize: () -> Void
+    let onMaximize: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            // Close button
+            Button(action: onClose) {
+                Circle()
+                    .fill(Color.red)
+                    .frame(width: 12, height: 12)
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            // Minimize button
+            Button(action: onMinimize) {
+                Circle()
+                    .fill(Color.orange)
+                    .frame(width: 12, height: 12)
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            // Maximize button
+            Button(action: onMaximize) {
+                Circle()
+                    .fill(Color.green)
+                    .frame(width: 12, height: 12)
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding(.horizontal, macOSDesignSystem.layout.smallPadding)
     }
 }
 
@@ -453,45 +867,6 @@ struct macOSChartContainer<Content: View>: View {
     }
 }
 
-// MARK: - macOS Menu Bar Integration
-struct macOSMenuBarIntegration {
-    static func createMenuBar() -> NSMenu {
-        let menu = NSMenu()
-        
-        // HealthAI menu
-        let healthAIMenu = NSMenu()
-        healthAIMenu.addItem(NSMenuItem(title: "About HealthAI 2030", action: #selector(NSApplication.shared.orderFrontStandardAboutPanel(_:)), keyEquivalent: ""))
-        healthAIMenu.addItem(NSMenuItem.separator())
-        healthAIMenu.addItem(NSMenuItem(title: "Quit HealthAI 2030", action: #selector(NSApplication.shared.terminate(_:)), keyEquivalent: "q"))
-        
-        let healthAIItem = NSMenuItem(title: "HealthAI 2030", action: nil, keyEquivalent: "")
-        healthAIItem.submenu = healthAIMenu
-        menu.addItem(healthAIItem)
-        
-        // File menu
-        let fileMenu = NSMenu()
-        fileMenu.addItem(NSMenuItem(title: "New Dashboard", action: #selector(NSDocumentController.shared.newDocument(_:)), keyEquivalent: "n"))
-        fileMenu.addItem(NSMenuItem(title: "Open...", action: #selector(NSDocumentController.shared.openDocument(_:)), keyEquivalent: "o"))
-        fileMenu.addItem(NSMenuItem.separator())
-        fileMenu.addItem(NSMenuItem(title: "Save", action: #selector(NSDocument.save(_:)), keyEquivalent: "s"))
-        
-        let fileItem = NSMenuItem(title: "File", action: nil, keyEquivalent: "")
-        fileItem.submenu = fileMenu
-        menu.addItem(fileItem)
-        
-        // View menu
-        let viewMenu = NSMenu()
-        viewMenu.addItem(NSMenuItem(title: "Show Dashboard", action: #selector(NSWindow.makeKeyAndOrderFront(_:)), keyEquivalent: "1"))
-        viewMenu.addItem(NSMenuItem(title: "Show Details", action: #selector(NSWindow.makeKeyAndOrderFront(_:)), keyEquivalent: "2"))
-        
-        let viewItem = NSMenuItem(title: "View", action: nil, keyEquivalent: "")
-        viewItem.submenu = viewMenu
-        menu.addItem(viewItem)
-        
-        return menu
-    }
-}
-
 // MARK: - macOS Preview
 struct macOSInterfaceElements_Previews: PreviewProvider {
     static var previews: some View {
@@ -513,13 +888,8 @@ struct macOSInterfaceElements_Previews: PreviewProvider {
             
             VStack(spacing: 0) {
                 macOSHealthToolbar(
-                    title: "Health Dashboard",
-                    leftItems: [
-                        ToolbarItem(id: "refresh", icon: "arrow.clockwise", title: "Refresh") {}
-                    ],
-                    rightItems: [
-                        ToolbarItem(id: "settings", icon: "gear", title: "Settings") {}
-                    ]
+                    selectedTab: .constant("dashboard"),
+                    tabs: ["Dashboard", "Activity", "Health"]
                 )
                 
                 macOSHealthDashboardGrid(

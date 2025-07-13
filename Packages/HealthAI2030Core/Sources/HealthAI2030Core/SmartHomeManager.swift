@@ -1,6 +1,7 @@
 import Foundation
-import Utilities
+#if canImport(HomeKit)
 import HomeKit
+#endif
 
 /// Manages integration with smart home devices for health and circadian optimization.
 ///
@@ -13,7 +14,9 @@ class SmartHomeManager: ObservableObject {
     /// Shared singleton instance for global access.
     static let shared = SmartHomeManager()
     private let circadianCalculator = CircadianRhythmCalculator()
+    #if canImport(HomeKit)
     private let homeKitManager = HomeKitManager.shared
+    #endif
     
     /// Indicates if the manager has completed initialization and device discovery.
     @Published var isInitialized = false
@@ -41,8 +44,12 @@ class SmartHomeManager: ObservableObject {
     
     /// Discovers and connects to available smart home devices.
     private func discoverDevices() async {
+        #if canImport(HomeKit)
         await homeKitManager.initialize()
         connectedDevices = homeKitManager.discoveredDevices
+        #else
+        connectedDevices = []
+        #endif
     }
 
     /// Adjusts smart lights to align with the user's circadian rhythm.
@@ -51,7 +58,9 @@ class SmartHomeManager: ObservableObject {
     func updateCircadianLighting() {
         let (colorTemperature, brightness) = circadianCalculator.getCurrentLighting()
         print("SMART HOME: Setting lights to \(colorTemperature)K at \(brightness)% brightness.")
+        #if canImport(HomeKit)
         homeKitManager.updateLights(colorTemperature: colorTemperature, brightness: brightness)
+        #endif
     }
 
     /// Activates an air purifier if air quality is below a certain threshold.
@@ -60,7 +69,9 @@ class SmartHomeManager: ObservableObject {
         let threshold = 50.0 // Example AQI threshold
         if currentAQI > threshold {
             print("SMART HOME: Air quality is poor (\(currentAQI) AQI). Activating air purifier.")
+            #if canImport(HomeKit)
             homeKitManager.setAirPurifier(on: true)
+            #endif
         }
     }
 
@@ -70,7 +81,9 @@ class SmartHomeManager: ObservableObject {
         let now = Date()
         if Calendar.current.isDate(now, inSameDayAs: wakeupTime) && now >= wakeupTime {
             print("SMART HOME: Good morning! Opening the smart blinds.")
+            #if canImport(HomeKit)
             homeKitManager.setBlinds(position: 100) // 100 = fully open
+            #endif
         }
     }
 }

@@ -414,7 +414,7 @@ public struct BugTriageResult {
 }
 
 public enum TriageDecision {
-    case fix, defer, duplicate, wontFix
+    case fix, `defer`, duplicate, wontFix
 }
 
 public enum EffortLevel {

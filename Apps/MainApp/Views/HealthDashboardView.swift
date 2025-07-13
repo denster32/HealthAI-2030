@@ -1,754 +1,795 @@
 import SwiftUI
-import Charts
-import SwiftData
 
-struct HealthDashboardView: View {
-    @EnvironmentObject var healthDataManager: HealthDataManager
-    @EnvironmentObject var appleWatchManager: AppleWatchManager
-    @EnvironmentObject var predictiveAnalyticsManager: PredictiveAnalyticsManager
+@available(iOS 17.0, *)
+public struct HealthDashboardView: View {
+    @StateObject private var healthManager = HealthDataManager.shared
+    @StateObject private var performanceMonitor = HealthAIPerformance.PerformanceMonitor()
+    @State private var selectedTab = 0
+    @State private var showingDetail = false
+    @State private var focusedItem: String?
     
-    @State private var selectedTimeRange: TimeRange = .day
-    @State private var showingHealthDetails = false
-    
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 30) {
-                // Header with time range selector
-                HeaderView()
+    public var body: some View {
+        NavigationStack {
+            VStack(spacing: HealthAIDesignSystem.Spacing.lg) {
+                // Header
+                dashboardHeader
                 
-                // Main health metrics grid
-                LazyVGrid(columns: [
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
-                ], spacing: 25) {
-                    // Heart Rate Card
-                    HeartRateCard()
+                // Main Content
+                TabView(selection: $selectedTab) {
+                    overviewTab
+                        .tag(0)
                     
-                    // HRV Card
-                    HRVCard()
+                    healthMetricsTab
+                        .tag(1)
                     
-                    // Sleep Quality Card
-                    SleepQualityCard()
+                    activityTab
+                        .tag(2)
                     
-                    // Activity Level Card
-                    ActivityLevelCard()
+                    sleepTab
+                        .tag(3)
                     
-                    // Blood Pressure Card
-                    BloodPressureCard()
-                    
-                    // Oxygen Saturation Card
-                    OxygenSaturationCard()
-                    
-                    // --- New: Advanced Health Prediction Card ---
-                    NavigationLink(destination: AdvancedHealthPredictionView(analyticsEngine: AnalyticsEngine())) {
-                        HealthMetricCard(
-                            title: "AI Health Predictions",
-                            value: "AI",
-                            unit: "",
-                            color: .blue,
-                            icon: "brain.head.profile",
-                            trend: .stable,
-                            subtitle: "Personalized Insights",
-                            detailText: "Tap for advanced predictions"
-                        )
-                    }
-                    
-                    // --- New: AI Health Coaching Card ---
-                    NavigationLink(destination: AdvancedHealthCoachingDashboardView(
-                        healthDataManager: healthDataManager,
-                        analyticsEngine: AnalyticsEngine()
-                    )) {
-                        HealthMetricCard(
-                            title: "AI Health Coaching",
-                            value: "AI",
-                            unit: "",
-                            color: .purple,
-                            icon: "brain.head.profile",
-                            trend: .stable,
-                            subtitle: "Personalized Coaching",
-                            detailText: "Tap for AI coaching"
-                        )
-                    }
-                    
-                    // --- New: Health Analytics Card ---
-                    NavigationLink(destination: AdvancedHealthAnalyticsDashboardView(
-                        healthDataManager: healthDataManager,
-                        analyticsEngine: AnalyticsEngine()
-                    )) {
-                        HealthMetricCard(
-                            title: "Health Analytics",
-                            value: "BI",
-                            unit: "",
-                            color: .orange,
-                            icon: "chart.bar.fill",
-                            trend: .stable,
-                            subtitle: "Business Intelligence",
-                            detailText: "Tap for analytics"
-                        )
-                    }
-                    
-                    // --- New: Privacy & Security Card ---
-                    NavigationLink(destination: AdvancedHealthDataPrivacyDashboardView(
-                        healthDataManager: healthDataManager,
-                        analyticsEngine: AnalyticsEngine()
-                    )) {
-                        HealthMetricCard(
-                            title: "Privacy & Security",
-                            value: "🔒",
-                            unit: "",
-                            color: .red,
-                            icon: "shield.fill",
-                            trend: .stable,
-                            subtitle: "Data Protection",
-                            detailText: "Tap for privacy"
-                        )
-                    }
-                    
-                    // --- New: Device Integration Card ---
-                    NavigationLink(destination: AdvancedHealthDeviceIntegrationDashboardView()) {
-                        HealthMetricCard(
-                            title: "Device Integration",
-                            value: "📱",
-                            unit: "",
-                            color: .cyan,
-                            icon: "devices",
-                            trend: .stable,
-                            subtitle: "IoT Management",
-                            detailText: "Tap for devices"
-                        )
-                    }
+                    settingsTab
+                        .tag(4)
                 }
-                
-                // Health trends chart
-                HealthTrendsChart()
-                
-                // Quick actions
-                QuickActionsSection()
-                
-                // Watch integration status
-                WatchIntegrationSection()
+                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
+                .animation(HealthAIAnimations.Presets.spring, value: selectedTab)
             }
-            .padding(.horizontal, 40)
-            .padding(.vertical, 20)
+            .background(HealthAIDesignSystem.Colors.background)
+            .navigationTitle("HealthAI")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    performanceIndicator
+                }
+            }
         }
-        .background(
-            LinearGradient(
-                gradient: Gradient(colors: [Color.black.opacity(0.8), Color.black.opacity(0.6)]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+        .healthAIAccessibility(
+            label: "HealthAI Dashboard",
+            hint: "Main health monitoring interface",
+            traits: .isHeader
         )
-        .sheet(isPresented: $showingHealthDetails) {
-            HealthDetailsView()
+        .onAppear {
+            healthManager.startMonitoring()
+        }
+        .onDisappear {
+            healthManager.stopMonitoring()
         }
     }
-}
-
-// MARK: - Header View
-
-struct HeaderView: View {
-    @State private var selectedTimeRange: TimeRange = .day
     
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Health Dashboard")
-                    .font(.largeTitle)
+    // MARK: - Dashboard Header
+    private var dashboardHeader: some View {
+        VStack(spacing: HealthAIDesignSystem.Spacing.md) {
+            HStack {
+                VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.xs) {
+                    Text("Welcome back")
+                        .font(HealthAIDesignSystem.Typography.body)
+                        .foregroundColor(HealthAIDesignSystem.Colors.textSecondary)
+                    
+                    Text("Your Health Summary")
+                        .font(HealthAIDesignSystem.Typography.title1)
+                        .fontWeight(.bold)
+                        .foregroundColor(HealthAIDesignSystem.Colors.textPrimary)
+                }
+                
+                Spacer()
+                
+                // Quick Actions
+                HStack(spacing: HealthAIDesignSystem.Spacing.sm) {
+                    HealthAIButton(
+                        title: "Add",
+                        style: .primary,
+                        icon: "plus"
+                    ) {
+                        showingDetail = true
+                    }
+                    .healthAIMinimumTouchTarget()
+                    .healthAIAccessibility(
+                        label: "Add health data",
+                        hint: "Add new health measurement or activity"
+                    )
+                    
+                    HealthAIButton(
+                        title: "Sync",
+                        style: .secondary,
+                        icon: "arrow.clockwise"
+                    ) {
+                        healthManager.syncData()
+                    }
+                    .healthAIMinimumTouchTarget()
+                    .healthAIAccessibility(
+                        label: "Sync health data",
+                        hint: "Synchronize with health services"
+                    )
+                }
+            }
+            
+            // Health Status Overview
+            healthStatusOverview
+        }
+        .padding(HealthAIDesignSystem.Spacing.lg)
+        .background(HealthAIDesignSystem.Colors.card)
+        .cornerRadius(HealthAIDesignSystem.Layout.cornerRadius)
+        .healthAICardHover()
+    }
+    
+    // MARK: - Health Status Overview
+    private var healthStatusOverview: some View {
+        HStack(spacing: HealthAIDesignSystem.Spacing.lg) {
+            // Overall Health Score
+            VStack(spacing: HealthAIDesignSystem.Spacing.xs) {
+                Text("\(Int(healthManager.overallHealthScore * 100))")
+                    .font(HealthAIDesignSystem.Typography.metricValue)
                     .fontWeight(.bold)
-                    .foregroundColor(.white)
+                    .foregroundColor(healthScoreColor)
                 
-                Text("Real-time health monitoring and insights")
-                    .font(.title3)
-                    .foregroundColor(.gray)
+                Text("Health Score")
+                    .font(HealthAIDesignSystem.Typography.caption1)
+                    .foregroundColor(HealthAIDesignSystem.Colors.textSecondary)
             }
+            .healthAIAccessibility(
+                label: "Overall health score: \(Int(healthManager.overallHealthScore * 100)) percent",
+                value: "\(Int(healthManager.overallHealthScore * 100))%"
+            )
             
-            Spacer()
+            Divider()
+                .frame(height: 40)
             
-            // Time range picker
-            Picker("Time Range", selection: $selectedTimeRange) {
-                ForEach(TimeRange.allCases, id: \.self) { range in
-                    Text(range.displayName).tag(range)
+            // Today's Activity
+            VStack(spacing: HealthAIDesignSystem.Spacing.xs) {
+                Text("\(healthManager.todaysSteps)")
+                    .font(HealthAIDesignSystem.Typography.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(HealthAIDesignSystem.Colors.primary)
+                
+                Text("Steps Today")
+                    .font(HealthAIDesignSystem.Typography.caption1)
+                    .foregroundColor(HealthAIDesignSystem.Colors.textSecondary)
+            }
+            .healthAIAccessibility(
+                label: "Steps today: \(healthManager.todaysSteps)",
+                value: "\(healthManager.todaysSteps) steps"
+            )
+            
+            Divider()
+                .frame(height: 40)
+            
+            // Sleep Quality
+            VStack(spacing: HealthAIDesignSystem.Spacing.xs) {
+                Text("\(Int(healthManager.sleepQuality * 100))%")
+                    .font(HealthAIDesignSystem.Typography.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(HealthAIDesignSystem.Colors.sleep)
+                
+                Text("Sleep Quality")
+                    .font(HealthAIDesignSystem.Typography.caption1)
+                    .foregroundColor(HealthAIDesignSystem.Colors.textSecondary)
+            }
+            .healthAIAccessibility(
+                label: "Sleep quality: \(Int(healthManager.sleepQuality * 100)) percent",
+                value: "\(Int(healthManager.sleepQuality * 100))%"
+            )
+        }
+    }
+    
+    // MARK: - Overview Tab
+    private var overviewTab: some View {
+        ScrollView {
+            LazyVStack(spacing: HealthAIDesignSystem.Spacing.lg) {
+                // Quick Metrics Grid
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: HealthAIDesignSystem.Spacing.md), count: 2),
+                    spacing: HealthAIDesignSystem.Spacing.md
+                ) {
+                    ForEach(Array(healthManager.quickMetrics.enumerated()), id: \.offset) { index, metric in
+                        HealthMetricCard(
+                            title: metric.title,
+                            value: metric.value,
+                            unit: metric.unit,
+                            color: metric.color,
+                            icon: metric.icon,
+                            trend: metric.trend,
+                            status: metric.status,
+                            subtitle: metric.subtitle
+                        )
+                        .healthAIListItemAnimation(index: index)
+                        .healthAIMinimumTouchTarget()
+                        .onTapGesture {
+                            focusedItem = metric.id
+                            showingDetail = true
+                        }
+                    }
+                }
+                
+                // Health Insights
+                healthInsightsSection
+                
+                // Recent Activities
+                recentActivitiesSection
+            }
+            .padding(HealthAIDesignSystem.Spacing.lg)
+        }
+        .healthAIAccessibility(
+            label: "Overview tab",
+            hint: "Main health overview and quick metrics"
+        )
+    }
+    
+    // MARK: - Health Metrics Tab
+    private var healthMetricsTab: some View {
+        ScrollView {
+            LazyVStack(spacing: HealthAIDesignSystem.Spacing.lg) {
+                // Heart Rate Section
+                healthMetricSection(
+                    title: "Heart Rate",
+                    icon: "heart.fill",
+                    color: HealthAIDesignSystem.Colors.heartRate,
+                    metrics: healthManager.heartRateMetrics
+                )
+                
+                // Blood Pressure Section
+                healthMetricSection(
+                    title: "Blood Pressure",
+                    icon: "drop.fill",
+                    color: HealthAIDesignSystem.Colors.bloodPressure,
+                    metrics: healthManager.bloodPressureMetrics
+                )
+                
+                // Other Metrics
+                healthMetricSection(
+                    title: "Other Metrics",
+                    icon: "chart.bar.fill",
+                    color: HealthAIDesignSystem.Colors.primary,
+                    metrics: healthManager.otherMetrics
+                )
+            }
+            .padding(HealthAIDesignSystem.Spacing.lg)
+        }
+        .healthAIAccessibility(
+            label: "Health metrics tab",
+            hint: "Detailed health measurements and trends"
+        )
+    }
+    
+    // MARK: - Activity Tab
+    private var activityTab: some View {
+        ScrollView {
+            LazyVStack(spacing: HealthAIDesignSystem.Spacing.lg) {
+                // Activity Rings
+                activityRingsSection
+                
+                // Workouts
+                workoutsSection
+                
+                // Goals Progress
+                goalsProgressSection
+            }
+            .padding(HealthAIDesignSystem.Spacing.lg)
+        }
+        .healthAIAccessibility(
+            label: "Activity tab",
+            hint: "Physical activity tracking and goals"
+        )
+    }
+    
+    // MARK: - Sleep Tab
+    private var sleepTab: some View {
+        ScrollView {
+            LazyVStack(spacing: HealthAIDesignSystem.Spacing.lg) {
+                // Sleep Summary
+                sleepSummarySection
+                
+                // Sleep Stages
+                sleepStagesSection
+                
+                // Sleep Trends
+                sleepTrendsSection
+            }
+            .padding(HealthAIDesignSystem.Spacing.lg)
+        }
+        .healthAIAccessibility(
+            label: "Sleep tab",
+            hint: "Sleep tracking and analysis"
+        )
+    }
+    
+    // MARK: - Settings Tab
+    private var settingsTab: some View {
+        ScrollView {
+            LazyVStack(spacing: HealthAIDesignSystem.Spacing.lg) {
+                // Profile Settings
+                profileSettingsSection
+                
+                // Privacy Settings
+                privacySettingsSection
+                
+                // Notification Settings
+                notificationSettingsSection
+                
+                // Performance Settings
+                performanceSettingsSection
+            }
+            .padding(HealthAIDesignSystem.Spacing.lg)
+        }
+        .healthAIAccessibility(
+            label: "Settings tab",
+            hint: "App settings and preferences"
+        )
+    }
+    
+    // MARK: - Supporting Views
+    private var performanceIndicator: some View {
+        HStack(spacing: HealthAIDesignSystem.Spacing.xs) {
+            Circle()
+                .fill(performanceMonitor.isPerformanceOptimal ? HealthAIDesignSystem.Colors.success : HealthAIDesignSystem.Colors.warning)
+                .frame(width: 8, height: 8)
+                .healthAIHeartbeat()
+            
+            Text("\(Int(performanceMonitor.currentFPS))")
+                .font(HealthAIDesignSystem.Typography.caption1)
+                .foregroundColor(HealthAIDesignSystem.Colors.textSecondary)
+        }
+        .healthAIAccessibility(
+            label: "Performance indicator",
+            value: "\(Int(performanceMonitor.currentFPS)) FPS"
+        )
+    }
+    
+    private var healthScoreColor: Color {
+        let score = healthManager.overallHealthScore
+        switch score {
+        case 0.8...: return HealthAIDesignSystem.Colors.success
+        case 0.6..<0.8: return HealthAIDesignSystem.Colors.warning
+        default: return HealthAIDesignSystem.Colors.error
+        }
+    }
+    
+    // MARK: - Section Views (Placeholders)
+    private func healthInsightsSection() -> some View {
+        HealthAICard(style: .elevated) {
+            VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.md) {
+                Text("Health Insights")
+                    .font(HealthAIDesignSystem.Typography.title2)
+                    .fontWeight(.bold)
+                
+                Text("Your heart rate has been consistently healthy this week.")
+                    .font(HealthAIDesignSystem.Typography.body)
+                    .foregroundColor(HealthAIDesignSystem.Colors.textSecondary)
+            }
+        }
+        .healthAIAccessibility(
+            label: "Health insights",
+            hint: "AI-generated health recommendations"
+        )
+    }
+    
+    private func recentActivitiesSection() -> some View {
+        HealthAICard(style: .elevated) {
+            VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.md) {
+                Text("Recent Activities")
+                    .font(HealthAIDesignSystem.Typography.title2)
+                    .fontWeight(.bold)
+                
+                ForEach(healthManager.recentActivities, id: \.id) { activity in
+                    HStack {
+                        Image(systemName: activity.icon)
+                            .foregroundColor(activity.color)
+                        
+                        Text(activity.title)
+                            .font(HealthAIDesignSystem.Typography.body)
+                        
+                        Spacer()
+                        
+                        Text(activity.timeAgo)
+                            .font(HealthAIDesignSystem.Typography.caption1)
+                            .foregroundColor(HealthAIDesignSystem.Colors.textSecondary)
+                    }
                 }
             }
-            .pickerStyle(SegmentedPickerStyle())
-            .frame(width: 300)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 15)
-        .background(Color.white.opacity(0.1))
-        .cornerRadius(15)
-    }
-}
-
-// MARK: - Health Metric Cards
-
-struct HeartRateCard: View {
-    @EnvironmentObject var healthDataManager: HealthDataManager
-    
-    var body: some View {
-        HealthMetricCard(
-            title: "Heart Rate",
-            value: "\(Int(healthDataManager.currentHeartRate))",
-            unit: "BPM",
-            color: heartRateColor,
-            icon: "heart.fill",
-            trend: healthDataManager.heartRateTrend,
-            subtitle: heartRateStatus,
-            detailText: "Last updated: \(formattedLastUpdate)"
+        .healthAIAccessibility(
+            label: "Recent activities",
+            hint: "List of recent health activities"
         )
     }
     
-    private var heartRateColor: Color {
-        let hr = healthDataManager.currentHeartRate
-        if hr > 100 { return .red }
-        else if hr > 80 { return .orange }
-        else if hr > 60 { return .green }
-        else { return .blue }
-    }
-    
-    private var heartRateStatus: String {
-        let hr = healthDataManager.currentHeartRate
-        if hr > 100 { return "Elevated" }
-        else if hr > 80 { return "Active" }
-        else if hr > 60 { return "Normal" }
-        else { return "Resting" }
-    }
-    
-    private var formattedLastUpdate: String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: Date())
-    }
-}
-
-struct HRVCard: View {
-    @EnvironmentObject var healthDataManager: HealthDataManager
-    
-    var body: some View {
-        HealthMetricCard(
-            title: "Heart Rate Variability",
-            value: String(format: "%.1f", healthDataManager.currentHRV),
-            unit: "ms",
-            color: hrvColor,
-            icon: "waveform.path.ecg",
-            trend: healthDataManager.hrvTrend,
-            subtitle: hrvStatus,
-            detailText: "Coherence: \(coherenceLevel)"
+    private func healthMetricSection(title: String, icon: String, color: Color, metrics: [HealthMetric]) -> some View {
+        HealthAICard(style: .elevated) {
+            VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.md) {
+                HStack {
+                    Image(systemName: icon)
+                        .foregroundColor(color)
+                        .font(.title2)
+                    
+                    Text(title)
+                        .font(HealthAIDesignSystem.Typography.title2)
+                        .fontWeight(.bold)
+                    
+                    Spacer()
+                }
+                
+                ForEach(metrics, id: \.id) { metric in
+                    HealthMetricCard(
+                        title: metric.title,
+                        value: metric.value,
+                        unit: metric.unit,
+                        color: metric.color,
+                        icon: metric.icon,
+                        trend: metric.trend,
+                        status: metric.status,
+                        subtitle: metric.subtitle
+                    )
+                }
+            }
+        }
+        .healthAIAccessibility(
+            label: title,
+            hint: "\(title) measurements and trends"
         )
     }
     
-    private var hrvColor: Color {
-        let hrv = healthDataManager.currentHRV
-        if hrv > 50 { return .green }
-        else if hrv > 30 { return .yellow }
-        else { return .red }
-    }
-    
-    private var hrvStatus: String {
-        let hrv = healthDataManager.currentHRV
-        if hrv > 50 { return "Excellent" }
-        else if hrv > 30 { return "Good" }
-        else { return "Low" }
-    }
-    
-    private var coherenceLevel: String {
-        let hrv = healthDataManager.currentHRV
-        if hrv > 50 { return "High" }
-        else if hrv > 30 { return "Medium" }
-        else { return "Low" }
-    }
-}
-
-struct SleepQualityCard: View {
-    @EnvironmentObject var healthDataManager: HealthDataManager
-    
-    var body: some View {
-        HealthMetricCard(
-            title: "Sleep Quality",
-            value: String(format: "%.0f", healthDataManager.sleepQualityScore),
-            unit: "%",
-            color: sleepQualityColor,
-            icon: "bed.double.fill",
-            trend: healthDataManager.sleepQualityTrend,
-            subtitle: sleepQualityStatus,
-            detailText: "Last night: \(lastNightSleep)"
+    private func activityRingsSection() -> some View {
+        HealthAICard(style: .elevated) {
+            VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.md) {
+                Text("Activity Rings")
+                    .font(HealthAIDesignSystem.Typography.title2)
+                    .fontWeight(.bold)
+                
+                HStack {
+                    // Activity rings visualization would go here
+                    Text("Activity rings visualization")
+                        .font(HealthAIDesignSystem.Typography.body)
+                        .foregroundColor(HealthAIDesignSystem.Colors.textSecondary)
+                    
+                    Spacer()
+                }
+            }
+        }
+        .healthAIAccessibility(
+            label: "Activity rings",
+            hint: "Daily activity progress visualization"
         )
     }
     
-    private var sleepQualityColor: Color {
-        let quality = healthDataManager.sleepQualityScore
-        if quality > 80 { return .green }
-        else if quality > 60 { return .yellow }
-        else { return .red }
-    }
-    
-    private var sleepQualityStatus: String {
-        let quality = healthDataManager.sleepQualityScore
-        if quality > 80 { return "Excellent" }
-        else if quality > 60 { return "Good" }
-        else { return "Poor" }
-    }
-    
-    private var lastNightSleep: String {
-        // This would come from actual sleep data
-        return "7h 32m"
-    }
-}
-
-struct ActivityLevelCard: View {
-    @EnvironmentObject var healthDataManager: HealthDataManager
-    
-    var body: some View {
-        HealthMetricCard(
-            title: "Daily Activity",
-            value: String(format: "%.0f", healthDataManager.activityLevel),
-            unit: "steps",
-            color: activityColor,
-            icon: "figure.walk",
-            trend: healthDataManager.activityTrend,
-            subtitle: activityStatus,
-            detailText: "Goal: 10,000 steps"
+    private func workoutsSection() -> some View {
+        HealthAICard(style: .elevated) {
+            VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.md) {
+                Text("Recent Workouts")
+                    .font(HealthAIDesignSystem.Typography.title2)
+                    .fontWeight(.bold)
+                
+                ForEach(healthManager.recentWorkouts, id: \.id) { workout in
+                    HStack {
+                        Image(systemName: workout.icon)
+                            .foregroundColor(workout.color)
+                        
+                        VStack(alignment: .leading) {
+                            Text(workout.title)
+                                .font(HealthAIDesignSystem.Typography.body)
+                                .fontWeight(.medium)
+                            
+                            Text(workout.duration)
+                                .font(HealthAIDesignSystem.Typography.caption1)
+                                .foregroundColor(HealthAIDesignSystem.Colors.textSecondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Text(workout.calories)
+                            .font(HealthAIDesignSystem.Typography.body)
+                            .fontWeight(.medium)
+                    }
+                }
+            }
+        }
+        .healthAIAccessibility(
+            label: "Recent workouts",
+            hint: "List of recent workout sessions"
         )
     }
     
-    private var activityColor: Color {
-        let activity = healthDataManager.activityLevel
-        if activity > 10000 { return .green }
-        else if activity > 5000 { return .yellow }
-        else { return .red }
+    private func goalsProgressSection() -> some View {
+        HealthAICard(style: .elevated) {
+            VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.md) {
+                Text("Goals Progress")
+                    .font(HealthAIDesignSystem.Typography.title2)
+                    .fontWeight(.bold)
+                
+                ForEach(healthManager.goals, id: \.id) { goal in
+                    VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.xs) {
+                        HStack {
+                            Text(goal.title)
+                                .font(HealthAIDesignSystem.Typography.body)
+                                .fontWeight(.medium)
+                            
+                            Spacer()
+                            
+                            Text("\(Int(goal.progress * 100))%")
+                                .font(HealthAIDesignSystem.Typography.body)
+                                .fontWeight(.medium)
+                        }
+                        
+                        HealthAIProgressView(
+                            value: Float(goal.progress),
+                            color: goal.color,
+                            label: goal.title
+                        )
+                    }
+                }
+            }
+        }
+        .healthAIAccessibility(
+            label: "Goals progress",
+            hint: "Progress towards health goals"
+        )
     }
     
-    private var activityStatus: String {
-        let activity = healthDataManager.activityLevel
-        if activity > 10000 { return "Goal Achieved" }
-        else if activity > 5000 { return "Active" }
-        else { return "Low Activity" }
+    private func sleepSummarySection() -> some View {
+        HealthAICard(style: .elevated) {
+            VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.md) {
+                Text("Sleep Summary")
+                    .font(HealthAIDesignSystem.Typography.title2)
+                    .fontWeight(.bold)
+                
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("\(healthManager.sleepDuration, specifier: "%.1f")h")
+                            .font(HealthAIDesignSystem.Typography.title1)
+                            .fontWeight(.bold)
+                            .foregroundColor(HealthAIDesignSystem.Colors.sleep)
+                        
+                        Text("Last Night")
+                            .font(HealthAIDesignSystem.Typography.caption1)
+                            .foregroundColor(HealthAIDesignSystem.Colors.textSecondary)
+                    }
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing) {
+                        Text("\(Int(healthManager.sleepQuality * 100))%")
+                            .font(HealthAIDesignSystem.Typography.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(HealthAIDesignSystem.Colors.primary)
+                        
+                        Text("Quality")
+                            .font(HealthAIDesignSystem.Typography.caption1)
+                            .foregroundColor(HealthAIDesignSystem.Colors.textSecondary)
+                    }
+                }
+            }
+        }
+        .healthAIAccessibility(
+            label: "Sleep summary",
+            value: "\(healthManager.sleepDuration, specifier: "%.1f") hours, \(Int(healthManager.sleepQuality * 100))% quality"
+        )
     }
-}
-
-struct BloodPressureCard: View {
-    @EnvironmentObject var healthDataManager: HealthDataManager
     
-    var body: some View {
-        HealthMetricCard(
-            title: "Blood Pressure",
-            value: "120/80",
-            unit: "mmHg",
-            color: .blue,
-            icon: "heart.circle.fill",
-            trend: .stable,
-            subtitle: "Normal",
-            detailText: "Last reading: 2 hours ago"
+    private func sleepStagesSection() -> some View {
+        HealthAICard(style: .elevated) {
+            VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.md) {
+                Text("Sleep Stages")
+                    .font(HealthAIDesignSystem.Typography.title2)
+                    .fontWeight(.bold)
+                
+                Text("Sleep stages visualization would go here")
+                    .font(HealthAIDesignSystem.Typography.body)
+                    .foregroundColor(HealthAIDesignSystem.Colors.textSecondary)
+            }
+        }
+        .healthAIAccessibility(
+            label: "Sleep stages",
+            hint: "Detailed sleep stage analysis"
+        )
+    }
+    
+    private func sleepTrendsSection() -> some View {
+        HealthAICard(style: .elevated) {
+            VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.md) {
+                Text("Sleep Trends")
+                    .font(HealthAIDesignSystem.Typography.title2)
+                    .fontWeight(.bold)
+                
+                Text("Sleep trends chart would go here")
+                    .font(HealthAIDesignSystem.Typography.body)
+                    .foregroundColor(HealthAIDesignSystem.Colors.textSecondary)
+            }
+        }
+        .healthAIAccessibility(
+            label: "Sleep trends",
+            hint: "Weekly sleep pattern analysis"
+        )
+    }
+    
+    private func profileSettingsSection() -> some View {
+        HealthAICard(style: .elevated) {
+            VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.md) {
+                Text("Profile Settings")
+                    .font(HealthAIDesignSystem.Typography.title2)
+                    .fontWeight(.bold)
+                
+                Text("Profile settings would go here")
+                    .font(HealthAIDesignSystem.Typography.body)
+                    .foregroundColor(HealthAIDesignSystem.Colors.textSecondary)
+            }
+        }
+        .healthAIAccessibility(
+            label: "Profile settings",
+            hint: "Personal profile and account settings"
+        )
+    }
+    
+    private func privacySettingsSection() -> some View {
+        HealthAICard(style: .elevated) {
+            VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.md) {
+                Text("Privacy Settings")
+                    .font(HealthAIDesignSystem.Typography.title2)
+                    .fontWeight(.bold)
+                
+                Text("Privacy settings would go here")
+                    .font(HealthAIDesignSystem.Typography.body)
+                    .foregroundColor(HealthAIDesignSystem.Colors.textSecondary)
+            }
+        }
+        .healthAIAccessibility(
+            label: "Privacy settings",
+            hint: "Data privacy and security settings"
+        )
+    }
+    
+    private func notificationSettingsSection() -> some View {
+        HealthAICard(style: .elevated) {
+            VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.md) {
+                Text("Notification Settings")
+                    .font(HealthAIDesignSystem.Typography.title2)
+                    .fontWeight(.bold)
+                
+                Text("Notification settings would go here")
+                    .font(HealthAIDesignSystem.Typography.body)
+                    .foregroundColor(HealthAIDesignSystem.Colors.textSecondary)
+            }
+        }
+        .healthAIAccessibility(
+            label: "Notification settings",
+            hint: "App notification preferences"
+        )
+    }
+    
+    private func performanceSettingsSection() -> some View {
+        HealthAICard(style: .elevated) {
+            VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.md) {
+                Text("Performance Settings")
+                    .font(HealthAIDesignSystem.Typography.title2)
+                    .fontWeight(.bold)
+                
+                VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.sm) {
+                    Text("Current FPS: \(Int(performanceMonitor.currentFPS))")
+                        .font(HealthAIDesignSystem.Typography.body)
+                    
+                    Text("Memory Usage: \(Int(performanceMonitor.memoryUsage * 100))%")
+                        .font(HealthAIDesignSystem.Typography.body)
+                    
+                    Text("Performance: \(performanceMonitor.isPerformanceOptimal ? "Optimal" : "Suboptimal")")
+                        .font(HealthAIDesignSystem.Typography.body)
+                        .foregroundColor(performanceMonitor.isPerformanceOptimal ? HealthAIDesignSystem.Colors.success : HealthAIDesignSystem.Colors.warning)
+                }
+            }
+        }
+        .healthAIAccessibility(
+            label: "Performance settings",
+            value: "FPS: \(Int(performanceMonitor.currentFPS)), Memory: \(Int(performanceMonitor.memoryUsage * 100))%"
         )
     }
 }
 
-struct OxygenSaturationCard: View {
-    @EnvironmentObject var healthDataManager: HealthDataManager
-    
-    var body: some View {
-        HealthMetricCard(
-            title: "Oxygen Saturation",
-            value: "98",
-            unit: "%",
-            color: .green,
-            icon: "lungs.fill",
-            trend: .stable,
-            subtitle: "Normal",
-            detailText: "Last reading: 1 hour ago"
-        )
-    }
-}
-
-// MARK: - Enhanced Health Metric Card
-
-struct HealthMetricCard: View {
+// MARK: - Supporting Types
+struct HealthMetric {
+    let id: String
     let title: String
     let value: String
     let unit: String
     let color: Color
     let icon: String
-    let trend: HealthTrend
-    let subtitle: String
-    let detailText: String
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            // Header with icon and trend
-            HStack {
-                Image(systemName: icon)
-                    .foregroundColor(color)
-                    .font(.title)
-                
-                Spacer()
-                
-                // Trend indicator
-                HStack(spacing: 5) {
-                    Image(systemName: trendIcon)
-                        .foregroundColor(trendColor)
-                        .font(.caption)
-                    
-                    Text(trendText)
-                        .font(.caption)
-                        .foregroundColor(trendColor)
-                }
-            }
-            
-            // Main value
-            VStack(alignment: .leading, spacing: 8) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundColor(.gray)
-                
-                HStack(alignment: .bottom, spacing: 8) {
-                    Text(value)
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
-                        .foregroundColor(color)
-                    
-                    Text(unit)
-                        .font(.title2)
-                        .foregroundColor(.gray)
-                }
-                
-                Text(subtitle)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                
-                Text(detailText)
-                    .font(.caption)
-                    .foregroundColor(.gray)
-            }
-        }
-        .padding(25)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color.white.opacity(0.1))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(color.opacity(0.3), lineWidth: 2)
-                )
-        )
-        .shadow(color: color.opacity(0.2), radius: 15, x: 0, y: 5)
-        .scaleEffect(1.0)
-        .animation(.easeInOut(duration: 0.2), value: value)
-    }
-    
-    private var trendIcon: String {
-        switch trend {
-        case .up: return "arrow.up.circle.fill"
-        case .down: return "arrow.down.circle.fill"
-        case .stable: return "minus.circle.fill"
-        }
-    }
-    
-    private var trendColor: Color {
-        switch trend {
-        case .up: return .green
-        case .down: return .red
-        case .stable: return .gray
-        }
-    }
-    
-    private var trendText: String {
-        switch trend {
-        case .up: return "Rising"
-        case .down: return "Falling"
-        case .stable: return "Stable"
-        }
-    }
+    let trend: String?
+    let status: HealthStatus
+    let subtitle: String?
 }
 
-// MARK: - Health Trends Chart
-
-struct HealthTrendsChart: View {
-    @Query(filter: #Predicate<HealthData> { $0.dataType == "HeartRate" }, sort: [SortDescriptor(\HealthData.timestamp)]) var heartRateEntries: [HealthData]
-    @Query(filter: #Predicate<HealthData> { $0.dataType == "HRV" }, sort: [SortDescriptor(\HealthData.timestamp)]) var hrvEntries: [HealthData]
-    @State private var selectedTimeRange: TimeRange = .day
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                Text("Health Trends")
-                    .font(.title)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                Spacer()
-                Picker("Time Range", selection: $selectedTimeRange) {
-                    ForEach(TimeRange.allCases, id: \ .self) { range in
-                        Text(range.displayName).tag(range)
-                    }
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                .frame(width: 220)
-            }
-            Chart {
-                ForEach(filteredHeartRateData, id: \ .timestamp) { entry in
-                    LineMark(
-                        x: .value("Time", entry.timestamp),
-                        y: .value("Heart Rate", entry.value)
-                    )
-                    .foregroundStyle(.red)
-                    .lineStyle(StrokeStyle(lineWidth: 3))
-                    .symbol(by: .value("Type", "Heart Rate"))
-                }
-                ForEach(filteredHRVData, id: \ .timestamp) { entry in
-                    LineMark(
-                        x: .value("Time", entry.timestamp),
-                        y: .value("HRV", entry.value)
-                    )
-                    .foregroundStyle(.green)
-                    .lineStyle(StrokeStyle(lineWidth: 3, dash: [4,2]))
-                    .symbol(by: .value("Type", "HRV"))
-                }
-            }
-            .frame(height: 300)
-            .chartXAxis {
-                AxisMarks(values: .automatic) { value in
-                    AxisGridLine()
-                    AxisValueLabel()
-                }
-            }
-            .chartYAxis {
-                AxisMarks(values: .automatic) { value in
-                    AxisGridLine()
-                    AxisValueLabel()
-                }
-            }
-            .chartOverlay { proxy in
-                GeometryReader { geo in
-                    Rectangle().fill(Color.clear).contentShape(Rectangle())
-                        .gesture(DragGesture(minimumDistance: 0)
-                            .onChanged { value in
-                                // Add interactivity: show tooltip/annotation at drag location
-                            })
-                }
-            }
-        }
-        .padding(25)
-        .background(Color.white.opacity(0.1))
-        .cornerRadius(20)
-    }
-    
-    private var filteredHeartRateData: [HealthData] {
-        let cutoff = Date().addingTimeInterval(-selectedTimeRange.interval)
-        return heartRateEntries.filter { $0.timestamp >= cutoff }
-    }
-    private var filteredHRVData: [HealthData] {
-        let cutoff = Date().addingTimeInterval(-selectedTimeRange.interval)
-        return hrvEntries.filter { $0.timestamp >= cutoff }
-    }
-}
-
-// MARK: - Quick Actions Section
-
-struct QuickActionsSection: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Quick Actions")
-                .font(.title)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-            
-            LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ], spacing: 20) {
-                QuickActionButton(
-                    title: "Start Sleep Session",
-                    icon: "bed.double.fill",
-                    color: .blue
-                ) {
-                    // Start sleep session
-                }
-                
-                QuickActionButton(
-                    title: "Health Check",
-                    icon: "heart.fill",
-                    color: .red
-                ) {
-                    // Perform health check
-                }
-                
-                QuickActionButton(
-                    title: "Environment Setup",
-                    icon: "house.fill",
-                    color: .green
-                ) {
-                    // Setup environment
-                }
-            }
-        }
-        .padding(25)
-        .background(Color.white.opacity(0.1))
-        .cornerRadius(20)
-    }
-}
-
-struct QuickActionButton: View {
+struct HealthActivity {
+    let id: String
     let title: String
     let icon: String
     let color: Color
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 15) {
-                Image(systemName: icon)
-                    .font(.title)
-                    .foregroundColor(color)
-                
-                Text(title)
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 15)
-                    .fill(Color.white.opacity(0.1))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 15)
-                            .stroke(color.opacity(0.3), lineWidth: 2)
-                    )
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-        .scaleEffect(1.0)
-        .animation(.easeInOut(duration: 0.2), value: title)
-    }
+    let timeAgo: String
 }
 
-// MARK: - Watch Integration Section
-
-struct WatchIntegrationSection: View {
-    @EnvironmentObject var appleWatchManager: AppleWatchManager
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Apple Watch Integration")
-                .font(.title)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-            
-            HStack(spacing: 30) {
-                // Connection Status
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Image(systemName: "applewatch")
-                            .foregroundColor(connectionColor)
-                            .font(.title2)
-                        
-                        Text("Connection Status")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                    }
-                    
-                    Text(connectionStatus)
-                        .font(.title3)
-                        .foregroundColor(connectionColor)
-                    
-                    Text("Last sync: \(lastSyncTime)")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-                
-                Spacer()
-                
-                // Watch Health Data
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Watch Health Data")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                    
-                    Text("Heart Rate: \(Int(appleWatchManager.watchHealthData.heartRate)) BPM")
-                        .font(.body)
-                        .foregroundColor(.gray)
-                    
-                    Text("HRV: \(String(format: "%.1f", appleWatchManager.watchHealthData.hrv)) ms")
-                        .font(.body)
-                        .foregroundColor(.gray)
-                    
-                    Text("Sleep Stage: \(appleWatchManager.watchHealthData.sleepStage)")
-                        .font(.body)
-                        .foregroundColor(.gray)
-                }
-            }
-        }
-        .padding(25)
-        .background(Color.white.opacity(0.1))
-        .cornerRadius(20)
-    }
-    
-    private var connectionColor: Color {
-        switch appleWatchManager.watchConnectionStatus {
-        case .connected: return .green
-        case .connecting: return .yellow
-        case .disconnected: return .red
-        case .error: return .red
-        }
-    }
-    
-    private var connectionStatus: String {
-        switch appleWatchManager.watchConnectionStatus {
-        case .connected: return "Connected"
-        case .connecting: return "Connecting..."
-        case .disconnected: return "Disconnected"
-        case .error: return "Error"
-        }
-    }
-    
-    private var lastSyncTime: String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: Date())
-    }
+struct Workout {
+    let id: String
+    let title: String
+    let icon: String
+    let color: Color
+    let duration: String
+    let calories: String
 }
 
-// MARK: - Supporting Types
-
-enum TimeRange: String, CaseIterable {
-    case hour = "hour"
-    case day = "day"
-    case week = "week"
-    case month = "month"
-    
-    var displayName: String {
-        switch self {
-        case .hour: return "1 Hour"
-        case .day: return "24 Hours"
-        case .week: return "7 Days"
-        case .month: return "30 Days"
-        }
-    }
-    
-    var interval: TimeInterval {
-        switch self {
-        case .day: return 24*60*60
-        case .week: return 7*24*60*60
-        case .month: return 30*24*60*60
-        }
-    }
+struct Goal {
+    let id: String
+    let title: String
+    let progress: Double
+    let color: Color
 }
 
-struct HealthDataPoint {
-    let time: Date
-    let value: Double
-}
-
-// MARK: - Placeholder Views
-
-struct HealthDetailsView: View {
-    var body: some View {
-        VStack {
-            Text("Health Details")
-                .font(.title)
-                .fontWeight(.bold)
-            Text("Implementation coming soon...")
-                .foregroundColor(.secondary)
-        }
-        .padding()
+// MARK: - Health Data Manager
+class HealthDataManager: ObservableObject {
+    static let shared = HealthDataManager()
+    
+    @Published var overallHealthScore: Double = 0.85
+    @Published var todaysSteps: Int = 8432
+    @Published var sleepQuality: Double = 0.87
+    @Published var sleepDuration: Double = 7.5
+    
+    @Published var quickMetrics: [HealthMetric] = []
+    @Published var heartRateMetrics: [HealthMetric] = []
+    @Published var bloodPressureMetrics: [HealthMetric] = []
+    @Published var otherMetrics: [HealthMetric] = []
+    @Published var recentActivities: [HealthActivity] = []
+    @Published var recentWorkouts: [Workout] = []
+    @Published var goals: [Goal] = []
+    
+    private init() {
+        setupSampleData()
+    }
+    
+    func startMonitoring() {
+        // Start health monitoring
+    }
+    
+    func stopMonitoring() {
+        // Stop health monitoring
+    }
+    
+    func syncData() {
+        // Sync health data
+        HealthAIAnimations.HapticManager.shared.success()
+    }
+    
+    private func setupSampleData() {
+        quickMetrics = [
+            HealthMetric(id: "hr", title: "Heart Rate", value: "72", unit: "BPM", color: HealthAIDesignSystem.Colors.heartRate, icon: "heart.fill", trend: "+2", status: .healthy, subtitle: "Resting"),
+            HealthMetric(id: "bp", title: "Blood Pressure", value: "120/80", unit: "mmHg", color: HealthAIDesignSystem.Colors.bloodPressure, icon: "drop.fill", trend: nil, status: .healthy, subtitle: "Normal"),
+            HealthMetric(id: "temp", title: "Temperature", value: "98.6", unit: "°F", color: HealthAIDesignSystem.Colors.temperature, icon: "thermometer", trend: nil, status: .healthy, subtitle: "Normal"),
+            HealthMetric(id: "o2", title: "Oxygen", value: "98", unit: "%", color: HealthAIDesignSystem.Colors.respiratory, icon: "lungs.fill", trend: nil, status: .healthy, subtitle: "SpO2")
+        ]
+        
+        heartRateMetrics = [
+            HealthMetric(id: "hr_rest", title: "Resting HR", value: "58", unit: "BPM", color: HealthAIDesignSystem.Colors.heartRate, icon: "heart.fill", trend: "-3", status: .healthy, subtitle: "Last week avg"),
+            HealthMetric(id: "hr_active", title: "Active HR", value: "85", unit: "BPM", color: HealthAIDesignSystem.Colors.heartRate, icon: "heart.fill", trend: "+5", status: .elevated, subtitle: "During exercise")
+        ]
+        
+        bloodPressureMetrics = [
+            HealthMetric(id: "bp_systolic", title: "Systolic", value: "120", unit: "mmHg", color: HealthAIDesignSystem.Colors.bloodPressure, icon: "drop.fill", trend: nil, status: .healthy, subtitle: "Normal range"),
+            HealthMetric(id: "bp_diastolic", title: "Diastolic", value: "80", unit: "mmHg", color: HealthAIDesignSystem.Colors.bloodPressure, icon: "drop.fill", trend: nil, status: .healthy, subtitle: "Normal range")
+        ]
+        
+        otherMetrics = [
+            HealthMetric(id: "weight", title: "Weight", value: "165", unit: "lbs", color: HealthAIDesignSystem.Colors.weight, icon: "scalemass", trend: "-1", status: .healthy, subtitle: "This week"),
+            HealthMetric(id: "glucose", title: "Glucose", value: "95", unit: "mg/dL", color: HealthAIDesignSystem.Colors.glucose, icon: "drop.fill", trend: nil, status: .healthy, subtitle: "Fasting")
+        ]
+        
+        recentActivities = [
+            HealthActivity(id: "1", title: "Morning Walk", icon: "figure.walk", color: HealthAIDesignSystem.Colors.activity, timeAgo: "2 hours ago"),
+            HealthActivity(id: "2", title: "Water Intake", icon: "drop.fill", color: HealthAIDesignSystem.Colors.nutrition, timeAgo: "1 hour ago"),
+            HealthActivity(id: "3", title: "Heart Rate Check", icon: "heart.fill", color: HealthAIDesignSystem.Colors.heartRate, timeAgo: "30 min ago")
+        ]
+        
+        recentWorkouts = [
+            Workout(id: "1", title: "Morning Run", icon: "figure.run", color: HealthAIDesignSystem.Colors.activity, duration: "45 min", calories: "320 cal"),
+            Workout(id: "2", title: "Strength Training", icon: "dumbbell.fill", color: HealthAIDesignSystem.Colors.activity, duration: "30 min", calories: "180 cal"),
+            Workout(id: "3", title: "Yoga", icon: "figure.mind.and.body", color: HealthAIDesignSystem.Colors.mentalHealth, duration: "20 min", calories: "80 cal")
+        ]
+        
+        goals = [
+            Goal(id: "1", title: "Daily Steps", progress: 0.84, color: HealthAIDesignSystem.Colors.activity),
+            Goal(id: "2", title: "Sleep Goal", progress: 0.75, color: HealthAIDesignSystem.Colors.sleep),
+            Goal(id: "3", title: "Water Intake", progress: 0.60, color: HealthAIDesignSystem.Colors.nutrition)
+        ]
     }
 } 

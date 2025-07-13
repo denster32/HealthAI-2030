@@ -5,7 +5,9 @@ import AppIntents
 import Intents
 import HealthKit
 import NaturalLanguage
+#if canImport(SiriKit)
 import SiriKit
+#endif
 import LogWaterIntake
 import OSLog
 

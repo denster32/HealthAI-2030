@@ -1,5 +1,7 @@
 import SwiftUI
+#if canImport(TVUIKit)
 import TVUIKit
+#endif
 
 // MARK: - tvOS Platform Optimization
 /// Large screen assets and components specifically designed for tvOS platform

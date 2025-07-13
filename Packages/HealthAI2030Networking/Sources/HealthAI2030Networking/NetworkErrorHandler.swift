@@ -29,7 +29,7 @@ public enum AppNetworkError: Error {
     }
 }
 
-public struct NetworkErrorHandler {
+public struct NetworkErrorHandler: Sendable {
     private let logger = Logger(subsystem: "com.healthai.networking", category: "ErrorHandling")
     
     public static let shared = NetworkErrorHandler()
@@ -140,7 +140,7 @@ extension URLSession {
         }
         
         do {
-            let (data, response) = try await data(from: url)
+            let (data, response) = try await self.data(from: url, delegate: nil)
             circuitBreaker?.recordSuccess()
             return (data, response)
         } catch {

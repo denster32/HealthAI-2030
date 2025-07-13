@@ -102,11 +102,6 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
-        .package(url: "https://github.com/awslabs/aws-sdk-swift", from: "0.78.0"),
-        .package(url: "https://github.com/getsentry/sentry-cocoa", from: "8.54.0"),
-        .package(url: "https://github.com/swiftlang/swift-syntax", from: "601.0.2"),
-        .package(url: "https://github.com/awslabs/aws-crt-swift", from: "0.37.0"),
-        .package(url: "https://github.com/smithy-lang/smithy-swift", from: "0.72.0"),
         .package(path: "Apps/MainApp/Packages/HealthAI2030Analytics")
     ],
     targets: [
@@ -227,14 +222,14 @@ let package = Package(
             path: "Packages/CopilotSkills/Sources"
         ),
         .target(
-            name: "StartMeditation",
-            dependencies: ["HealthAI2030Core"],
-            path: "Packages/StartMeditation/Sources"
+            name: "LogWaterIntake",
+            dependencies: [],
+            path: "Packages/LogWaterIntake/Sources"
         ),
         .target(
-            name: "LogWaterIntake",
-            dependencies: ["HealthAI2030Core"],
-            path: "Packages/LogWaterIntake/Sources"
+            name: "StartMeditation",
+            dependencies: [],
+            path: "Packages/StartMeditation/Sources"
         ),
         .target(
             name: "Biofeedback",

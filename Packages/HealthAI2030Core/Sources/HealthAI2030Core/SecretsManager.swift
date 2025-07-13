@@ -1,9 +1,15 @@
 import Foundation
 import Security
 import CommonCrypto
+#if canImport(AWSSecretsManager)
 import AWSSecretsManager
+#endif
+#if canImport(AzureKeyVault)
 import AzureKeyVault
+#endif
+#if canImport(GoogleCloudSecretManager)
 import GoogleCloudSecretManager
+#endif
 
 private struct KeychainConfiguration {
     static let serviceName = "com.healthai2030.secrets"

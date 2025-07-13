@@ -1,11 +1,13 @@
 import Foundation
 import BackgroundTasks
 import OSLog
+#if canImport(Sentry)
 import Sentry // Assuming Sentry SDK is integrated
+#endif
 #if canImport(FirebaseCrashlytics)
 import FirebaseCrashlytics
 #endif
-import AppError
+// AppError is in the same module, no import needed
 import HealthAI2030Networking
 
 /// Enumeration for different types of third-party health services.

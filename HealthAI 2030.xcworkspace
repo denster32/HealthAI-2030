@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <FileRef
+      location = "group:HealthAI2030.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:Package.swift">
+   </FileRef>
+   <FileRef
+      location = "group:Apps">
+   </FileRef>
+   <FileRef
+      location = "group:Packages">
+   </FileRef>
+   <FileRef
+      location = "group:QuantumHealth">
+   </FileRef>
+   <FileRef
+      location = "group:FederatedLearning">
+   </FileRef>
+   <FileRef
+      location = "group:Configuration">
+   </FileRef>
+</Workspace>

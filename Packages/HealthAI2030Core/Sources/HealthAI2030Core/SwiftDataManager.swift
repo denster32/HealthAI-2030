@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 import CloudKit
 import OSLog
-import Analytics
+import HealthAI2030Analytics
 import HealthKit
 import os
 

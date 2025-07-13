@@ -3,6 +3,14 @@
 
 using namespace metal;
 
+// MARK: - Utility Functions
+
+float3 hsv_to_rgb(float3 hsv) {
+    float4 K = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    float3 p = abs(fract(hsv.xxx + K.xyz) * 6.0 - K.www);
+    return hsv.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), hsv.y);
+}
+
 // MARK: - Vertex Input/Output Structures
 
 struct VertexIn {
@@ -261,13 +269,7 @@ fragment float4 health_data_visualization(
     return float4(color, 1.0);
 }
 
-// MARK: - Utility Functions
-
-float3 hsv_to_rgb(float3 hsv) {
-    float4 K = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-    float3 p = abs(fract(hsv.xxx + K.xyz) * 6.0 - K.www);
-    return hsv.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), hsv.y);
-}
+// MARK: - Additional Utility Functions
 
 float noise(float2 coord) {
     return fract(sin(dot(coord, float2(12.9898, 78.233))) * 43758.5453);

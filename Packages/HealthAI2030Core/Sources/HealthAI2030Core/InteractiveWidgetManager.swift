@@ -4,8 +4,8 @@ import SwiftUI
 import Combine
 import OSLog
 import AppIntents
-import LogWaterIntake
-import StartMeditation
+// import LogWaterIntake
+// import StartMeditation
 
 // MARK: - Interactive Widget Manager for iOS 18
 
@@ -109,9 +109,9 @@ class InteractiveWidgetManager {
         AppIntentManager.shared.register(intent: ViewRecommendationsIntent.self)
         
         // Register quick action intents
-        AppIntentManager.shared.register(intent: LogWaterIntake.LogWaterIntakeAppIntent.self)
+        // AppIntentManager.shared.register(intent: LogWaterIntake.LogWaterIntakeAppIntent.self)
         AppIntentManager.shared.register(intent: LogMoodIntent.self)
-        AppIntentManager.shared.register(intent: StartMeditation.StartMeditationAppIntent.self)
+        // AppIntentManager.shared.register(intent: StartMeditation.StartMeditationAppIntent.self)
         
         // Register environment control intents
         AppIntentManager.shared.register(intent: AdjustTemperatureIntent.self)
@@ -446,13 +446,14 @@ class InteractiveWidgetManager {
     }
     
     private func logWaterIntake(amount: Double) async {
-        let logger = WaterIntakeLogger()
-        do {
-            try await logger.logWaterIntake(amountInMilliliters: amount)
-            self.logger.info("Logged water intake: \(amount) oz")
-        } catch {
-            self.logger.error("Failed to log water intake: \(error)")
-        }
+        // let logger = WaterIntakeLogger()
+        // do {
+        //     try await logger.logWaterIntake(amountInMilliliters: amount)
+        //     self.logger.info("Logged water intake: \(amount) oz")
+        // } catch {
+        //     self.logger.error("Failed to log water intake: \(error)")
+        // }
+        self.logger.info("Water intake logging temporarily disabled")
     }
 }
 

@@ -13,6 +13,8 @@ public struct HealthAIPerformance {
         public static let memoryWarningThreshold: Double = 0.8 // 80% memory usage
         public static let frameRateTarget: Double = 60.0
         public static let animationFrameRate: Double = 60.0
+        public static let imageCacheSize: Int = 50 // Maximum number of cached images
+        public static let imageCacheExpiration: TimeInterval = 600 // 10 minutes
     }
     
     // MARK: - Performance Monitoring
@@ -21,11 +23,13 @@ public struct HealthAIPerformance {
         @Published public var memoryUsage: Double = 0.0
         @Published public var cpuUsage: Double = 0.0
         @Published public var isPerformanceOptimal: Bool = true
+        @Published public var performanceWarnings: [PerformanceWarning] = []
         
         private var displayLink: CADisplayLink?
         private var frameCount: Int = 0
         private var lastFrameTime: CFTimeInterval = 0
         private var timer: Timer?
+        private var memoryWarningTimer: Timer?
         
         public init() {
             startMonitoring()
@@ -44,6 +48,10 @@ public struct HealthAIPerformance {
             timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
                 self.updateSystemMetrics()
             }
+            
+            memoryWarningTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
+                self.checkMemoryUsage()
+            }
         }
         
         public func stopMonitoring() {
@@ -51,6 +59,8 @@ public struct HealthAIPerformance {
             displayLink = nil
             timer?.invalidate()
             timer = nil
+            memoryWarningTimer?.invalidate()
+            memoryWarningTimer = nil
         }
         
         @objc private func updateFrameRate() {
@@ -63,6 +73,10 @@ public struct HealthAIPerformance {
                 lastFrameTime = currentTime
                 
                 isPerformanceOptimal = currentFPS >= Configuration.frameRateTarget * 0.9
+                
+                if !isPerformanceOptimal {
+                    addPerformanceWarning(.lowFrameRate(currentFPS))
+                }
             }
         }
         
@@ -75,7 +89,28 @@ public struct HealthAIPerformance {
             
             // Check for performance warnings
             if memoryUsage > Configuration.memoryWarningThreshold {
+                addPerformanceWarning(.highMemoryUsage(memoryUsage))
                 PerformanceCache.shared.clearCache()
+            }
+            
+            if cpuUsage > 0.8 {
+                addPerformanceWarning(.highCPUUsage(cpuUsage))
+            }
+        }
+        
+        private func checkMemoryUsage() {
+            let currentMemory = getMemoryUsage()
+            if currentMemory > Configuration.memoryWarningThreshold {
+                addPerformanceWarning(.memoryWarning(currentMemory))
+                PerformanceCache.shared.evictOldestItems()
+            }
+        }
+        
+        private func addPerformanceWarning(_ warning: PerformanceWarning) {
+            DispatchQueue.main.async {
+                if !self.performanceWarnings.contains(where: { $0.type == warning.type }) {
+                    self.performanceWarnings.append(warning)
+                }
             }
         }
         
@@ -104,6 +139,35 @@ public struct HealthAIPerformance {
             // Simplified CPU usage calculation
             // In production, use proper system metrics
             return 0.0
+        }
+    }
+    
+    public enum PerformanceWarning {
+        case lowFrameRate(Double)
+        case highMemoryUsage(Double)
+        case highCPUUsage(Double)
+        case memoryWarning(Double)
+        
+        var type: String {
+            switch self {
+            case .lowFrameRate: return "lowFrameRate"
+            case .highMemoryUsage: return "highMemoryUsage"
+            case .highCPUUsage: return "highCPUUsage"
+            case .memoryWarning: return "memoryWarning"
+            }
+        }
+        
+        var description: String {
+            switch self {
+            case .lowFrameRate(let fps):
+                return "Low frame rate: \(String(format: "%.1f", fps)) FPS"
+            case .highMemoryUsage(let usage):
+                return "High memory usage: \(String(format: "%.1f", usage * 100))%"
+            case .highCPUUsage(let usage):
+                return "High CPU usage: \(String(format: "%.1f", usage * 100))%"
+            case .memoryWarning(let usage):
+                return "Memory warning: \(String(format: "%.1f", usage * 100))%"
+            }
         }
     }
     
@@ -159,6 +223,61 @@ public struct HealthAIPerformance {
             }
         }
         
+        public func evictOldestItems() {
+            queue.async {
+                let sortedItems = self.cache.sorted { $0.value.timestamp < $1.value.timestamp }
+                let itemsToRemove = sortedItems.prefix(self.cache.count - self.maxSize)
+                
+                for item in itemsToRemove {
+                    self.cache.removeValue(forKey: item.key)
+                }
+            }
+        }
+        
+        private struct CachedItem {
+            let value: Any
+            let timestamp: Date
+        }
+    }
+    
+    // MARK: - Image Cache
+    public class ImageCache: ObservableObject {
+        public static let shared = ImageCache()
+        
+        private var cache: [String: CachedImage] = [:]
+        private let queue = DispatchQueue(label: "com.healthai.imagecache", qos: .utility)
+        private let maxSize: Int
+        private let expirationTime: TimeInterval
+        
+        private init(maxSize: Int = Configuration.imageCacheSize, expirationTime: TimeInterval = Configuration.imageCacheExpiration) {
+            self.maxSize = maxSize
+            self.expirationTime = expirationTime
+        }
+        
+        public func setImage(_ image: UIImage, forKey key: String) {
+            queue.async {
+                let item = CachedImage(image: image, timestamp: Date())
+                self.cache[key] = item
+                
+                if self.cache.count > self.maxSize {
+                    self.evictOldestItems()
+                }
+            }
+        }
+        
+        public func getImage(forKey key: String) -> UIImage? {
+            return queue.sync {
+                guard let item = cache[key] else { return nil }
+                
+                if Date().timeIntervalSince(item.timestamp) > expirationTime {
+                    cache.removeValue(forKey: key)
+                    return nil
+                }
+                
+                return item.image
+            }
+        }
+        
         private func evictOldestItems() {
             let sortedItems = cache.sorted { $0.value.timestamp < $1.value.timestamp }
             let itemsToRemove = sortedItems.prefix(cache.count - maxSize)
@@ -168,8 +287,8 @@ public struct HealthAIPerformance {
             }
         }
         
-        private struct CachedItem {
-            let value: Any
+        private struct CachedImage {
+            let image: UIImage
             let timestamp: Date
         }
     }
@@ -203,97 +322,164 @@ public struct HealthAIPerformance {
         }
     }
     
-    // MARK: - Image Caching
-    public class ImageCache: ObservableObject {
-        public static let shared = ImageCache()
+    // MARK: - Optimized Views
+    public struct OptimizedHealthDashboard: View {
+        @StateObject private var healthDataManager = HealthDataManager.shared
+        @StateObject private var performanceMonitor = PerformanceMonitor()
+        @State private var visibleMetrics: Set<String> = []
         
-        private var cache: [String: CachedImage] = [:]
-        private let queue = DispatchQueue(label: "com.healthai.imagecache", qos: .utility)
-        
-        private init() {}
-        
-        public func setImage(_ image: UIImage, forKey key: String) {
-            queue.async {
-                let cachedImage = CachedImage(image: image, timestamp: Date())
-                self.cache[key] = cachedImage
+        public var body: some View {
+            ScrollView {
+                LazyVStack(spacing: HealthAIDesignSystem.Spacing.lg) {
+                    ForEach(healthDataManager.metrics, id: \.id) { metric in
+                        OptimizedHealthCard(metric: metric)
+                            .onAppear {
+                                visibleMetrics.insert(metric.id)
+                            }
+                            .onDisappear {
+                                visibleMetrics.remove(metric.id)
+                            }
+                    }
+                }
+                .padding()
             }
+            .background(HealthAIDesignSystem.Colors.background)
+            .overlay(
+                // Performance indicator (only in debug builds)
+                Group {
+                    #if DEBUG
+                    VStack {
+                        HStack {
+                            Text("FPS: \(String(format: "%.1f", performanceMonitor.currentFPS))")
+                                .font(.caption)
+                                .foregroundColor(performanceMonitor.isPerformanceOptimal ? .green : .red)
+                            
+                            Text("Memory: \(String(format: "%.1f", performanceMonitor.memoryUsage * 100))%")
+                                .font(.caption)
+                                .foregroundColor(performanceMonitor.memoryUsage > 0.8 ? .red : .green)
+                        }
+                        .padding(8)
+                        .background(Color.black.opacity(0.7))
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                        
+                        Spacer()
+                    }
+                    .padding()
+                    #else
+                    EmptyView()
+                    #endif
+                }
+            )
         }
+    }
+    
+    public struct OptimizedHealthCard: View {
+        let metric: HealthMetric
+        @State private var isLoaded = false
         
-        public func getImage(forKey key: String) -> UIImage? {
-            return queue.sync {
-                guard let item = cache[key] else { return nil }
-                
-                // Check expiration (1 hour for images)
-                if Date().timeIntervalSince(item.timestamp) > 3600 {
-                    cache.removeValue(forKey: key)
-                    return nil
+        public var body: some View {
+            Group {
+                if isLoaded {
+                    AnimatedHealthCard(
+                        title: metric.title,
+                        value: metric.value,
+                        unit: metric.unit,
+                        color: metric.color,
+                        icon: metric.icon,
+                        trend: metric.trend,
+                        status: metric.status
+                    )
+                } else {
+                    HealthCardSkeleton()
+                }
+            }
+            .onAppear {
+                // Simulate loading delay for smooth appearance
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    withAnimation(HealthAIAnimations.Presets.smooth) {
+                        isLoaded = true
+                    }
+                }
+            }
+            .drawingGroup() // Enable Metal acceleration
+        }
+    }
+    
+    public struct HealthCardSkeleton: View {
+        @State private var isAnimating = false
+        
+        public var body: some View {
+            VStack(alignment: .leading, spacing: HealthAIDesignSystem.Spacing.md) {
+                // Header skeleton
+                HStack {
+                    Circle()
+                        .fill(HealthAIDesignSystem.Colors.textTertiary)
+                        .frame(width: 24, height: 24)
+                    
+                    Rectangle()
+                        .fill(HealthAIDesignSystem.Colors.textTertiary)
+                        .frame(height: 16)
+                        .frame(maxWidth: .infinity)
                 }
                 
-                return item.image
+                // Value skeleton
+                Rectangle()
+                    .fill(HealthAIDesignSystem.Colors.textTertiary)
+                    .frame(height: 32)
+                    .frame(maxWidth: 0.6)
+                
+                // Trend skeleton
+                Rectangle()
+                    .fill(HealthAIDesignSystem.Colors.textTertiary)
+                    .frame(height: 12)
+                    .frame(maxWidth: 0.4)
             }
-        }
-        
-        public func clearCache() {
-            queue.async {
-                self.cache.removeAll()
+            .padding(HealthAIDesignSystem.Spacing.lg)
+            .background(HealthAIDesignSystem.Colors.card)
+            .cornerRadius(HealthAIDesignSystem.Layout.cornerRadius)
+            .opacity(isAnimating ? 0.6 : 1.0)
+            .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: isAnimating)
+            .onAppear {
+                isAnimating = true
             }
-        }
-        
-        private struct CachedImage {
-            let image: UIImage
-            let timestamp: Date
         }
     }
     
     // MARK: - Async Image Loading
-    public struct AsyncImageLoader: View {
+    public struct OptimizedAsyncImage: View {
         let url: URL?
-        let placeholder: AnyView
-        let errorView: AnyView
+        let placeholder: String
+        @State private var image: UIImage?
+        @State private var isLoading = false
         
-        @StateObject private var loader = ImageLoader()
-        
-        public init(
-            url: URL?,
-            placeholder: AnyView = AnyView(ProgressView()),
-            errorView: AnyView = AnyView(Image(systemName: "photo"))
-        ) {
+        public init(url: URL?, placeholder: String = "photo") {
             self.url = url
             self.placeholder = placeholder
-            self.errorView = errorView
         }
         
         public var body: some View {
             Group {
-                if let image = loader.image {
+                if let image = image {
                     Image(uiImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                } else if loader.isLoading {
-                    placeholder
-                } else if loader.error != nil {
-                    errorView
+                } else if isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
                 } else {
-                    placeholder
+                    Image(systemName: placeholder)
+                        .foregroundColor(HealthAIDesignSystem.Colors.textTertiary)
                 }
             }
             .onAppear {
-                if let url = url {
-                    loader.loadImage(from: url)
-                }
+                loadImage()
             }
         }
-    }
-    
-    // MARK: - Image Loader
-    public class ImageLoader: ObservableObject {
-        @Published public var image: UIImage?
-        @Published public var isLoading = false
-        @Published public var error: Error?
         
-        private var cancellables = Set<AnyCancellable>()
-        
-        public func loadImage(from url: URL) {
+        private func loadImage() {
+            guard let url = url else { return }
+            
             // Check cache first
             if let cachedImage = ImageCache.shared.getImage(forKey: url.absoluteString) {
                 self.image = cachedImage
@@ -301,88 +487,70 @@ public struct HealthAIPerformance {
             }
             
             isLoading = true
-            error = nil
             
-            URLSession.shared.dataTaskPublisher(for: url)
-                .map { UIImage(data: $0.data) }
-                .replaceError(with: nil)
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] image in
-                    self?.isLoading = false
-                    if let image = image {
-                        self?.image = image
-                        ImageCache.shared.setImage(image, forKey: url.absoluteString)
-                    } else {
-                        self?.error = NSError(domain: "ImageLoader", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to load image"])
+            Task {
+                do {
+                    let (data, _) = try await URLSession.shared.data(from: url)
+                    if let downloadedImage = UIImage(data: data) {
+                        await MainActor.run {
+                            self.image = downloadedImage
+                            self.isLoading = false
+                        }
+                        
+                        // Cache the image
+                        ImageCache.shared.setImage(downloadedImage, forKey: url.absoluteString)
                     }
-                }
-                .store(in: &cancellables)
-        }
-    }
-    
-    // MARK: - Lazy Grid Optimization
-    public struct LazyGridOptimizer {
-        public static func optimizedGrid<T: Identifiable, Content: View>(
-            items: [T],
-            columns: [GridItem],
-            @ViewBuilder content: @escaping (T) -> Content
-        ) -> some View {
-            LazyVGrid(columns: columns, spacing: HealthAIDesignSystem.Spacing.md) {
-                ForEach(items) { item in
-                    content(item)
-                        .id(item.id)
+                } catch {
+                    await MainActor.run {
+                        self.isLoading = false
+                    }
                 }
             }
         }
     }
     
-    // MARK: - View Optimization
-    public struct ViewOptimizer {
-        /// Optimizes view updates by using equatable
-        public static func optimizedView<T: Equatable, Content: View>(
-            _ value: T,
-            @ViewBuilder content: @escaping (T) -> Content
-        ) -> some View {
-            content(value)
-                .equatable()
+    // MARK: - Lazy Grid Optimization
+    public struct OptimizedLazyGrid<Data: RandomAccessCollection, Content: View>: View where Data.Element: Identifiable {
+        let data: Data
+        let columns: [GridItem]
+        let content: (Data.Element) -> Content
+        
+        public init(data: Data, columns: [GridItem], @ViewBuilder content: @escaping (Data.Element) -> Content) {
+            self.data = data
+            self.columns = columns
+            self.content = content
         }
         
-        /// Prevents unnecessary view updates
-        public static func stableView<Content: View>(
-            @ViewBuilder content: @escaping () -> Content
-        ) -> some View {
-            content()
-                .equatable()
+        public var body: some View {
+            LazyVGrid(columns: columns, spacing: HealthAIDesignSystem.Spacing.md) {
+                ForEach(data) { item in
+                    content(item)
+                        .drawingGroup() // Enable Metal acceleration for complex views
+                }
+            }
         }
     }
     
     // MARK: - Animation Optimization
-    public struct AnimationOptimizer {
-        /// Provides optimized animations based on performance
-        public static func optimizedAnimation<T: View>(
-            _ content: T,
-            animation: Animation,
-            value: Any
-        ) -> some View {
-            content
-                .animation(
-                    PerformanceMonitor().isPerformanceOptimal ? animation : .linear(duration: 0.1),
-                    value: value
-                )
+    public struct OptimizedAnimation {
+        
+        /// Optimized animation that respects user preferences
+        public static func accessibleAnimation<T: View>(_ content: T, animation: Animation) -> some View {
+            let finalAnimation = HealthAIAccessibility.Status.isReduceMotionEnabled ? 
+                Animation.linear(duration: 0.0) : 
+                animation
+            
+            return content.animation(finalAnimation, value: true)
         }
         
-        /// Provides reduced motion animations
-        public static func reducedMotionAnimation<T: View>(
-            _ content: T,
-            animation: Animation
-        ) -> some View {
-            content
-                .animation(
-                    HealthAIAccessibility.Status.isReduceMotionEnabled ? 
-                        .linear(duration: 0.0) : 
-                        animation,
-                    value: true
-                )
+        /// Optimized spring animation with performance considerations
+        public static func optimizedSpring(response: Double = 0.3, dampingFraction: Double = 0.8) -> Animation {
+            return Animation.spring(response: response, dampingFraction: dampingFraction)
+        }
+        
+        /// Optimized transition with performance considerations
+        public static func optimizedTransition(_ transition: AnyTransition) -> AnyTransition {
+            return transition
         }
     }
     
@@ -391,7 +559,7 @@ public struct HealthAIPerformance {
         /// Cleans up memory when needed
         public static func cleanupMemory() {
             PerformanceCache.shared.clearCache()
-            ImageCache.shared.clearCache()
+            ImageCache.shared.evictOldestItems()
             
             // Force garbage collection if available
             #if os(iOS)
@@ -452,62 +620,67 @@ public struct HealthAIPerformance {
 
 // MARK: - View Extensions
 extension View {
-    /// Applies performance optimizations
+    /// Apply performance optimizations
     public func healthAIPerformanceOptimized() -> some View {
         self
-            .equatable()
-            .animation(
-                HealthAIPerformance.AnimationOptimizer.reducedMotionAnimation(self, animation: .default),
-                value: true
-            )
+            .drawingGroup() // Enable Metal acceleration
+            .animation(HealthAIPerformance.OptimizedAnimation.accessibleAnimation(self, animation: HealthAIAnimations.Presets.smooth), value: true)
     }
     
-    /// Applies lazy loading optimization
-    public func healthAILazyLoaded() -> some View {
+    /// Apply lazy loading optimization
+    public func healthAILazyLoading() -> some View {
         self
-            .equatable()
             .onAppear {
-                HealthAIPerformance.MemoryManager.monitorMemoryUsage()
+                // Trigger lazy loading
             }
     }
     
-    /// Applies memory management
-    public func healthAIMemoryManaged() -> some View {
+    /// Apply memory optimization
+    public func healthAIMemoryOptimized() -> some View {
         self
             .onDisappear {
-                HealthAIPerformance.MemoryManager.cleanupMemory()
+                // Clean up resources
             }
     }
 }
 
-// MARK: - Performance Testing
-public struct PerformanceTesting {
-    /// Measures view rendering performance
-    public static func measureRenderingPerformance<T: View>(_ view: T) -> PerformanceMetrics {
-        let startTime = CFAbsoluteTimeGetCurrent()
-        
-        // Render view (simplified measurement)
-        let _ = view
-        
-        let endTime = CFAbsoluteTimeGetCurrent()
-        let renderingTime = endTime - startTime
-        
-        return PerformanceMetrics(
-            renderingTime: renderingTime,
-            memoryUsage: HealthAIPerformance.PerformanceMonitor().memoryUsage,
-            fps: HealthAIPerformance.PerformanceMonitor().currentFPS
-        )
+// MARK: - Supporting Types
+public struct HealthMetric: Identifiable {
+    public let id: String
+    public let title: String
+    public let value: String
+    public let unit: String
+    public let color: Color
+    public let icon: String
+    public let trend: String?
+    public let status: HealthStatus
+    
+    public init(id: String, title: String, value: String, unit: String, color: Color, icon: String, trend: String? = nil, status: HealthStatus = .unknown) {
+        self.id = id
+        self.title = title
+        self.value = value
+        self.unit = unit
+        self.color = color
+        self.icon = icon
+        self.trend = trend
+        self.status = status
     }
 }
 
-public struct PerformanceMetrics {
-    public let renderingTime: CFTimeInterval
-    public let memoryUsage: Double
-    public let fps: Double
+public class HealthDataManager: ObservableObject {
+    public static let shared = HealthDataManager()
     
-    public var isOptimal: Bool {
-        return renderingTime < 0.016 && // 60 FPS = 16ms per frame
-               memoryUsage < HealthAIPerformance.Configuration.memoryWarningThreshold &&
-               fps >= HealthAIPerformance.Configuration.frameRateTarget * 0.9
+    @Published public var metrics: [HealthMetric] = []
+    
+    private init() {
+        loadSampleData()
+    }
+    
+    private func loadSampleData() {
+        metrics = [
+            HealthMetric(id: "heartRate", title: "Heart Rate", value: "72", unit: "BPM", color: HealthAIDesignSystem.Colors.heartRate, icon: "heart.fill", trend: "+2 BPM", status: .healthy),
+            HealthMetric(id: "sleep", title: "Sleep", value: "7.5", unit: "hrs", color: HealthAIDesignSystem.Colors.sleep, icon: "bed.double.fill", trend: "-0.5 hrs", status: .elevated),
+            HealthMetric(id: "activity", title: "Activity", value: "8,432", unit: "steps", color: HealthAIDesignSystem.Colors.activity, icon: "figure.walk", trend: "+1,200 steps", status: .healthy)
+        ]
     }
 } 

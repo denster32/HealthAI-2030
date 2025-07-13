@@ -15,7 +15,7 @@ import CoreImage.CIFilterBuiltins
 import PhotosUI
 import CoreML
 import Accelerate
-import Analytics
+import HealthAI2030Analytics
 
 // --- UIKit Stubs for Build ---
 class UIWindow {}

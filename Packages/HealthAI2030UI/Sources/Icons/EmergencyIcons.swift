@@ -253,7 +253,7 @@ public struct EmergencyIcons {
         public static let drill = "exclamationmark.triangle"
         public static let training = "person.2.fill"
         public static let procedure = "list.bullet"
-        public static let protocol = "doc.text"
+        public static let `protocol` = "doc.text"
         public static let emergency = "exclamationmark.triangle.fill"
     }
     

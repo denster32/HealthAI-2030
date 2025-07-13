@@ -1,10 +1,13 @@
 import Foundation
-import HomeKit
 import Combine
 import SwiftUI
+#if canImport(HomeKit)
+import HomeKit
+#endif
 
 /// Advanced Smart Home Integration Manager
 /// Provides comprehensive smart home integration with health optimization features
+#if canImport(HomeKit)
 @MainActor
 class AdvancedSmartHomeManager: ObservableObject {
     
@@ -859,4 +862,10 @@ enum AlertSeverity: String, Codable, CaseIterable {
     case medium = "Medium"
     case high = "High"
     case critical = "Critical"
-} 
+}
+#else
+class AdvancedSmartHomeManager: ObservableObject {
+    init() {}
+    // Stub implementation: Add minimal properties and methods if necessary to satisfy references
+}
+#endif 

@@ -260,7 +260,7 @@ public struct MusculoskeletalIllustrations {
     /// Joint movement illustrations
     public struct JointMovement {
         public static let flexion = "arrow.up.arrow.down"
-        public static let extension = "arrow.up.arrow.down"
+        public static let `extension` = "arrow.up.arrow.down"
         public static let abduction = "arrow.up.arrow.down"
         public static let adduction = "arrow.up.arrow.down"
         public static let rotation = "arrow.clockwise"

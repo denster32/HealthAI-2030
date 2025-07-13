@@ -1,4 +1,6 @@
 import SwiftUI
+import HealthAI2030UI
+import HealthAI2030Core
 import AVFoundation
 import CoreML
 import SwiftData
@@ -27,7 +29,8 @@ struct HealthAI2030TVApp: App {
     
     var body: some Scene {
         WindowGroup {
-            TVOSContentView()
+            ContentView()
+                .environmentObject(HealthAICoordinator())
                 .environmentObject(environmentManager)
                 .environmentObject(performanceManager)
                 .environmentObject(smartHomeManager)
@@ -48,6 +51,15 @@ struct HealthAI2030TVApp: App {
             await smartHomeManager.initialize()
             await predictiveAnalyticsManager.initialize()
         }
+    }
+}
+
+// MARK: - Main Content View
+
+@available(tvOS 18.0, *)
+struct ContentView: View {
+    var body: some View {
+        TVHealthDashboardView()
     }
 }
 

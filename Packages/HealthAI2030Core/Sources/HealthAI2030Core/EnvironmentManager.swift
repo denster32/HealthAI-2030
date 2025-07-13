@@ -1,6 +1,8 @@
 import Foundation
 import Combine
+#if canImport(HomeKit)
 import HomeKit
+#endif
 
 @MainActor
 public class EnvironmentManager: ObservableObject {
@@ -9,7 +11,9 @@ public class EnvironmentManager: ObservableObject {
     @Published public var errors: [Error] = []
     @Published public var isConnected = false
     
+    #if canImport(HomeKit)
     private var homeManager: HMHomeManager?
+    #endif
     private var cancellables = Set<AnyCancellable>()
     
     private init() {
@@ -18,28 +22,34 @@ public class EnvironmentManager: ObservableObject {
     }
     
     private func setupHomeKit() {
+        #if canImport(HomeKit)
         homeManager = HMHomeManager()
         homeManager?.delegate = self
         
-        // Monitor HomeKit authorization status
         NotificationCenter.default.publisher(for: .HMHomeManagerDidUpdateHomes)
             .sink { [weak self] _ in
                 self?.isConnected = self?.homeManager?.primaryHome != nil
             }
             .store(in: &cancellables)
+        #else
+        isConnected = false
+        #endif
     }
     
     private func loadInitialEnvironmentData() {
-        // Load from HomeKit if available, otherwise use defaults
+        #if canImport(HomeKit)
         if let home = homeManager?.primaryHome {
             loadHomeKitData(from: home)
         } else {
             loadDefaultEnvironmentData()
         }
+        #else
+        loadDefaultEnvironmentData()
+        #endif
     }
     
+    #if canImport(HomeKit)
     private func loadHomeKitData(from home: HMHome) {
-        // Load temperature, humidity, air quality, and lighting data from HomeKit
         for accessory in home.accessories {
             for service in accessory.services {
                 for characteristic in service.characteristics {
@@ -48,6 +58,7 @@ public class EnvironmentManager: ObservableObject {
             }
         }
     }
+    #endif
     
     private func loadDefaultEnvironmentData() {
         environmentData = EnvironmentData(
@@ -59,6 +70,7 @@ public class EnvironmentManager: ObservableObject {
         )
     }
     
+    #if canImport(HomeKit)
     private func updateEnvironmentData(from characteristic: HMCharacteristic) {
         switch characteristic.characteristicType {
         case HMCharacteristicTypeCurrentTemperature:
@@ -73,9 +85,9 @@ public class EnvironmentManager: ObservableObject {
             break
         }
     }
+    #endif
     
     public func updateEnvironmentSetting(_ key: String, value: Any) {
-        // Implement smart home control logic
         switch key {
         case "temperature":
             if let temp = value as? Double {
@@ -94,8 +106,8 @@ public class EnvironmentManager: ObservableObject {
         }
     }
     
+    #if canImport(HomeKit)
     private func setTemperature(_ temperature: Double) {
-        // Find temperature control devices and update them
         guard let home = homeManager?.primaryHome else { return }
         
         for accessory in home.accessories {
@@ -116,7 +128,6 @@ public class EnvironmentManager: ObservableObject {
     }
     
     private func setHumidity(_ humidity: Double) {
-        // Find humidity control devices and update them
         guard let home = homeManager?.primaryHome else { return }
         
         for accessory in home.accessories {
@@ -137,7 +148,6 @@ public class EnvironmentManager: ObservableObject {
     }
     
     private func setLighting(_ mode: LightingMode) {
-        // Find lighting devices and update them
         guard let home = homeManager?.primaryHome else { return }
         
         for accessory in home.accessories {
@@ -157,8 +167,10 @@ public class EnvironmentManager: ObservableObject {
             }
         }
     }
+    #endif
 }
 
+#if canImport(HomeKit)
 extension EnvironmentManager: HMHomeManagerDelegate {
     public func homeManagerDidUpdateHomes(_ manager: HMHomeManager) {
         if let home = manager.primaryHome {
@@ -166,6 +178,7 @@ extension EnvironmentManager: HMHomeManagerDelegate {
         }
     }
 }
+#endif
 
 public struct EnvironmentData: Codable {
     public var temperature: Double
