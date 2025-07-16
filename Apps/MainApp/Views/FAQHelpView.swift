@@ -4,20 +4,26 @@ import SwiftUI
 struct FAQHelpView: View {
     var body: some View {
         List {
-            Section(header: Text("General")) {
-                Text("How do I connect my Apple Watch?")
-                Text("How do I export my health data?")
+            Section(header: Text("faq_general_header")
+                        .font(.headline)
+                        .accessibilityAddTraits(.isHeader)) {
+                Text("faq_q1")
+                Text("faq_q2")
             }
-            Section(header: Text("Privacy & Security")) {
-                Text("How is my data protected?")
-                Text("How do I delete my account?")
+            Section(header: Text("faq_privacy_header")
+                        .font(.headline)
+                        .accessibilityAddTraits(.isHeader)) {
+                Text("faq_q3")
+                Text("faq_q4")
             }
-            Section(header: Text("Features")) {
-                Text("How do I use the scripting feature?")
-                Text("How do I join a family group?")
+            Section(header: Text("faq_features_header")
+                        .font(.headline)
+                        .accessibilityAddTraits(.isHeader)) {
+                Text("faq_q5")
+                Text("faq_q6")
             }
         }
-        .navigationTitle("FAQ & Help")
+        .navigationTitle(Text("faq_title"))
     }
 }
 

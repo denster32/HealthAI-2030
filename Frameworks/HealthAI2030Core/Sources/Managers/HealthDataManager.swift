@@ -1,7 +1,4 @@
 import HealthAI2030Core
-import HealthAI2030Core
-import HealthAI2030Core
-import HealthAI2030Core
 import Foundation
 import HealthKit
 import CoreData
