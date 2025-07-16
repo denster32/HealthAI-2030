@@ -1,6 +1,15 @@
 #!/bin/zsh
 # Validate release readiness for HealthAI 2030
-set -e
+set -euo pipefail
+IFS=$'\n\t'
+
+trap 'echo "ERROR: Release validation failed" >&2' ERR
+
+echo "==> Ensuring working tree is clean..."
+if ! git diff-index --quiet HEAD --; then
+  echo "ERROR: Uncommitted changes detected. Commit or stash before releasing."
+  exit 1
+fi
 
 echo "==> Checking test coverage..."
 COVERAGE=$(swift test --enable-code-coverage 2>&1 | grep 'lines covered' | awk '{print $1}')
