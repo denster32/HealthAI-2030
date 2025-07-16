@@ -1,3 +1,13 @@
 /* French */
 "welcome_title" = "Bienvenue à HealthAI 2030";
 "welcome_message" = "Votre santé, vos données, votre avenir.";
+"faq_general_header" = "Général";
+"faq_privacy_header" = "Confidentialité et sécurité";
+"faq_features_header" = "Fonctionnalités";
+"faq_q1" = "Comment connecter mon Apple Watch ?";
+"faq_q2" = "Comment exporter mes données de santé ?";
+"faq_q3" = "Comment mes données sont-elles protégées ?";
+"faq_q4" = "Comment supprimer mon compte ?";
+"faq_q5" = "Comment utiliser la fonctionnalité de script ?";
+"faq_q6" = "Comment rejoindre un groupe familial ?";
+"faq_title" = "FAQ et Aide";

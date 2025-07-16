@@ -1,3 +1,13 @@
 /* Chinese */
 "welcome_title" = "欢迎使用 HealthAI 2030";
 "welcome_message" = "您的健康，您的数据，您的未来。";
+"faq_general_header" = "常见问题";
+"faq_privacy_header" = "隐私与安全";
+"faq_features_header" = "功能";
+"faq_q1" = "如何连接我的 Apple Watch？";
+"faq_q2" = "如何导出我的健康数据？";
+"faq_q3" = "我的数据如何得到保护？";
+"faq_q4" = "如何删除我的帐户？";
+"faq_q5" = "如何使用脚本功能？";
+"faq_q6" = "如何加入家庭群组？";
+"faq_title" = "常见问题与帮助";
