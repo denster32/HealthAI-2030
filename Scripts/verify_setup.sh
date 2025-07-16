@@ -44,14 +44,17 @@ PACKAGES=(
     "SharedSettingsModule"
     "HealthAIConversationalEngine"
     "Kit"
-    "ML"
     "SharedHealthSummary"
 )
 
 MISSING_PACKAGES=()
 
 for package in "${PACKAGES[@]}"; do
-    if [ -d "Packages/$package/Sources/$package" ]; then
+    if [ -d "Packages/$package/Sources" ] || \
+       [ -d "Packages/$package/Sources/$package" ] || \
+       [ -d "Modules/Features/$package/$package" ] || \
+       [ -d "Frameworks/$package/Sources" ] || \
+       [ -d "Frameworks/$package/Sources/$package" ]; then
         echo "  ✅ $package"
     else
         echo "  ❌ $package (missing)"
@@ -98,6 +101,8 @@ if swift build --quiet; then
     echo "✅ Build successful"
 else
     echo "❌ Build failed"
+    echo "    ⚠️ Ensure the installed Swift toolchain matches the required version"
+    echo "    as specified in Package.swift files (e.g., Swift 6.2)."
     exit 1
 fi
 
