@@ -125,6 +125,8 @@ The project uses a sophisticated 8-agent development system for the next phase:
 2. **Understand Plan:** Read `Audit_Plan/NEW_8_AGENT_DEVELOPMENT_PLAN.md`
 3. **Track Progress:** Monitor `Audit_Plan/MASTER_PROGRESS_CHECKLIST.md`
 4. **Agent Work:** Review individual agent manifests in `Audit_Plan/`
+5. **Install Correct Swift Version:** Ensure Swift 6.2 or later is installed to
+   build the project successfully.
 
 ### For Agents
 1. **Daily Updates:** Update progress in master checklist
