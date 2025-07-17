@@ -628,20 +628,25 @@ public class MLPredictiveModels {
         targets: [Double],
         parameters: [String: Any]
     ) throws -> [String: Any] {
-        
+
         let numIterations = parameters["num_iterations"] as? Int ?? 100
         let learningRate = parameters["learning_rate"] as? Double ?? 0.1
         let maxDepth = parameters["max_depth"] as? Int ?? 3
-        
+        let earlyStoppingRounds = parameters["early_stopping_rounds"] as? Int ?? 0
+        let earlyStoppingTolerance = parameters["early_stopping_tolerance"] as? Double ?? 0.0
+
         // Initialize with mean prediction
         let initialPrediction = targets.reduce(0, +) / Double(targets.count)
         var predictions = Array(repeating: initialPrediction, count: targets.count)
         var trees: [DecisionTree] = []
-        
+
+        var bestLoss = Double.greatestFiniteMagnitude
+        var roundsWithoutImprovement = 0
+
         for _ in 0..<numIterations {
             // Calculate residuals
             let residuals = zip(targets, predictions).map { $0 - $1 }
-            
+
             // Train tree on residuals
             let tree = try trainDecisionTree(
                 features: features,
@@ -650,20 +655,35 @@ public class MLPredictiveModels {
                 minSamplesLeaf: 1,
                 selectedFeatures: Array(0..<features.count)
             )
-            
+
             trees.append(tree)
-            
+
             // Update predictions
             let treePredictions = try predictWithDecisionTree(tree: tree, features: features)
             for i in 0..<predictions.count {
                 predictions[i] += learningRate * treePredictions[i]
             }
+
+            // Early stopping check
+            if earlyStoppingRounds > 0 {
+                let mse = zip(targets, predictions).map { pow($0 - $1, 2) }.reduce(0, +) / Double(targets.count)
+                if bestLoss - mse > earlyStoppingTolerance {
+                    bestLoss = mse
+                    roundsWithoutImprovement = 0
+                } else {
+                    roundsWithoutImprovement += 1
+                    if roundsWithoutImprovement >= earlyStoppingRounds {
+                        break
+                    }
+                }
+            }
         }
-        
+
         return [
             "trees": trees,
             "learning_rate": learningRate,
-            "initial_prediction": initialPrediction
+            "initial_prediction": initialPrediction,
+            "iterations": trees.count
         ]
     }
     

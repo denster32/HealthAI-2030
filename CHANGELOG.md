@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Quantum-classical hybrid optimization algorithms
 - Enhanced security audit logging
 - Real-time threat detection capabilities
+- Early stopping for gradient boosting models
 
 ### Changed
 - Updated to Swift 6.0 for improved performance
