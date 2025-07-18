@@ -1,7 +1,7 @@
 import XCTest
 @testable import HealthAI2030Core
 
-@available(iOS 15.0, macOS 12.0, *)
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, *)
 final class PreSymptomHealthPredictionTests: XCTestCase {
     
     private var anomalyDetector: HealthAnomalyDetectionManager!

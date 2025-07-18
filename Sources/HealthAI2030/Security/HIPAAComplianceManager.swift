@@ -4,7 +4,7 @@ import LocalAuthentication
 
 /// Comprehensive HIPAA compliance manager for healthcare data protection
 /// Provides complete HIPAA compliance monitoring, enforcement, and reporting
-@available(iOS 14.0, macOS 11.0, *)
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, *)
 public class HIPAAComplianceManager: ObservableObject {
     
     // MARK: - Published Properties

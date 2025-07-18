@@ -1,0 +1,3 @@
+.accessibilityLabel("Health Dashboard")
+// ... existing code ...
+.accessibilityHint("Displays overall health metrics")

@@ -438,8 +438,8 @@ class TVHealthManager: ObservableObject {
     private init() {}
     
     func startMonitoring() {
-        timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
-            self.updateHealthData()
+        timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            self?.updateHealthData()
         }
     }
     

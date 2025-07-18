@@ -2,7 +2,7 @@ import XCTest
 import Combine
 @testable import MentalHealth
 
-@available(iOS 15.0, macOS 12.0, *)
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, *)
 final class MoodEnergyForecastingTests: XCTestCase {
     var forecastingEngine: MoodEnergyForecastingEngine!
     var cancellables: Set<AnyCancellable> = []

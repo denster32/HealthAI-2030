@@ -109,7 +109,7 @@ struct SidebarHeader: View {
                 Image(systemName: isCollapsed ? "chevron.right" : "chevron.left")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .frame(width: 20, height: 20)
+                    .frame(width: 44, height: 44)
             }
             .buttonStyle(PlainButtonStyle())
         }

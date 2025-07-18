@@ -4,7 +4,7 @@ import os.log
 
 /// Real-time streaming analytics engine for processing continuous health data streams
 /// Provides high-performance streaming data processing and real-time insights
-@available(iOS 14.0, macOS 11.0, *)
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, *)
 public class StreamingAnalyticsEngine: ObservableObject {
     
     // MARK: - Published Properties

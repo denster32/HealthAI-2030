@@ -5,7 +5,7 @@ import os.log
 
 /// Advanced encryption engine providing enterprise-grade encryption with quantum-resistant algorithms
 /// Supports multiple encryption standards including AES-256, RSA-4096, and post-quantum cryptography
-@available(iOS 14.0, macOS 11.0, *)
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, *)
 public class AdvancedEncryptionEngine: ObservableObject {
     
     // MARK: - Published Properties

@@ -4,7 +4,7 @@ import os.log
 
 /// Model version control and deployment management system
 /// Provides comprehensive model lifecycle management with versioning, rollback, and deployment capabilities
-@available(iOS 14.0, macOS 11.0, *)
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, *)
 public class ModelVersioning: ObservableObject {
     
     // MARK: - Published Properties

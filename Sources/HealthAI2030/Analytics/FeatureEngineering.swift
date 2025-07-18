@@ -4,7 +4,7 @@ import os.log
 
 /// Advanced feature engineering and extraction system for machine learning models
 /// Provides comprehensive feature creation, selection, and optimization capabilities
-@available(iOS 14.0, macOS 11.0, *)
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, *)
 public class FeatureEngineering: ObservableObject {
     
     // MARK: - Published Properties
@@ -97,17 +97,17 @@ public class FeatureEngineering: ObservableObject {
             self.queue.async {
                 do {
                     // Step 1: Feature selection
-                    DispatchQueue.main.async { self.processingStatus = .selecting }
+                    DispatchQueue.main.async { [weak self] in self?.processingStatus = .selecting }
                     let selectedFeatures = try self.featureSelector.selectFeatures(featureSet, for: modelType)
-                    DispatchQueue.main.async { self.optimizationProgress = 0.5 }
+                    DispatchQueue.main.async { [weak self] in self?.optimizationProgress = 0.5 }
                     
                     // Step 2: Feature transformation
-                    DispatchQueue.main.async { self.processingStatus = .transforming }
+                    DispatchQueue.main.async { [weak self] in self?.processingStatus = .transforming }
                     let transformedFeatures = try self.featureTransformer.transformFeatures(selectedFeatures)
-                    DispatchQueue.main.async { self.optimizationProgress = 0.8 }
+                    DispatchQueue.main.async { [weak self] in self?.optimizationProgress = 0.8 }
                     
                     // Step 3: Feature validation
-                    DispatchQueue.main.async { self.processingStatus = .validating }
+                    DispatchQueue.main.async { [weak self] in self?.processingStatus = .validating }
                     let validatedFeatures = try self.featureValidator.validateFeatures(transformedFeatures)
                     
                     let optimizedSet = OptimizedFeatureSet(
@@ -125,7 +125,7 @@ public class FeatureEngineering: ObservableObject {
                     promise(.success(optimizedSet))
                     
                 } catch {
-                    DispatchQueue.main.async { self.processingStatus = .failed }
+                    DispatchQueue.main.async { [weak self] in self?.processingStatus = .failed }
                     promise(.failure(.optimizationFailed(error.localizedDescription)))
                 }
             }
@@ -206,7 +206,7 @@ public class FeatureEngineering: ObservableObject {
             )
             
             // Step 3: Validate feature set
-            DispatchQueue.main.async { self.processingStatus = .validating }
+            DispatchQueue.main.async { [weak self] in self?.processingStatus = .validating }
             let validatedSet = try featureValidator.validateFeatureSet(featureSet)
             
             DispatchQueue.main.async {
@@ -219,7 +219,7 @@ public class FeatureEngineering: ObservableObject {
             
         } catch {
             logger.error("Feature engineering failed: \(error.localizedDescription)")
-            DispatchQueue.main.async { self.processingStatus = .failed }
+            DispatchQueue.main.async { [weak self] in self?.processingStatus = .failed }
             completion(.failure(.extractionFailed(error.localizedDescription)))
         }
     }

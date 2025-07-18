@@ -1,5 +1,5 @@
 import XCTest
-@testable import MainApp
+@testable import HealthAI2030Core
 import HealthKit
 
 final class SleepManagerTests: XCTestCase {

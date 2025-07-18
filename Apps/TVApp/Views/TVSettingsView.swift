@@ -638,7 +638,7 @@ struct FamilyMemberRow: View {
             ZStack {
                 Circle()
                     .fill(member.profileColor)
-                    .frame(width: 40, height: 40)
+                    .frame(width: 60, height: 60)
                 
                 Text(member.initials)
                     .font(.system(size: 16, weight: .bold))

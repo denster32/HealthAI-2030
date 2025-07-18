@@ -1,5 +1,5 @@
 import XCTest
-@testable import MainApp
+@testable import HealthAI2030Core
 
 /// Unit tests for Fitness & Exercise Optimization Engine
 final class FitnessExerciseOptimizationTests: XCTestCase {

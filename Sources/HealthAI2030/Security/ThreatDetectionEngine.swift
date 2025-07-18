@@ -5,7 +5,7 @@ import os.log
 
 /// Advanced threat detection engine with real-time monitoring and AI-powered threat analysis
 /// Provides comprehensive threat detection, analysis, and automated response capabilities
-@available(iOS 14.0, macOS 11.0, *)
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, *)
 public class ThreatDetectionEngine: ObservableObject {
     
     // MARK: - Published Properties

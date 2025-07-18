@@ -2,7 +2,7 @@ import XCTest
 import Foundation
 import CoreML
 import HealthKit
-@testable import HealthAI2030MainApp
+@testable import HealthAI2030Core
 
 @MainActor
 final class PersonalizedRecommendationEngineTests: XCTestCase {

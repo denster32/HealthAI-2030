@@ -701,6 +701,11 @@ class HomeManager: NSObject, ObservableObject {
         homeManager.delegate = self
     }
     
+    deinit {
+        // Clear delegate to prevent retain cycle
+        homeManager.delegate = nil
+    }
+    
     func requestAccess() {
         // HomeKit access is handled automatically
     }

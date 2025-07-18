@@ -1,0 +1,328 @@
+// swift-tools-version: 6.1
+import PackageDescription
+
+let package = Package(
+    name: "HealthAI2030",
+    platforms: [
+        .iOS(.v18),
+        .iPadOS(.v18),
+        .macOS(.v15),
+        .watchOS(.v11),
+        .tvOS(.v18),
+        .visionOS(.v2)
+    ],
+    products: [
+        // MARK: - Core Products (Essential - always included)
+        .library(
+            name: "HealthAI2030Core",
+            targets: ["HealthAI2030Core"]
+        ),
+        .library(
+            name: "HealthAI2030Foundation",
+            targets: ["HealthAI2030Foundation"]
+        ),
+        .library(
+            name: "HealthAI2030Networking",
+            targets: ["HealthAI2030Networking"]
+        ),
+        .library(
+            name: "HealthAI2030UI",
+            targets: ["HealthAI2030UI"]
+        ),
+        
+        // MARK: - Feature Products (Lazy loaded)
+        .library(
+            name: "HealthAI2030Features",
+            targets: [
+                "CardiacHealth",
+                "MentalHealth", 
+                "SleepTracking",
+                "HealthPrediction"
+            ]
+        ),
+        
+        // MARK: - Advanced Feature Modules
+        .library(
+            name: "HealthAI2030AdvancedFeatures",
+            targets: [
+                "SleepOptimization",
+                "HealthMetrics",
+                "SharePlayWellness",
+                "BiometricFusion"
+            ]
+        ),
+        
+        // MARK: - Optional Products (On-demand)
+        .library(
+            name: "HealthAI2030Optional",
+            targets: [
+                "HealthAI2030ML",
+                "HealthAI2030Graphics",
+                "Metal4",
+                "AR",
+                "SmartHome",
+                "UserScripting"
+            ]
+        ),
+        
+        // MARK: - Platform-Specific Products
+        .library(
+            name: "HealthAI2030iOS",
+            targets: ["iOS18Features"]
+        ),
+        .library(
+            name: "HealthAI2030Vision",
+            targets: ["VisionOSFeatures"]
+        ),
+        .library(
+            name: "HealthAI2030Widgets",
+            targets: ["HealthAI2030Widgets"]
+        ),
+        
+        // MARK: - Integration Products
+        .library(
+            name: "HealthAI2030Shortcuts",
+            targets: ["Shortcuts", "CopilotSkills"]
+        ),
+        .library(
+            name: "HealthAI2030Wellness",
+            targets: ["StartMeditation", "LogWaterIntake", "Biofeedback"]
+        ),
+        
+        // MARK: - Main App (Optimized)
+        .library(
+            name: "HealthAI2030",
+            targets: ["HealthAI2030"]
+        ),
+        
+        // MARK: - Shared Components
+        .library(
+            name: "Shared",
+            targets: ["Shared"]
+        ),
+        .library(
+            name: "SharedSettingsModule",
+            targets: ["SharedSettingsModule"]
+        ),
+        .library(
+            name: "HealthAIConversationalEngine",
+            targets: ["HealthAIConversationalEngine"]
+        ),
+        .library(
+            name: "Kit",
+            targets: ["Kit"]
+        ),
+        .library(
+            name: "SharedHealthSummary",
+            targets: ["SharedHealthSummary"]
+        )
+    ],
+    targets: [
+        // MARK: - Main Target (Core Dependencies Only)
+        .target(
+            name: "HealthAI2030",
+            dependencies: [
+                "HealthAI2030Core",
+                "HealthAI2030Foundation",
+                "HealthAI2030Networking",
+                "HealthAI2030UI",
+                "Shared",
+                "Kit"
+            ],
+            path: "Sources/HealthAI2030"
+        ),
+        
+        // MARK: - Core Targets
+        .target(
+            name: "HealthAI2030Core",
+            dependencies: [
+                "HealthAI2030Foundation"
+            ],
+            path: "Sources/Features/HealthAI2030Core"
+        ),
+        .target(
+            name: "HealthAI2030Foundation",
+            dependencies: [],
+            path: "Sources/Features/HealthAI2030Foundation"
+        ),
+        .target(
+            name: "HealthAI2030Networking",
+            dependencies: ["HealthAI2030Foundation"],
+            path: "Sources/Features/HealthAI2030Networking"
+        ),
+        .target(
+            name: "HealthAI2030UI",
+            dependencies: ["HealthAI2030Foundation"],
+            path: "Sources/Features/HealthAI2030UI"
+        ),
+        
+        // MARK: - Feature Targets (Lazy Loaded)
+        .target(
+            name: "CardiacHealth",
+            dependencies: ["HealthAI2030Core"],
+            path: "Sources/Features/CardiacHealth"
+        ),
+        .target(
+            name: "MentalHealth",
+            dependencies: ["HealthAI2030Core"],
+            path: "Sources/Features/MentalHealth"
+        ),
+        .target(
+            name: "SleepTracking",
+            dependencies: ["HealthAI2030Core"],
+            path: "Sources/Features/SleepTracking"
+        ),
+        .target(
+            name: "HealthPrediction",
+            dependencies: ["HealthAI2030Core"],
+            path: "Sources/Features/HealthPrediction"
+        ),
+        
+        // MARK: - Optional Targets (On-Demand)
+        .target(
+            name: "HealthAI2030ML",
+            dependencies: ["HealthAI2030Core"],
+            path: "Sources/Features/HealthAI2030ML"
+        ),
+        .target(
+            name: "HealthAI2030Graphics",
+            dependencies: ["HealthAI2030Foundation"],
+            path: "Sources/Features/HealthAI2030Graphics"
+        ),
+        .target(
+            name: "Metal4",
+            dependencies: ["HealthAI2030Graphics"],
+            path: "Sources/Features/Metal4"
+        ),
+        .target(
+            name: "AR",
+            dependencies: ["HealthAI2030Graphics"],
+            path: "Sources/Features/AR"
+        ),
+        .target(
+            name: "SmartHome",
+            dependencies: ["HealthAI2030Core"],
+            path: "Sources/Features/SmartHome"
+        ),
+        .target(
+            name: "UserScripting",
+            dependencies: ["HealthAI2030Core"],
+            path: "Sources/Features/UserScripting"
+        ),
+        
+        // MARK: - Platform-Specific Targets
+        .target(
+            name: "iOS18Features",
+            dependencies: ["HealthAI2030UI"],
+            path: "Sources/Features/iOS18Features"
+        ),
+        .target(
+            name: "HealthAI2030Widgets",
+            dependencies: ["HealthAI2030UI"],
+            path: "Sources/Features/HealthAI2030Widgets"
+        ),
+        .target(
+            name: "VisionOSFeatures",
+            dependencies: ["HealthAI2030UI", "HealthAI2030Graphics"],
+            path: "Sources/Features/VisionOSFeatures"
+        ),
+        
+        // MARK: - Advanced Feature Module Targets
+        .target(
+            name: "SleepOptimization",
+            dependencies: ["HealthAI2030Core"],
+            path: "Packages/FeatureModules/SleepOptimization/Sources/SleepOptimization"
+        ),
+        .target(
+            name: "HealthMetrics",
+            dependencies: ["HealthAI2030Core"],
+            path: "Packages/FeatureModules/HealthMetrics/Sources/HealthMetrics"
+        ),
+        .target(
+            name: "SharePlayWellness",
+            dependencies: ["HealthAI2030Core"],
+            path: "Packages/FeatureModules/SharePlayWellness/Sources/SharePlayWellness"
+        ),
+        .target(
+            name: "BiometricFusion",
+            dependencies: ["HealthAI2030Core"],
+            path: "Frameworks/BiometricFusionKit/Sources/BiometricFusionKit"
+        ),
+        
+        // MARK: - Integration Targets
+        .target(
+            name: "Shortcuts",
+            dependencies: ["HealthAI2030Core"],
+            path: "Sources/Features/Shortcuts"
+        ),
+        .target(
+            name: "CopilotSkills",
+            dependencies: ["HealthAI2030Core"],
+            path: "Sources/Features/CopilotSkills"
+        ),
+        .target(
+            name: "LogWaterIntake",
+            dependencies: [],
+            path: "Sources/Features/LogWaterIntake"
+        ),
+        .target(
+            name: "StartMeditation",
+            dependencies: [],
+            path: "Sources/Features/StartMeditation"
+        ),
+        .target(
+            name: "Biofeedback",
+            dependencies: ["HealthAI2030Core"],
+            path: "Sources/Features/Biofeedback"
+        ),
+        
+        // MARK: - Shared Targets
+        .target(
+            name: "Shared",
+            dependencies: [],
+            path: "Sources/Features/Shared"
+        ),
+        .target(
+            name: "SharedSettingsModule",
+            dependencies: ["Shared"],
+            path: "Sources/Features/SharedSettingsModule"
+        ),
+        .target(
+            name: "HealthAIConversationalEngine",
+            dependencies: ["HealthAI2030Core"],
+            path: "Sources/Features/HealthAIConversationalEngine"
+        ),
+        .target(
+            name: "Kit",
+            dependencies: ["HealthAI2030Foundation"],
+            path: "Sources/Features/Kit"
+        ),
+        .target(
+            name: "SharedHealthSummary",
+            dependencies: ["HealthAI2030Core"],
+            path: "Sources/Features/SharedHealthSummary"
+        ),
+        
+        // MARK: - Test Targets
+        .testTarget(
+            name: "HealthAI2030Tests",
+            dependencies: ["HealthAI2030", "HealthAI2030Core"],
+            path: "Tests/HealthAI2030Tests"
+        ),
+        .testTarget(
+            name: "HealthAI2030IntegrationTests",
+            dependencies: ["HealthAI2030"],
+            path: "Tests/HealthAI2030IntegrationTests"
+        ),
+        .testTarget(
+            name: "HealthAI2030UITests",
+            dependencies: ["HealthAI2030"],
+            path: "Tests/HealthAI2030UITests"
+        ),
+        .testTarget(
+            name: "CardiacHealthTests",
+            dependencies: ["CardiacHealth"],
+            path: "Tests/CardiacHealthTests"
+        )
+    ]
+)

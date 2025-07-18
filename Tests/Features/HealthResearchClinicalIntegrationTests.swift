@@ -1,5 +1,5 @@
 import XCTest
-@testable import MainApp
+@testable import HealthAI2030Core
 
 class HealthResearchClinicalIntegrationTests: XCTestCase {
     var engine: HealthResearchClinicalIntegrationEngine!

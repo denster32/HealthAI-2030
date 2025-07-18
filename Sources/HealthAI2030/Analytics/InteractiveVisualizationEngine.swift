@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Advanced interactive data visualization engine for healthcare analytics
 /// Provides real-time, interactive charts, graphs, and specialized health visualizations
-@available(iOS 14.0, macOS 11.0, *)
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, *)
 public class InteractiveVisualizationEngine: ObservableObject {
     
     // MARK: - Published Properties

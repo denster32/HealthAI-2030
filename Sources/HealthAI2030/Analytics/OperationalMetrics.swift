@@ -5,7 +5,7 @@ import Charts
 
 /// Comprehensive operational metrics tracking and analysis system
 /// Monitors healthcare operations, resource utilization, and performance indicators
-@available(iOS 16.0, macOS 13.0, watchOS 9.0, tvOS 16.0, *)
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, *)
 public class OperationalMetrics: ObservableObject {
     
     // MARK: - Published Properties

@@ -1,28 +1,87 @@
-import HealthAI2030Core
-import HealthAI2030Core
-// swift-tools-version: 6.2
-// The swift-tools-version declares the minimum version of Swift required to build this package.
-
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
     name: "BiometricFusionKit",
+    platforms: [
+        .iOS(.v18),
+        .iPadOS(.v18),
+        .macOS(.v15),
+        .watchOS(.v11),
+        .tvOS(.v18),
+        .visionOS(.v2)
+    ],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "BiometricFusionKit",
             targets: ["BiometricFusionKit"]
         ),
+        .library(
+            name: "BiometricProcessing",
+            targets: ["BiometricProcessing"]
+        ),
+        .library(
+            name: "HRVAnalysis",
+            targets: ["HRVAnalysis"]
+        ),
+        .library(
+            name: "BiometricSecurity",
+            targets: ["BiometricSecurity"]
+        )
+    ],
+    dependencies: [
+        .package(path: "../HealthAI2030Core"),
+        .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-numerics", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-crypto", from: "3.0.0")
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "BiometricFusionKit"
+            name: "BiometricFusionKit",
+            dependencies: [
+                "BiometricProcessing",
+                "HRVAnalysis",
+                "BiometricSecurity",
+                .product(name: "HealthAI2030Core", package: "HealthAI2030Core")
+            ],
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency"),
+                .enableUpcomingFeature("ExistentialAny")
+            ]
+        ),
+        .target(
+            name: "BiometricProcessing",
+            dependencies: [
+                .product(name: "HealthAI2030Core", package: "HealthAI2030Core"),
+                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+                .product(name: "Numerics", package: "swift-numerics")
+            ],
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency")
+            ]
+        ),
+        .target(
+            name: "HRVAnalysis",
+            dependencies: [
+                .product(name: "RealModule", package: "swift-numerics"),
+                .product(name: "ComplexModule", package: "swift-numerics")
+            ],
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency")
+            ]
+        ),
+        .target(
+            name: "BiometricSecurity",
+            dependencies: [
+                .product(name: "Crypto", package: "swift-crypto")
+            ],
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency")
+            ]
         ),
         .testTarget(
             name: "BiometricFusionKitTests",
             dependencies: ["BiometricFusionKit"]
-        ),
+        )
     ]
 )

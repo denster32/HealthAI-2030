@@ -4,8 +4,8 @@ import AVFoundation
 
 @available(tvOS 18.0, *)
 struct TVCopilotView: View {
-    @StateObject private var speechRecognizer = SpeechRecognizer()
-    @StateObject private var copilotManager = CopilotManager()
+    @State private var speechRecognizer = SpeechRecognizer()
+    @State private var copilotManager = CopilotManager()
     @State private var inputText = ""
     @State private var isListening = false
     @State private var showingKeyboard = false
@@ -81,7 +81,9 @@ struct TVCopilotView: View {
     
     private func startVoiceInput() {
         isListening = true
-        speechRecognizer.startRecording()
+        Task {
+            await speechRecognizer.startRecording()
+        }
     }
     
     private func sendMessage() {
@@ -437,69 +439,105 @@ struct QuickActionButton: View {
 // MARK: - Managers
 
 @available(tvOS 18.0, *)
-class CopilotManager: ObservableObject {
-    @Published var messages: [CopilotMessage] = []
+@MainActor
+@Observable
+class CopilotManager: Sendable {
+    private(set) var messages: [CopilotMessage] = []
     
     func addMessage(_ message: CopilotMessage) {
         messages.append(message)
     }
     
     func processUserInput(_ input: String, selectedSkill: CopilotSkill?) async {
-        // Simulate AI processing
-        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        // Simulate AI processing with structured concurrency
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+        }
         
-        let response = generateResponse(for: input, skill: selectedSkill)
+        let response = await generateResponse(for: input, skill: selectedSkill)
         
-        await MainActor.run {
-            let aiMessage = CopilotMessage(
-                id: UUID(),
-                text: response,
-                isUser: false,
-                timestamp: Date()
-            )
-            messages.append(aiMessage)
+        let aiMessage = CopilotMessage(
+            id: UUID(),
+            text: response,
+            isUser: false,
+            timestamp: Date()
+        )
+        messages.append(aiMessage)
+    }
+    
+    private func generateResponse(for input: String, skill: CopilotSkill?) async -> String {
+        let skillName = skill?.name ?? "General Health"
+        
+        // Use pattern matching for better performance
+        let lowercasedInput = input.lowercased()
+        
+        switch lowercasedInput {
+        case let str where str.contains("health summary"):
+            return await generateHealthSummaryResponse()
+        case let str where str.contains("workout plan"):
+            return await generateWorkoutPlanResponse()
+        case let str where str.contains("sleep"):
+            return await generateSleepAdviceResponse()
+        default:
+            return await generateDefaultResponse()
         }
     }
     
-    private func generateResponse(for input: String, skill: CopilotSkill?) -> String {
-        let skillName = skill?.name ?? "General Health"
-        
-        if input.lowercased().contains("health summary") {
-            return "Based on your recent health data, you're doing well! Your heart rate is stable at 72 BPM, you've averaged 8,234 steps daily, and your sleep quality has improved by 15% this week. Keep up the great work!"
-        } else if input.lowercased().contains("workout plan") {
-            return "I'll create a personalized workout plan for you. Based on your fitness level and goals, I recommend: 3 days of cardio (30 min), 2 days of strength training, and 2 days of active recovery. Would you like me to schedule this for you?"
-        } else if input.lowercased().contains("sleep") {
-            return "Here are some tips to improve your sleep: 1) Maintain a consistent sleep schedule, 2) Create a relaxing bedtime routine, 3) Keep your bedroom cool and dark, 4) Avoid screens 1 hour before bed, 5) Consider meditation or deep breathing exercises."
-        } else {
-            return "I'm here to help with your health and wellness questions. I can analyze your health data, create workout plans, provide nutrition advice, and much more. What would you like to know about?"
-        }
+    // MARK: - Response Generators (using async for potential future API calls)
+    
+    private func generateHealthSummaryResponse() async -> String {
+        "Based on your recent health data, you're doing well! Your heart rate is stable at 72 BPM, you've averaged 8,234 steps daily, and your sleep quality has improved by 15% this week. Keep up the great work!"
+    }
+    
+    private func generateWorkoutPlanResponse() async -> String {
+        "I'll create a personalized workout plan for you. Based on your fitness level and goals, I recommend: 3 days of cardio (30 min), 2 days of strength training, and 2 days of active recovery. Would you like me to schedule this for you?"
+    }
+    
+    private func generateSleepAdviceResponse() async -> String {
+        "Here are some tips to improve your sleep: 1) Maintain a consistent sleep schedule, 2) Create a relaxing bedtime routine, 3) Keep your bedroom cool and dark, 4) Avoid screens 1 hour before bed, 5) Consider meditation or deep breathing exercises."
+    }
+    
+    private func generateDefaultResponse() async -> String {
+        "I'm here to help with your health and wellness questions. I can analyze your health data, create workout plans, provide nutrition advice, and much more. What would you like to know about?"
     }
 }
 
 @available(tvOS 18.0, *)
-class SpeechRecognizer: ObservableObject {
+@MainActor
+@Observable
+class SpeechRecognizer: Sendable {
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
     
-    var onTranscription: ((String) -> Void)?
-    var onError: ((Error) -> Void)?
+    // Use async callbacks with @MainActor for UI updates
+    private(set) var isRecording = false
+    private(set) var lastTranscription = ""
+    private(set) var lastError: Error?
     
-    func startRecording() {
+    var onTranscription: (@MainActor @Sendable (String) -> Void)?
+    var onError: (@MainActor @Sendable (Error) -> Void)?
+    
+    func startRecording() async {
         guard let speechRecognizer = speechRecognizer, speechRecognizer.isAvailable else {
-            onError?(NSError(domain: "SpeechRecognizer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Speech recognition not available"]))
+            let error = SpeechRecognitionError.notAvailable
+            lastError = error
+            onError?(error)
             return
         }
         
-        SFSpeechRecognizer.requestAuthorization { [weak self] status in
-            DispatchQueue.main.async {
-                if status == .authorized {
-                    self?.beginRecording()
-                } else {
-                    self?.onError?(NSError(domain: "SpeechRecognizer", code: 2, userInfo: [NSLocalizedDescriptionKey: "Speech recognition not authorized"]))
-                }
-            }
+        // Use async/await for authorization instead of completion handler
+        let status = await requestSpeechAuthorization()
+        
+        if status == .authorized {
+            await beginRecording()
+        } else {
+            let error = SpeechRecognitionError.notAuthorized
+            lastError = error
+            onError?(error)
         }
     }
     
@@ -507,9 +545,20 @@ class SpeechRecognizer: ObservableObject {
         audioEngine.stop()
         recognitionRequest?.endAudio()
         recognitionTask?.cancel()
+        isRecording = false
     }
     
-    private func beginRecording() {
+    // MARK: - Private Methods
+    
+    private func requestSpeechAuthorization() async -> SFSpeechRecognizerAuthorizationStatus {
+        await withCheckedContinuation { continuation in
+            SFSpeechRecognizer.requestAuthorization { status in
+                continuation.resume(returning: status)
+            }
+        }
+    }
+    
+    private func beginRecording() async {
         do {
             let audioSession = AVAudioSession.sharedInstance()
             try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
@@ -520,39 +569,69 @@ class SpeechRecognizer: ObservableObject {
             let inputNode = audioEngine.inputNode
             recognitionRequest?.shouldReportPartialResults = true
             
-            recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest!) { [weak self] result, error in
-                if let result = result {
-                    self?.onTranscription?(result.bestTranscription.formattedString)
-                }
-                
-                if error != nil {
-                    self?.stopRecording()
+            // Use weak self to avoid retain cycles and ensure proper actor isolation
+            recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest!) { [weak self] result, error in
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
+                    
+                    if let result = result {
+                        let transcription = result.bestTranscription.formattedString
+                        self.lastTranscription = transcription
+                        self.onTranscription?(transcription)
+                    }
+                    
+                    if let error = error {
+                        self.lastError = error
+                        self.stopRecording()
+                        self.onError?(error)
+                    }
                 }
             }
             
             let recordingFormat = inputNode.outputFormat(forBus: 0)
-            inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
-                self.recognitionRequest?.append(buffer)
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
+                self?.recognitionRequest?.append(buffer)
             }
             
             audioEngine.prepare()
             try audioEngine.start()
+            isRecording = true
             
         } catch {
+            lastError = error
             onError?(error)
         }
     }
 }
 
+// MARK: - Custom Error Types
+
+enum SpeechRecognitionError: LocalizedError {
+    case notAvailable
+    case notAuthorized
+    case recordingFailed(Error)
+    
+    var errorDescription: String? {
+        switch self {
+        case .notAvailable:
+            return "Speech recognition not available"
+        case .notAuthorized:
+            return "Speech recognition not authorized"
+        case .recordingFailed(let error):
+            return "Recording failed: \(error.localizedDescription)"
+        }
+    }
+}
+
 // MARK: - Data Models
-struct CopilotMessage: Identifiable {
+struct CopilotMessage: Identifiable, Sendable {
     let id: UUID
     let text: String
     let isUser: Bool
     let timestamp: Date
 }
 
-struct CopilotSkill: Identifiable {
+struct CopilotSkill: Identifiable, Sendable {
     let id: UUID
     let name: String
     let description: String

@@ -280,8 +280,8 @@ Coverage/
 *.coveragexml
 
 # Documentation build
-docs/_build/
-docs/build/
+Documentation/_build/
+Documentation/build/
 
 # Backup files
 *.bak

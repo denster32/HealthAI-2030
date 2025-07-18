@@ -315,7 +315,7 @@ struct WatchQuickActionButton: View {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(color)
-                .frame(width: 32, height: 32)
+                .frame(width: 44, height: 44)
                 .background(
                     Circle()
                         .fill(color.opacity(isPressed ? 0.3 : 0.1))

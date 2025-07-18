@@ -1,7 +1,7 @@
 import XCTest
 @testable import HealthAI2030
 
-@available(iOS 14.0, *)
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, *)
 final class AdvancedHealthWidgetsTests: XCTestCase {
     
     func testDailyHealthSummaryWidget() {
@@ -90,7 +90,7 @@ final class AdvancedHealthWidgetsTests: XCTestCase {
 
 // MARK: - Context Extension for Testing
 
-@available(iOS 14.0, *)
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, *)
 extension TimelineProviderContext {
     static var preview: TimelineProviderContext {
         TimelineProviderContext(family: .systemSmall, environment: .preview)

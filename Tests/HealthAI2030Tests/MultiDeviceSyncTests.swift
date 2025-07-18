@@ -1,7 +1,7 @@
 import XCTest
 import HealthAI2030Core
 
-@available(iOS 16.0, *)
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, *)
 final class MultiDeviceSyncTests: XCTestCase {
     private var syncManager: CrossDeviceSyncManager!
 

@@ -6,7 +6,7 @@ import os.log
 
 /// Advanced biometric authentication engine with multi-modal biometric support
 /// Provides secure, convenient, and reliable biometric authentication for healthcare data access
-@available(iOS 14.0, macOS 11.0, *)
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, *)
 public class BiometricAuthenticationEngine: ObservableObject {
     
     // MARK: - Published Properties
