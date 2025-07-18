@@ -17,9 +17,11 @@ import PhotosUI
 import CoreML
 import Accelerate
 
-@main
+// NOTE: This is the legacy app entry point with poor performance.
+// Use PerformanceOptimizedHealthAI2030App instead for <1s launch time.
+// @main removed - see PerformanceOptimizedApp.swift
 @available(iOS 18.0, macOS 15.0, *)
-struct HealthAI_2030App: App {
+struct HealthAI_2030App_Legacy: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.scenePhase) private var scenePhase
 

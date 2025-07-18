@@ -4,19 +4,118 @@ import SwiftData
 import UniformTypeIdentifiers
 import OSLog
 
+// MARK: - Export Types
+
+@available(macOS 15.0, *)
+public enum ExportType: String, CaseIterable {
+    case csv = "CSV"
+    case json = "JSON"
+    case xml = "XML"
+    case pdf = "PDF"
+    case fhir = "FHIR"
+    case hl7 = "HL7"
+}
+
+@available(macOS 15.0, *)
+public struct ExportRequest: Identifiable {
+    public let id = UUID()
+    public let exportType: String
+    public let requestDate: Date
+    public let userId: UUID
+    
+    public init(exportType: String, requestDate: Date, userId: UUID) {
+        self.exportType = exportType
+        self.requestDate = requestDate
+        self.userId = userId
+    }
+}
+
+// MARK: - Syncable Model Types
+
+@Model
+final class SyncableHealthDataEntry: CKSyncable {
+    @Attribute(.unique) var id: UUID
+    var timestamp: Date
+    var dataType: CKSyncableDataType
+    var value: Double?
+    var metadata: [String: String]?
+    
+    init(id: UUID = UUID(), timestamp: Date = Date(), dataType: CKSyncableDataType = .general, value: Double? = nil, metadata: [String: String]? = nil) {
+        self.id = id
+        self.timestamp = timestamp
+        self.dataType = dataType
+        self.value = value
+        self.metadata = metadata
+    }
+}
+
+@Model
+final class SyncableSleepSessionEntry: CKSyncable {
+    @Attribute(.unique) var id: UUID
+    var startTime: Date
+    var endTime: Date
+    var dataType: CKSyncableDataType = .sleepData
+    var sleepQuality: Double?
+    var stages: [String: Double]?
+    
+    init(id: UUID = UUID(), startTime: Date = Date(), endTime: Date = Date(), sleepQuality: Double? = nil, stages: [String: Double]? = nil) {
+        self.id = id
+        self.startTime = startTime
+        self.endTime = endTime
+        self.sleepQuality = sleepQuality
+        self.stages = stages
+    }
+}
+
+@Model
+final class AnalyticsInsight: CKSyncable {
+    @Attribute(.unique) var id: UUID
+    var timestamp: Date
+    var dataType: CKSyncableDataType = .general
+    var insightType: String
+    var content: String
+    var significance: Double
+    
+    init(id: UUID = UUID(), timestamp: Date = Date(), insightType: String = "", content: String = "", significance: Double = 0.0) {
+        self.id = id
+        self.timestamp = timestamp
+        self.insightType = insightType
+        self.content = content
+        self.significance = significance
+    }
+}
+
+@Model
+final class MLModelUpdate: CKSyncable {
+    @Attribute(.unique) var id: UUID
+    var trainingDate: Date
+    var dataType: CKSyncableDataType = .general
+    var modelName: String
+    var accuracy: Double
+    var version: String
+    
+    init(id: UUID = UUID(), trainingDate: Date = Date(), modelName: String = "", accuracy: Double = 0.0, version: String = "1.0") {
+        self.id = id
+        self.trainingDate = trainingDate
+        self.modelName = modelName
+        self.accuracy = accuracy
+        self.version = version
+    }
+}
+
 @available(macOS 15.0, *)
 @MainActor
 public class AdvancedDataExportManager: ObservableObject {
     public static let shared = AdvancedDataExportManager()
     
     // MARK: - Properties
-    @Published public var exportStatus: ExportStatus = .idle
+    @Published public var exportStatus: DataExportStatus = .idle
     @Published public var exportProgress: Double = 0.0
     @Published public var currentExportType: ExportType?
     @Published public var availableExports: [CompletedExport] = []
     @Published public var pendingRequests: [ExportRequest] = []
     
-    private let logger = Logger(subsystem: "com.HealthAI2030.Export", category: "DataExport")
+    private let logger = Logger()
     private let cloudSyncManager = UnifiedCloudKitSyncManager.shared
     private let exportQueue = DispatchQueue(label: "com.healthai2030.export", qos: .background)
     
@@ -600,7 +699,7 @@ private class PDFExportProcessor {
 
 // MARK: - Supporting Types
 
-public enum ExportStatus: String, CaseIterable {
+public enum DataExportStatus: String, CaseIterable {
     case idle = "Idle"
     case exporting = "Exporting"
     case completed = "Completed"

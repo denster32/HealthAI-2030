@@ -617,12 +617,15 @@ class PredictionModelManager {
 class HealthForecastManager {
     func generate(_ request: HealthForecastRequest) async throws -> HealthForecast {
         let predictions = request.metrics.map { metric in
-            HealthPrediction(
+            // Generate more realistic predictions based on metric type
+            let (value, trend) = generateRealisticPrediction(for: metric, timeHorizon: request.timeHorizon)
+            
+            return HealthPrediction(
                 metric: metric,
-                value: Double.random(in: 60...180),
-                confidence: request.confidence,
-                timestamp: Date().addingTimeInterval(86400), // 1 day from now
-                trend: TrendDirection.allCases.randomElement() ?? .stable
+                value: value,
+                confidence: request.confidence * 0.85, // Slightly lower confidence for future predictions
+                timestamp: calculateFutureTimestamp(timeHorizon: request.timeHorizon),
+                trend: trend
             )
         }
         
@@ -632,10 +635,80 @@ class HealthForecastManager {
             confidence: request.confidence
         )
     }
+    
+    private func generateRealisticPrediction(for metric: HealthMetric, timeHorizon: TimeHorizon) -> (value: Double, trend: TrendDirection) {
+        switch metric {
+        case .heartRate:
+            let baseHR = 70.0
+            let variation = Double.random(in: -5...5)
+            return (baseHR + variation, variation > 0 ? .increasing : .decreasing)
+            
+        case .bloodPressure:
+            let baseSystolic = 120.0
+            let trend = Double.random(in: -2...2)
+            return (baseSystolic + trend, trend > 1 ? .increasing : trend < -1 ? .decreasing : .stable)
+            
+        case .glucose:
+            let baseGlucose = 95.0
+            let variation = Double.random(in: -10...10)
+            return (baseGlucose + variation, abs(variation) < 5 ? .stable : variation > 0 ? .increasing : .decreasing)
+            
+        case .weight:
+            let baseWeight = 70.0 // kg
+            let monthlyChange = timeHorizon == .month ? Double.random(in: -2...0.5) : 0
+            return (baseWeight + monthlyChange, monthlyChange < -0.5 ? .decreasing : monthlyChange > 0.2 ? .increasing : .stable)
+            
+        case .steps:
+            let baseSteps = 8000.0
+            let variation = Double.random(in: -2000...2000)
+            return (baseSteps + variation, variation > 500 ? .increasing : variation < -500 ? .decreasing : .stable)
+            
+        case .sleep:
+            let baseSleep = 7.5
+            let variation = Double.random(in: -0.5...0.5)
+            return (baseSleep + variation, abs(variation) < 0.2 ? .stable : variation > 0 ? .increasing : .decreasing)
+            
+        case .calories:
+            let baseCalories = 2000.0
+            let variation = Double.random(in: -200...200)
+            return (baseCalories + variation, abs(variation) < 100 ? .stable : variation > 0 ? .increasing : .decreasing)
+            
+        case .heartRateVariability:
+            let baseHRV = 45.0
+            let variation = Double.random(in: -5...8)
+            return (baseHRV + variation, variation > 2 ? .increasing : variation < -2 ? .decreasing : .stable)
+            
+        case .oxygenSaturation:
+            let baseSPO2 = 97.0
+            let variation = Double.random(in: -2...1)
+            return (max(95, baseSPO2 + variation), variation < -1 ? .decreasing : .stable)
+            
+        case .temperature:
+            let baseTemp = 98.6
+            let variation = Double.random(in: -0.5...0.5)
+            return (baseTemp + variation, abs(variation) > 0.3 ? (variation > 0 ? .increasing : .decreasing) : .stable)
+        }
+    }
+    
+    private func calculateFutureTimestamp(timeHorizon: TimeHorizon) -> Date {
+        let currentDate = Date()
+        switch timeHorizon {
+        case .day:
+            return currentDate.addingTimeInterval(86400) // 1 day
+        case .week:
+            return currentDate.addingTimeInterval(604800) // 1 week
+        case .month:
+            return currentDate.addingTimeInterval(2592000) // 30 days
+        case .year:
+            return currentDate.addingTimeInterval(31536000) // 365 days
+        }
+    }
 }
 
 // MARK: - Risk Assessment Manager
 class RiskAssessmentManager {
+    private let healthRiskPredictor = RealHealthRiskPredictor()
+    
     func assess(_ data: HealthData) async throws -> RiskAssessment {
         let riskFactors = [
             RiskFactor(
@@ -671,12 +744,120 @@ class RiskAssessmentManager {
             )
         ]
         
+        // USING REAL HEALTH RISK PREDICTOR
+        // Convert HealthData to RealHealthRiskPredictor metrics
+        let metrics = RealHealthRiskPredictor.HealthMetrics(
+            systolicBP: data.vitals.first(where: { $0.type == .bloodPressure })?.value ?? 120.0,
+            diastolicBP: 80.0, // Would extract from BP reading in real implementation
+            restingHeartRate: data.vitals.first(where: { $0.type == .heartRate })?.value ?? 70.0,
+            heartRateVariability: data.biometrics.first(where: { $0.type == .heartRateVariability })?.value ?? 50.0,
+            cholesterolTotal: data.biometrics.first(where: { $0.type == .cholesterol })?.value,
+            cholesterolLDL: nil, // Would be extracted from detailed cholesterol
+            cholesterolHDL: nil,
+            bmi: data.biometrics.first(where: { $0.type == .bmi })?.value ?? 25.0,
+            waistCircumference: nil,
+            glucoseLevel: data.vitals.first(where: { $0.type == .glucose })?.value,
+            hba1c: nil,
+            dailySteps: Double(data.lifestyle.exerciseMinutes * 100), // Rough conversion
+            exerciseMinutes: Double(data.lifestyle.exerciseMinutes),
+            sleepHours: data.lifestyle.sleepHours,
+            sleepQuality: 0.8, // Would be calculated from sleep data
+            stressLevel: mapStressLevel(data.lifestyle.stressLevel),
+            age: 40, // Would come from user profile
+            biologicalSex: .other, // Would come from user profile
+            smokingStatus: .never, // Would come from medical history
+            familyHistory: Set() // Would be populated from medical history
+        )
+        
+        // Get real risk assessments
+        let riskAssessments = await healthRiskPredictor.assessHealthRisks(metrics: metrics)
+        
+        // Convert to engine's format
+        var allRiskFactors: [RiskFactor] = []
+        var allRecommendations: [Recommendation] = []
+        var highestRiskLevel = RiskLevel.low
+        
+        for assessment in riskAssessments {
+            // Map risk category
+            let category = mapRiskCategory(assessment.category)
+            
+            // Convert contributors to risk factors
+            for contributor in assessment.contributors.prefix(3) { // Top 3 contributors
+                if contributor.impact > 0.1 { // Only significant factors
+                    let factor = RiskFactor(
+                        name: contributor.factor,
+                        category: category,
+                        severity: mapSeverity(contributor.impact),
+                        description: "\(contributor.currentValue) - \(contributor.impact > 0 ? "increases" : "decreases") risk",
+                        mitigation: contributor.targetValue ?? "Maintain current levels"
+                    )
+                    allRiskFactors.append(factor)
+                }
+            }
+            
+            // Convert recommendations
+            for (index, rec) in assessment.recommendations.enumerated() {
+                let recommendation = Recommendation(
+                    title: rec,
+                    description: "Based on your \(assessment.category.rawValue) risk assessment",
+                    priority: index == 0 ? .high : .medium,
+                    category: .preventive,
+                    actionable: true
+                )
+                allRecommendations.append(recommendation)
+            }
+            
+            // Update highest risk level
+            if let mappedLevel = mapRiskLevel(assessment.riskLevel),
+               mappedLevel.rawValue > highestRiskLevel.rawValue {
+                highestRiskLevel = mappedLevel
+            }
+        }
+        
         return RiskAssessment(
             userId: data.userId,
-            overallRisk: .moderate,
-            riskFactors: riskFactors,
-            recommendations: recommendations
+            overallRisk: highestRiskLevel,
+            riskFactors: allRiskFactors,
+            recommendations: allRecommendations
         )
+    }
+    
+    // Helper methods for mapping between formats
+    private func mapStressLevel(_ level: StressLevel) -> Double {
+        switch level {
+        case .low: return 0.2
+        case .moderate: return 0.5
+        case .high: return 0.8
+        case .veryHigh: return 0.95
+        }
+    }
+    
+    private func mapRiskCategory(_ category: RealHealthRiskPredictor.RiskCategory) -> RiskCategory {
+        switch category {
+        case .cardiovascular: return .cardiovascular
+        case .diabetes: return .metabolic
+        case .sleepDisorder: return .lifestyle
+        case .mentalHealth: return .mental
+        case .metabolicSyndrome: return .metabolic
+        }
+    }
+    
+    private func mapSeverity(_ impact: Double) -> RiskSeverity {
+        switch impact {
+        case 0..<0.3: return .mild
+        case 0.3..<0.6: return .moderate
+        case 0.6..<0.8: return .severe
+        default: return .critical
+        }
+    }
+    
+    private func mapRiskLevel(_ level: RealHealthRiskPredictor.RiskLevel) -> RiskLevel? {
+        switch level {
+        case .low: return .low
+        case .moderate: return .moderate
+        case .high: return .high
+        case .veryHigh: return .critical
+        }
     }
 }
 

@@ -5,20 +5,33 @@ import Combine
 /// Advanced Memory Leak Detection System
 /// Provides comprehensive memory leak detection, retain cycle analysis, and memory optimization
 @available(iOS 18.0, macOS 15.0, *)
-public class AdvancedMemoryLeakDetector: ObservableObject {
+@MainActor
+public final class AdvancedMemoryLeakDetector: ObservableObject {
     
     // MARK: - Singleton
-    public static let shared = AdvancedMemoryLeakDetector()
+    nonisolated(unsafe) public static let shared = AdvancedMemoryLeakDetector()
     
     // MARK: - Published Properties
     @Published public var detectedLeaks: [MemoryLeak] = []
-    @Published public var memoryUsage: MemoryUsage = MemoryUsage()
-    @Published public var leakAnalysis: LeakAnalysis = LeakAnalysis()
+    @Published public var memoryUsage: MemoryLeakUsage = MemoryLeakUsage(
+        totalMemory: 0,
+        usedMemory: 0,
+        availableMemory: 0,
+        memoryPressure: .normal,
+        usagePercentage: 0.0
+    )
+    @Published public var leakAnalysis: LeakAnalysis = LeakAnalysis(
+        memoryGrowthRate: 0.0,
+        averageMemoryLeakUsage: 0.0,
+        peakMemoryLeakUsage: 0,
+        leakFrequency: 0.0,
+        trend: .stable
+    )
     @Published public var optimizationRecommendations: [MemoryOptimization] = []
     @Published public var isMonitoring = false
     
     // MARK: - Private Properties
-    private let logger = Logger(subsystem: "com.healthai.memory", category: "leak-detector")
+    private let logger = Logger()
     private var monitoringTimer: Timer?
     private var objectReferences: [String: WeakReference] = [:]
     private var memorySnapshots: [MemorySnapshot] = []
@@ -81,7 +94,7 @@ public class AdvancedMemoryLeakDetector: ObservableObject {
         logger.info("Starting comprehensive memory analysis")
         
         // Update current memory usage
-        updateMemoryUsage()
+        updateMemoryLeakUsage()
         
         // Detect memory leaks
         let leaks = detectMemoryLeaks()
@@ -125,7 +138,7 @@ public class AdvancedMemoryLeakDetector: ObservableObject {
         }
         
         // Update memory usage
-        updateMemoryUsage()
+        updateMemoryLeakUsage()
         
         logger.info("Memory cleanup completed")
     }
@@ -153,7 +166,7 @@ public class AdvancedMemoryLeakDetector: ObservableObject {
         }
         
         // Update current memory usage
-        updateMemoryUsage()
+        updateMemoryLeakUsage()
         
         // Detect memory leaks
         let newLeaks = detectMemoryLeaks()
@@ -170,7 +183,7 @@ public class AdvancedMemoryLeakDetector: ObservableObject {
         generateOptimizationRecommendations(leaks: newLeaks, retainCycles: [])
     }
     
-    private func updateMemoryUsage() {
+    private func updateMemoryLeakUsage() {
         var info = mach_task_basic_info()
         var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
         
@@ -189,7 +202,7 @@ public class AdvancedMemoryLeakDetector: ObservableObject {
             let availableMemory = totalMemory - usedMemory
             let usagePercentage = Double(usedMemory) / Double(totalMemory) * 100.0
             
-            let memoryPressure: MemoryUsage.MemoryPressure
+            let memoryPressure: MemoryLeakUsage.MemoryPressure
             if usagePercentage > 80 {
                 memoryPressure = .critical
             } else if usagePercentage > 60 {
@@ -198,7 +211,7 @@ public class AdvancedMemoryLeakDetector: ObservableObject {
                 memoryPressure = .normal
             }
             
-            memoryUsage = MemoryUsage(
+            memoryUsage = MemoryLeakUsage(
                 totalMemory: totalMemory,
                 usedMemory: usedMemory,
                 availableMemory: availableMemory,
@@ -254,7 +267,7 @@ public class AdvancedMemoryLeakDetector: ObservableObject {
         if memoryUsage.usagePercentage > 80 {
             let leak = MemoryLeak(
                 id: UUID(),
-                type: .highMemoryUsage,
+                type: .highMemoryLeakUsage,
                 name: "High Memory Usage",
                 description: "Memory usage is critically high: \(String(format: "%.1f", memoryUsage.usagePercentage))%",
                 severity: .critical,
@@ -283,12 +296,12 @@ public class AdvancedMemoryLeakDetector: ObservableObject {
         
         let recentSnapshots = Array(memorySnapshots.suffix(5))
         let growthRate = calculateMemoryGrowthRate(snapshots: recentSnapshots)
-        let averageUsage = calculateAverageMemoryUsage(snapshots: recentSnapshots)
+        let averageUsage = calculateAverageMemoryLeakUsage(snapshots: recentSnapshots)
         
         leakAnalysis = LeakAnalysis(
             memoryGrowthRate: growthRate,
-            averageMemoryUsage: averageUsage,
-            peakMemoryUsage: memorySnapshots.map { $0.memoryUsage.usedMemory }.max() ?? 0,
+            averageMemoryLeakUsage: averageUsage,
+            peakMemoryLeakUsage: memorySnapshots.map { $0.memoryUsage.usedMemory }.max() ?? 0,
             leakFrequency: Double(detectedLeaks.count) / Double(memorySnapshots.count),
             trend: determineMemoryTrend(growthRate: growthRate)
         )
@@ -305,7 +318,7 @@ public class AdvancedMemoryLeakDetector: ObservableObject {
         return (lastUsage - firstUsage) / firstUsage
     }
     
-    private func calculateAverageMemoryUsage(snapshots: [MemorySnapshot]) -> Double {
+    private func calculateAverageMemoryLeakUsage(snapshots: [MemorySnapshot]) -> Double {
         let totalUsage = snapshots.reduce(0.0) { $0 + $1.memoryUsage.usagePercentage }
         return totalUsage / Double(snapshots.count)
     }
@@ -365,7 +378,7 @@ public class AdvancedMemoryLeakDetector: ObservableObject {
         if memoryUsage.usagePercentage > 80 {
             recommendations.append(MemoryOptimization(
                 id: UUID(),
-                type: .reduceMemoryUsage,
+                type: .reduceMemoryLeakUsage,
                 title: "Reduce Memory Usage",
                 description: "Memory usage is critically high",
                 priority: .critical,
@@ -481,7 +494,7 @@ public struct MemoryLeak: Identifiable, Codable {
 public enum LeakType: String, Codable, CaseIterable {
     case abandonedObject = "abandoned_object"
     case memoryGrowth = "memory_growth"
-    case highMemoryUsage = "high_memory_usage"
+    case highMemoryLeakUsage = "high_memory_usage"
     case retainCycle = "retain_cycle"
     case cacheLeak = "cache_leak"
 }
@@ -497,7 +510,7 @@ public enum LeakSeverity: String, Codable, CaseIterable {
 
 /// Memory usage information
 @available(iOS 18.0, macOS 15.0, *)
-public struct MemoryUsage: Codable {
+public struct MemoryLeakUsage: Codable {
     public let totalMemory: UInt64
     public let usedMemory: UInt64
     public let availableMemory: UInt64
@@ -515,7 +528,7 @@ public struct MemoryUsage: Codable {
 @available(iOS 18.0, macOS 15.0, *)
 public struct MemorySnapshot: Codable {
     public let timestamp: Date
-    public let memoryUsage: MemoryUsage
+    public let memoryUsage: MemoryLeakUsage
     public let objectCount: Int
     public let detectedLeaksCount: Int
 }
@@ -524,8 +537,8 @@ public struct MemorySnapshot: Codable {
 @available(iOS 18.0, macOS 15.0, *)
 public struct LeakAnalysis: Codable {
     public let memoryGrowthRate: Double
-    public let averageMemoryUsage: Double
-    public let peakMemoryUsage: UInt64
+    public let averageMemoryLeakUsage: Double
+    public let peakMemoryLeakUsage: UInt64
     public let leakFrequency: Double
     public let trend: MemoryTrend
 }
@@ -553,7 +566,7 @@ public struct MemoryOptimization: Identifiable, Codable {
 /// Types of memory optimizations
 @available(iOS 18.0, macOS 15.0, *)
 public enum OptimizationType: String, Codable, CaseIterable {
-    case reduceMemoryUsage = "reduce_memory_usage"
+    case reduceMemoryLeakUsage = "reduce_memory_usage"
     case fixMemoryLeaks = "fix_memory_leaks"
     case fixRetainCycles = "fix_retain_cycles"
     case optimizeMemoryAllocation = "optimize_memory_allocation"
@@ -581,7 +594,7 @@ public enum OptimizationImpact: String, Codable, CaseIterable {
 @available(iOS 18.0, macOS 15.0, *)
 public struct ComprehensiveMemoryReport: Codable {
     public let timestamp: Date
-    public let memoryUsage: MemoryUsage
+    public let memoryUsage: MemoryLeakUsage
     public let detectedLeaks: [MemoryLeak]
     public let retainCycles: [RetainCycle]
     public let recommendations: [MemoryOptimization]

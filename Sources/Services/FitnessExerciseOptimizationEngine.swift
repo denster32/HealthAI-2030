@@ -4,6 +4,7 @@ import Combine
 import CoreML
 import HealthKit
 import SwiftData
+import CoreMotion
 
 /// Advanced Fitness & Exercise Optimization Engine
 /// Provides comprehensive fitness tracking, AI-powered exercise optimization,
@@ -20,7 +21,21 @@ final class FitnessExerciseOptimizationEngine: ObservableObject {
     @Published var errorMessage: String?
     @Published var isLoading: Bool = false
     @Published var fitnessSummary: FitnessSummary = FitnessSummary()
-    @Published var analytics: FitnessAnalytics = FitnessAnalytics()
+    @Published var analytics: FitnessAnalytics = FitnessAnalytics(
+        performanceTrends: [],
+        strengthProgress: [],
+        enduranceProgress: [],
+        flexibilityProgress: [],
+        balanceProgress: [],
+        insights: [],
+        recommendations: [],
+        currentActivity: "Idle",
+        activityConfidence: 0.0,
+        dailySteps: 0,
+        dailyDistance: 0.0,
+        activeCalories: 0.0,
+        activityHistory: []
+    )
     
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
@@ -28,6 +43,11 @@ final class FitnessExerciseOptimizationEngine: ObservableObject {
     private let mlModelManager: MLModelManager
     private let notificationManager: NotificationManager
     private let persistenceManager = FitnessPersistenceManager.shared
+    
+    // Activity Recognition Properties
+    private let activityRecognitionModel = RealActivityRecognitionModel()
+    private let motionManager = CMMotionManager()
+    private var motionUpdateTimer: Timer?
     
     // MARK: - Initialization
     init(healthDataManager: HealthDataManager, mlModelManager: MLModelManager, notificationManager: NotificationManager) {
@@ -66,6 +86,9 @@ final class FitnessExerciseOptimizationEngine: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+        
+        // Start activity tracking
+        startActivityTracking()
     }
     // MARK: - Fitness Tracking
     func recordWorkoutSession(_ session: WorkoutSession) async throws {
@@ -111,6 +134,12 @@ final class FitnessExerciseOptimizationEngine: ObservableObject {
                 
                 // Update performance metrics
                 performanceMetrics.updateMetrics(from: performance)
+                
+                // Incorporate activity recognition data
+                if let activityInsights = await analyzeActivityData(for: workoutSession) {
+                    // Add activity-based insights to performance analysis
+                    performanceMetrics.updateWithActivityData(activityInsights)
+                }
                 
                 // Analyze exercise form if video data is available
                 if workoutSession.hasVideoData {
@@ -203,6 +232,152 @@ final class FitnessExerciseOptimizationEngine: ObservableObject {
             recoveryStatus: recoveryStatus,
             performanceTrend: calculatePerformanceTrend(),
             weeklyGoalProgress: calculateWeeklyGoalProgress()
+        )
+    }
+    
+    // MARK: - Activity Recognition Methods
+    
+    private func startActivityTracking() {
+        guard motionManager.isDeviceMotionAvailable else {
+            print("Device motion not available")
+            return
+        }
+        
+        // Start device motion updates at 50Hz
+        motionManager.deviceMotionUpdateInterval = 1.0 / 50.0
+        motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, error in
+            guard let motion = motion, error == nil else { return }
+            
+            Task { @MainActor in
+                await self?.processMotionData(motion)
+            }
+        }
+        
+        // Also start activity updates for additional context
+        if CMMotionActivityManager.isActivityAvailable() {
+            let activityManager = CMMotionActivityManager()
+            activityManager.startActivityUpdates(to: .main) { [weak self] activity in
+                guard let activity = activity else { return }
+                
+                Task { @MainActor in
+                    await self?.processActivityData(activity)
+                }
+            }
+        }
+    }
+    
+    private func processMotionData(_ motion: CMDeviceMotion) async {
+        // Convert Core Motion data to our format
+        let motionData = RealActivityRecognitionModel.motionData(from: motion)
+        
+        // Classify activity
+        let prediction = await activityRecognitionModel.classifyActivity(from: motionData)
+        
+        // Update analytics with activity data
+        analytics.currentActivity = prediction.activity.rawValue
+        analytics.activityConfidence = prediction.confidence
+        
+        // Get current metrics
+        let metrics = activityRecognitionModel.getCurrentMetrics()
+        analytics.dailySteps = metrics.totalSteps
+        analytics.dailyDistance = metrics.distance
+        analytics.activeCalories = metrics.activeCalories
+        
+        // Add to history
+        let dataPoint = ActivityDataPoint(
+            timestamp: Date(),
+            activity: prediction.activity.rawValue,
+            confidence: prediction.confidence,
+            steps: metrics.totalSteps,
+            distance: metrics.distance,
+            calories: metrics.activeCalories
+        )
+        analytics.activityHistory.append(dataPoint)
+        
+        // Limit history to last 24 hours
+        let cutoffDate = Date().addingTimeInterval(-24 * 3600)
+        analytics.activityHistory = analytics.activityHistory.filter { $0.timestamp > cutoffDate }
+        
+        // If activity changes significantly during workout, update the session
+        if let currentWorkout = workoutHistory.first(where: { isWorkoutActive($0) }),
+           prediction.activity != .idle && prediction.confidence > 0.7 {
+            // Update workout type based on detected activity
+            updateWorkoutTypeBasedOnActivity(currentWorkout, activity: prediction.activity)
+        }
+    }
+    
+    private func processActivityData(_ activity: CMMotionActivity) async {
+        // Use Core Motion activity as additional context
+        let activityType = RealActivityRecognitionModel.activityType(from: activity)
+        
+        // This provides additional validation for our ML predictions
+        print("Core Motion Activity: \(activityType.rawValue)")
+    }
+    
+    private func isWorkoutActive(_ workout: WorkoutSession) -> Bool {
+        // Check if workout is currently active (within last hour)
+        let timeSinceStart = Date().timeIntervalSince(workout.timestamp)
+        return timeSinceStart < workout.duration + 300 // 5 minute buffer
+    }
+    
+    private func updateWorkoutTypeBasedOnActivity(_ workout: WorkoutSession, activity: RealActivityRecognitionModel.ActivityType) {
+        // Map detected activity to workout type
+        let mappedType: WorkoutType
+        switch activity {
+        case .running:
+            mappedType = .running
+        case .cycling:
+            mappedType = .cycling
+        case .walking:
+            mappedType = .cardio
+        case .stairs:
+            mappedType = .hiit
+        case .workout:
+            mappedType = .strength
+        default:
+            return // Don't update for idle or driving
+        }
+        
+        // Only update if significantly different
+        if workout.workoutType != mappedType {
+            // This would update the workout type based on detected activity
+            print("Detected activity change: \(workout.workoutType.rawValue) -> \(mappedType.rawValue)")
+        }
+    }
+    
+    func stopActivityTracking() {
+        motionManager.stopDeviceMotionUpdates()
+        motionUpdateTimer?.invalidate()
+        motionUpdateTimer = nil
+    }
+    
+    private func analyzeActivityData(for session: WorkoutSession) async -> ActivityInsights? {
+        // Find activity data points during the workout session
+        let sessionStart = session.timestamp
+        let sessionEnd = session.timestamp.addingTimeInterval(session.duration)
+        
+        let relevantActivityData = analytics.activityHistory.filter { dataPoint in
+            dataPoint.timestamp >= sessionStart && dataPoint.timestamp <= sessionEnd
+        }
+        
+        guard !relevantActivityData.isEmpty else { return nil }
+        
+        // Calculate activity insights
+        let totalSteps = relevantActivityData.last?.steps ?? 0
+        let totalDistance = relevantActivityData.last?.distance ?? 0.0
+        let avgConfidence = relevantActivityData.map { $0.confidence }.reduce(0, +) / Double(relevantActivityData.count)
+        
+        // Determine dominant activity
+        let activityCounts = Dictionary(grouping: relevantActivityData, by: { $0.activity })
+            .mapValues { $0.count }
+        let dominantActivity = activityCounts.max(by: { $0.value < $1.value })?.key ?? "Unknown"
+        
+        return ActivityInsights(
+            dominantActivity: dominantActivity,
+            totalSteps: totalSteps,
+            totalDistance: totalDistance,
+            averageConfidence: avgConfidence,
+            activityVariation: Double(activityCounts.count)
         )
     }
     
@@ -442,11 +617,42 @@ final class FitnessExerciseOptimizationEngine: ObservableObject {
     // MARK: - Analytics
     func updateAnalytics() async {
         do {
-            let updatedAnalytics = try await mlModelManager.generateFitnessAnalytics(
+            var updatedAnalytics = try await mlModelManager.generateFitnessAnalytics(
                 workoutHistory: workoutHistory,
                 performanceMetrics: performanceMetrics,
                 fitnessLevel: fitnessLevel
             )
+            
+            // Preserve activity recognition data
+            updatedAnalytics.currentActivity = analytics.currentActivity
+            updatedAnalytics.activityConfidence = analytics.activityConfidence
+            updatedAnalytics.dailySteps = analytics.dailySteps
+            updatedAnalytics.dailyDistance = analytics.dailyDistance
+            updatedAnalytics.activeCalories = analytics.activeCalories
+            updatedAnalytics.activityHistory = analytics.activityHistory
+            
+            // Add activity-based insights
+            if !analytics.activityHistory.isEmpty {
+                let activityInsight = FitnessInsight(
+                    title: "Activity Recognition Active",
+                    description: "Currently detected as \(analytics.currentActivity) with \(Int(analytics.activityConfidence * 100))% confidence",
+                    category: .performance,
+                    confidence: analytics.activityConfidence
+                )
+                updatedAnalytics.insights.append(activityInsight)
+                
+                // Add step goal progress
+                let stepGoalProgress = Double(analytics.dailySteps) / 10000.0
+                if stepGoalProgress >= 1.0 {
+                    let stepInsight = FitnessInsight(
+                        title: "Daily Step Goal Achieved!",
+                        description: "You've walked \(analytics.dailySteps) steps today",
+                        category: .performance,
+                        confidence: 1.0
+                    )
+                    updatedAnalytics.insights.append(stepInsight)
+                }
+            }
             
             analytics = updatedAnalytics
             
@@ -623,6 +829,7 @@ struct PerformanceMetrics: Codable {
     var flexibilityScore: Double = 0.0
     var balanceScore: Double = 0.0
     var overallScore: Double = 0.0
+    var activityScore: Double = 0.0
     
     mutating func updateMetrics(from performance: PerformanceAnalysis) {
         strengthScore = performance.strengthScore
@@ -630,6 +837,18 @@ struct PerformanceMetrics: Codable {
         flexibilityScore = performance.flexibilityScore
         balanceScore = performance.balanceScore
         overallScore = (strengthScore + enduranceScore + flexibilityScore + balanceScore) / 4.0
+    }
+    
+    mutating func updateWithActivityData(_ insights: ActivityInsights) {
+        // Update activity score based on insights
+        activityScore = min(100, (Double(insights.totalSteps) / 10000.0) * 100)
+        
+        // Adjust endurance score based on distance covered
+        let distanceBonus = min(20, insights.totalDistance / 1000.0 * 2) // 2 points per km
+        enduranceScore = min(100, enduranceScore + distanceBonus)
+        
+        // Recalculate overall score including activity
+        overallScore = (strengthScore + enduranceScore + flexibilityScore + balanceScore + activityScore) / 5.0
     }
 }
 
@@ -897,11 +1116,36 @@ struct FitnessAnalytics: Codable {
     let balanceProgress: [DataPoint]
     let insights: [FitnessInsight]
     let recommendations: [FitnessRecommendation]
+    
+    // Activity Recognition Data
+    var currentActivity: String = "Idle"
+    var activityConfidence: Double = 0.0
+    var dailySteps: Int = 0
+    var dailyDistance: Double = 0.0 // meters
+    var activeCalories: Double = 0.0
+    var activityHistory: [ActivityDataPoint] = []
 }
 
 struct DataPoint: Codable {
     let date: Date
     let value: Double
+}
+
+struct ActivityDataPoint: Codable {
+    let timestamp: Date
+    let activity: String
+    let confidence: Double
+    let steps: Int
+    let distance: Double
+    let calories: Double
+}
+
+struct ActivityInsights {
+    let dominantActivity: String
+    let totalSteps: Int
+    let totalDistance: Double
+    let averageConfidence: Double
+    let activityVariation: Double
 }
 
 struct FitnessInsight: Codable {

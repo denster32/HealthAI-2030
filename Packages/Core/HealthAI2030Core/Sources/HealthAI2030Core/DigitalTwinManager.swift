@@ -15,7 +15,9 @@ public class DigitalTwinManager: ObservableObject {
 
     private init() {
         // Initialize sub-managers if needed
-        swiftDataManager.initialize()
+        Task { @MainActor in
+            swiftDataManager.initialize()
+        }
     }
 
     /// Ingests raw health data and processes it for the digital twin.

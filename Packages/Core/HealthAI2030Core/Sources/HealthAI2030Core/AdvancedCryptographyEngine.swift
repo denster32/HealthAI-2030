@@ -3,20 +3,52 @@ import CryptoKit
 import Security
 import Combine
 
+// MARK: - Algorithm Types
+
+@available(iOS 18.0, macOS 15.0, watchOS 11.0, tvOS 18.0, *)
+public enum AsymmetricAlgorithm: String, CaseIterable {
+    case rsa2048 = "RSA-2048"
+    case rsa4096 = "RSA-4096"
+    case ecdsaP256 = "ECDSA-P256"
+    case ecdsaP384 = "ECDSA-P384"
+    case ecdsaP521 = "ECDSA-P521"
+}
+
+@available(iOS 18.0, macOS 15.0, watchOS 11.0, tvOS 18.0, *)
+public enum PostQuantumAlgorithm: String, CaseIterable {
+    case kyber512 = "KYBER-512"
+    case kyber768 = "KYBER-768"
+    case kyber1024 = "KYBER-1024"
+    case dilithium2 = "DILITHIUM-2"
+    case dilithium3 = "DILITHIUM-3"
+    case dilithium5 = "DILITHIUM-5"
+}
+
+@available(iOS 18.0, macOS 15.0, watchOS 11.0, tvOS 18.0, *)
+public enum CryptographyOperation: String, CaseIterable {
+    case encryption = "encryption"
+    case decryption = "decryption"
+    case signing = "signing"
+    case verification = "verification"
+    case keyGeneration = "key_generation"
+    case keyExchange = "key_exchange"
+}
+
 /// Advanced Cryptography Engine with Post-Quantum and Asymmetric Algorithms
 /// Provides secure key exchange, encryption, and digital signatures with performance optimization
 @available(iOS 18.0, macOS 15.0, watchOS 11.0, tvOS 18.0, *)
-public class AdvancedCryptographyEngine: ObservableObject {
+@MainActor
+public final class AdvancedCryptographyEngine: ObservableObject {
     
     // MARK: - Singleton
     
-    public static let shared = AdvancedCryptographyEngine()
+    nonisolated(unsafe) public static let shared = AdvancedCryptographyEngine()
     
     // MARK: - Properties
     
     @Published public private(set) var cryptoStatus: CryptographyStatus = .initializing
     @Published public private(set) var supportedAlgorithms: [CryptographicAlgorithm] = []
-    @Published public private(set) var performanceMetrics: PerformanceMetrics = PerformanceMetrics()
+    @Published public private(set) var performanceMetrics: CryptographyPerformanceMetrics = CryptographyPerformanceMetrics()
     
     private let keyManager = CryptographicKeyManager()
     private let performanceOptimizer = CryptographyPerformanceOptimizer()
@@ -567,7 +599,7 @@ public struct PostQuantumPrivateKey {
 }
 
 @available(iOS 18.0, macOS 15.0, watchOS 11.0, tvOS 18.0, *)
-public struct PerformanceMetrics {
+public struct CryptographyPerformanceMetrics {
     public private(set) var operations: [CryptographyOperation: OperationMetrics] = [:]
     
     public struct OperationMetrics {

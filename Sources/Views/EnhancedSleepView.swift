@@ -24,33 +24,26 @@ struct EnhancedSleepView: View {
         NavigationStack {
             ZStack {
                 // Background
-                LinearGradient(
-                    colors: [Color.somnaBackground, Color.somnaCardBackground.opacity(0.3)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
+                Color(.systemBackground)
+                    .ignoresSafeArea()
                 
                 if isLoading {
                     // Loading state with shimmer
                     VStack(spacing: 20) {
                         Image(systemName: "moon.stars.fill")
                             .font(.system(size: 80))
-                            .foregroundColor(.somnaPrimary)
-                            .somnaPulse(duration: 2.0, scale: 1.1)
+                            .foregroundColor(.accentColor)
+                            .symbolEffect(.pulse)
                         
                         Text("Loading SomnaSync Pro...")
                             .font(.title2)
                             .fontWeight(.semibold)
                         
-                        SomnaProgressView(
-                            value: 0.7,
-                            color: .somnaPrimary,
-                            showPercentage: true
-                        )
-                        .frame(width: 200)
+                        ProgressView(value: 0.7)
+                            .progressViewStyle(.linear)
+                            .tint(.accentColor)
+                            .frame(width: 200)
                     }
-                    .somnaShimmer()
                 } else {
                     // Main content
                     ScrollView {
@@ -102,8 +95,8 @@ struct EnhancedSleepView: View {
                     Button(action: { showingSettings = true }) {
                         Image(systemName: "gearshape.fill")
                             .font(.title3)
-                            .foregroundColor(.somnaPrimary)
-                            .somnaPulse(duration: 3.0, scale: 1.05)
+                            .foregroundColor(.accentColor)
+                            .symbolEffect(.pulse)
                     }
                 }
             }
@@ -155,18 +148,18 @@ struct HeroSleepSection: View {
     @State private var isAnimating = false
     
     var body: some View {
-        SomnaCard(padding: 24, cornerRadius: 20, shadowRadius: 12) {
+        GroupBox {
             VStack(spacing: 20) {
                 // Sleep Score Circle
                 ZStack {
                     Circle()
-                        .stroke(Color.somnaPrimary.opacity(0.2), lineWidth: 8)
+                        .stroke(Color.accentColor.opacity(0.2), lineWidth: 8)
                         .frame(width: 120, height: 120)
                     
                     Circle()
                         .trim(from: 0, to: sleepManager.sleepScore / 100)
                         .stroke(
-                            LinearGradient.somnaPrimary,
+                            Color.accentColor,
                             style: StrokeStyle(lineWidth: 8, lineCap: .round)
                         )
                         .frame(width: 120, height: 120)
@@ -176,8 +169,7 @@ struct HeroSleepSection: View {
                     VStack(spacing: 4) {
                         Text("\(Int(sleepManager.sleepScore))")
                             .font(.system(size: 32, weight: .bold, design: .rounded))
-                            .foregroundColor(.somnaPrimary)
-                            .somnaPulse(duration: 2.0, scale: 1.05)
+                            .foregroundColor(.accentColor)
                         
                         Text("Sleep Score")
                             .font(.caption)
@@ -194,7 +186,6 @@ struct HeroSleepSection: View {
                         .font(.title2)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
-                        .somnaPulse(duration: 3.0, scale: 1.02)
                     
                     Text(sleepStatusSubtitle)
                         .font(.body)
@@ -208,25 +199,22 @@ struct HeroSleepSection: View {
                         title: "Duration",
                         value: "\(Int(sleepManager.lastSleepDuration / 3600))h",
                         icon: "clock.fill",
-                        color: .somnaPrimary
+                        color: .accentColor
                     )
-                    .somnaPulse(duration: 2.5, scale: 1.03)
                     
                     QuickStatView(
                         title: "Quality",
                         value: "\(Int(sleepManager.sleepQuality * 100))%",
                         icon: "star.fill",
-                        color: .somnaAccent
+                        color: .blue
                     )
-                    .somnaPulse(duration: 2.8, scale: 1.03)
                     
                     QuickStatView(
                         title: "Efficiency",
                         value: "\(Int(sleepManager.sleepEfficiency * 100))%",
                         icon: "chart.line.uptrend.xyaxis",
-                        color: .somnaSecondary
+                        color: .secondary
                     )
-                    .somnaPulse(duration: 3.2, scale: 1.03)
                 }
             }
         }
@@ -280,7 +268,7 @@ struct QuickActionsSection: View {
                 Text("Quick Actions")
                     .font(.headline)
                     .fontWeight(.semibold)
-                    .somnaPulse(duration: 4.0, scale: 1.01)
+                    .symbolEffect(.pulse) // duration: 4.0, scale: 1.01)
                 
                 Spacer()
             }
@@ -290,7 +278,7 @@ struct QuickActionsSection: View {
                     title: sleepManager.isSleeping ? "End Sleep" : "Start Sleep",
                     subtitle: sleepManager.isSleeping ? "Stop tracking" : "Begin session",
                     icon: sleepManager.isSleeping ? "stop.circle.fill" : "play.circle.fill",
-                    color: sleepManager.isSleeping ? .somnaError : .somnaSuccess,
+                    color: sleepManager.isSleeping ? .red : .green,
                     action: {
                         if sleepManager.isSleeping {
                             sleepManager.endSleepSession()
@@ -299,34 +287,34 @@ struct QuickActionsSection: View {
                         }
                     }
                 )
-                .somnaPulse(duration: 2.0, scale: 1.02)
+                .symbolEffect(.pulse) // duration: 2.0, scale: 1.02)
                 
                 QuickActionCard(
                     title: "Wind Down",
                     subtitle: "Prepare for sleep",
                     icon: "moon.stars.fill",
-                    color: .somnaSecondary,
+                    color: .secondary,
                     action: { showingWindDown = true }
                 )
-                .somnaPulse(duration: 2.2, scale: 1.02)
+                .symbolEffect(.pulse) // duration: 2.2, scale: 1.02)
                 
                 QuickActionCard(
                     title: "Audio",
                     subtitle: "Sleep sounds",
                     icon: "speaker.wave.3.fill",
-                    color: .somnaPrimary,
+                    color: .accentColor,
                     action: { showingAudioControls = true }
                 )
-                .somnaPulse(duration: 2.4, scale: 1.02)
+                .symbolEffect(.pulse) // duration: 2.4, scale: 1.02)
                 
                 QuickActionCard(
                     title: "Smart Alarm",
                     subtitle: "Set wake time",
                     icon: "alarm.fill",
-                    color: .somnaWarning,
+                    color: .orange,
                     action: { /* Show smart alarm setup */ }
                 )
-                .somnaPulse(duration: 2.6, scale: 1.02)
+                .symbolEffect(.pulse) // duration: 2.6, scale: 1.02)
             }
         }
         .onAppear {
@@ -341,13 +329,13 @@ struct AIStatusDashboard: View {
     @State private var isAnimating = false
     
     var body: some View {
-        SomnaCard {
+        GroupBox {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     Image(systemName: "brain.head.profile")
                         .font(.title2)
-                        .foregroundColor(.somnaPrimary)
-                        .somnaPulse(duration: 2.0, scale: 1.1)
+                        .foregroundColor(.accentColor)
+                        .symbolEffect(.pulse) // duration: 2.0, scale: 1.1)
                     
                     Text("AI Status")
                         .font(.headline)
@@ -373,13 +361,13 @@ struct CurrentSleepStatusView: View {
     @State private var isAnimating = false
     
     var body: some View {
-        SomnaCard {
+        GroupBox {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     Image(systemName: "bed.double.fill")
                         .font(.title2)
-                        .foregroundColor(.somnaAccent)
-                        .somnaPulse(duration: 2.5, scale: 1.1)
+                        .foregroundColor(.blue)
+                        .symbolEffect(.pulse) // duration: 2.5, scale: 1.1)
                     
                     Text("Current Status")
                         .font(.headline)
@@ -405,13 +393,13 @@ struct EnhancedSmartAlarmSection: View {
     @State private var isAnimating = false
     
     var body: some View {
-        SomnaCard {
+        GroupBox {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     Image(systemName: "alarm")
                         .font(.title2)
-                        .foregroundColor(.somnaWarning)
-                        .somnaPulse(duration: 2.0, scale: 1.1)
+                        .foregroundColor(.orange)
+                        .symbolEffect(.pulse) // duration: 2.0, scale: 1.1)
                     
                     Text("Smart Alarm")
                         .font(.headline)
@@ -437,13 +425,13 @@ struct EnhancedAudioSection: View {
     @State private var isAnimating = false
     
     var body: some View {
-        SomnaCard {
+        GroupBox {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     Image(systemName: "speaker.wave.3")
                         .font(.title2)
-                        .foregroundColor(.somnaPrimary)
-                        .somnaPulse(duration: 2.0, scale: 1.1)
+                        .foregroundColor(.accentColor)
+                        .symbolEffect(.pulse) // duration: 2.0, scale: 1.1)
                     
                     Text("Audio Controls")
                         .font(.headline)
@@ -469,13 +457,13 @@ struct EnhancedHealthDataSection: View {
     @State private var isAnimating = false
     
     var body: some View {
-        SomnaCard {
+        GroupBox {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     Image(systemName: "heart.fill")
                         .font(.title2)
-                        .foregroundColor(.somnaError)
-                        .somnaPulse(duration: 2.0, scale: 1.1)
+                        .foregroundColor(.red)
+                        .symbolEffect(.pulse) // duration: 2.0, scale: 1.1)
                     
                     Text("Health Data")
                         .font(.headline)
@@ -502,13 +490,13 @@ struct EnhancedAppleWatchSection: View {
     @State private var isAnimating = false
     
     var body: some View {
-        SomnaCard {
+        GroupBox {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     Image(systemName: "applewatch")
                         .font(.title2)
-                        .foregroundColor(.somnaPrimary)
-                        .somnaPulse(duration: 2.0, scale: 1.1)
+                        .foregroundColor(.accentColor)
+                        .symbolEffect(.pulse) // duration: 2.0, scale: 1.1)
                     
                     Text("Apple Watch")
                         .font(.headline)
@@ -534,13 +522,13 @@ struct EnhancedSleepInsightsSection: View {
     @State private var isAnimating = false
     
     var body: some View {
-        SomnaCard {
+        GroupBox {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     Image(systemName: "chart.bar.fill")
                         .font(.title2)
-                        .foregroundColor(.somnaAccent)
-                        .somnaPulse(duration: 2.0, scale: 1.1)
+                        .foregroundColor(.blue)
+                        .symbolEffect(.pulse) // duration: 2.0, scale: 1.1)
                     
                     Text("Sleep Insights")
                         .font(.headline)
@@ -599,10 +587,9 @@ struct WindDownActiveView: View {
                     .font(.headline)
                     .fontWeight(.semibold)
                 
-                SomnaProgressView(
-                    value: windDownManager.totalProgress,
-                    showPercentage: true
-                )
+                ProgressView(value: windDownManager.totalProgress)
+                    .progressViewStyle(.linear)
+                    .tint(.accentColor)
                 .frame(height: 12)
             }
             
@@ -611,8 +598,8 @@ struct WindDownActiveView: View {
                 VStack(spacing: 16) {
                     Image(systemName: activity.icon)
                         .font(.system(size: 60))
-                        .foregroundColor(.somnaPrimary)
-                        .somnaPulse(duration: 2.0, scale: 1.1)
+                        .foregroundColor(.accentColor)
+                        .symbolEffect(.pulse) // duration: 2.0, scale: 1.1)
                     
                     Text(activity.title)
                         .font(.title2)
@@ -623,16 +610,15 @@ struct WindDownActiveView: View {
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                     
-                    SomnaProgressView(
-                        value: windDownManager.phaseProgress,
-                        color: .somnaSecondary
-                    )
+                    ProgressView(value: windDownManager.phaseProgress)
+                        .progressViewStyle(.linear)
+                        .tint(.secondary)
                     .frame(height: 8)
                 }
                 .padding()
                 .background(
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.somnaCardBackground)
+                        .fill(Color(.secondarySystemBackground))
                 )
             }
             
@@ -642,9 +628,9 @@ struct WindDownActiveView: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
                 
-                SomnaProgressView(
+                ProgressView(
                     value: windDownManager.relaxationLevel,
-                    color: .somnaAccent,
+                    color: .blue,
                     showPercentage: true
                 )
                 .frame(height: 10)
@@ -653,7 +639,8 @@ struct WindDownActiveView: View {
             Button("Stop Wind Down") {
                 windDownManager.stopWindDown()
             }
-            .buttonStyle(SomnaSecondaryButtonStyle())
+            .buttonStyle(.bordered)
+            .controlSize(.large)
         }
     }
 }
@@ -665,8 +652,8 @@ struct WindDownSetupView: View {
         VStack(spacing: 24) {
             Image(systemName: "moon.stars.fill")
                 .font(.system(size: 80))
-                .foregroundColor(.somnaSecondary)
-                .somnaPulse(duration: 3.0, scale: 1.05)
+                .foregroundColor(.secondary)
+                .symbolEffect(.pulse) // duration: 3.0, scale: 1.05)
             
             VStack(spacing: 16) {
                 Text("Ready to Wind Down?")
@@ -680,45 +667,45 @@ struct WindDownSetupView: View {
             }
             
             VStack(spacing: 12) {
-                SomnaListItem(
+                HealthListRow(
                     title: "Environment Optimization",
                     subtitle: "Create the perfect sleep atmosphere",
                     icon: "lightbulb.fill",
-                    iconColor: .somnaWarning
+                    iconColor: .orange
                 )
                 
-                SomnaListItem(
+                HealthListRow(
                     title: "Breathing Exercises",
                     subtitle: "4-7-8 relaxation technique",
                     icon: "lungs.fill",
-                    iconColor: .somnaInfo
+                    iconColor: .blue
                 )
                 
-                SomnaListItem(
+                HealthListRow(
                     title: "Progressive Relaxation",
                     subtitle: "Systematic body relaxation",
                     icon: "figure.mind.and.body",
-                    iconColor: .somnaAccent
+                    iconColor: .blue
                 )
                 
-                SomnaListItem(
+                HealthListRow(
                     title: "Guided Meditation",
                     subtitle: "Mindfulness and mental calm",
                     icon: "brain.head.profile",
-                    iconColor: .somnaSecondary
+                    iconColor: .secondary
                 )
                 
-                SomnaListItem(
+                HealthListRow(
                     title: "Sleep Audio",
                     subtitle: "Transition to sleep-optimized sounds",
                     icon: "waveform",
-                    iconColor: .somnaPrimary
+                    iconColor: .accentColor
                 )
             }
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.somnaCardBackground)
+                    .fill(Color(.systemCardBackground)
             )
             
             Button("Start Wind Down") {
@@ -726,7 +713,8 @@ struct WindDownSetupView: View {
                     await windDownManager.startWindDown()
                 }
             }
-            .buttonStyle(SomnaPrimaryButtonStyle())
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
         }
     }
 }
@@ -787,7 +775,7 @@ struct QuickActionCard: View {
             .padding(.vertical, 16)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.somnaCardBackground)
+                    .fill(Color(.systemCardBackground)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
                             .stroke(color.opacity(0.3), lineWidth: 1)

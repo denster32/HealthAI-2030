@@ -701,6 +701,7 @@ public enum SwiftDataError: Error {
     case cloudKitSyncError(CloudKitSyncError)
     case privacyDenied(String) // New error for privacy enforcement
     case noContextAvailable
+    case privacyConsentDenied(String) // Added for privacy consent
     
     var recoverySuggestion: String {
         switch self {

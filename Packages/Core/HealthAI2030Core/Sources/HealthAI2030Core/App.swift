@@ -33,7 +33,7 @@ struct HealthAI_2030_tvOS_App: App {
             await analyticsEngine.performComprehensiveAnalysis()
             await environmentManager.initialize()
             await performanceManager.startMonitoring()
-            await smartHomeManager.initialize()
+            await smartHomeManager.initializeForTvOS()
             await predictiveAnalyticsManager.initialize()
         }
     }
@@ -106,7 +106,7 @@ extension PerformanceOptimizationManager {
 }
 
 extension SmartHomeManager {
-    func initialize() async {
+    func initializeForTvOS() async {
         // Initialize smart home manager for tvOS dashboard
         await discoverDevices()
         await syncDeviceStates()

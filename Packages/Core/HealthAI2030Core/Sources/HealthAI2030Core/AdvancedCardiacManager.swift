@@ -802,8 +802,8 @@ class FitnessAnalyzer {
     weak var delegate: AnyObject?
     func generateRecommendations(vo2Max: Double, fitnessAge: Int, cardioFitness: Double) async -> [FitnessRecommendation] { [] }
 }
-class EmergencyAlertManager {
-    static let shared = EmergencyAlertManager()
+final class EmergencyAlertManager: Sendable {
+    nonisolated(unsafe) static let shared = EmergencyAlertManager()
     func triggerCardiacAlert(_ alert: AFibAlert) {}
 }
 enum CardiacHealthTrend { case stable, improving, declining }
@@ -837,6 +837,6 @@ struct AFibPattern {}
 
 // MARK: - Logging Extension for AdvancedCardiacManager
 extension OSLog {
-    private static var subsystem = "com.healthai2030.CardiacHealth"
+    private static let subsystem = "com.healthai2030.CardiacHealth"
     static let cardiacHealth = OSLog(subsystem: subsystem, category: "AdvancedCardiacManager")
 }

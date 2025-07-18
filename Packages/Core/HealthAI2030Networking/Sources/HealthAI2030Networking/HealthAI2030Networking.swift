@@ -13,6 +13,9 @@ public struct HealthAI2030Networking {
         public let enableCertificatePinning: Bool
         public let securityPolicy: CertificatePinningManager.SecurityPolicy
         public let retryPolicy: RetryPolicy
+        public let rateLimitConfiguration: RateLimitingManager.RateLimitConfiguration
+        public let enableCompression: Bool
+        public let enableOfflineSupport: Bool
         
         public struct RetryPolicy {
             public let maxRetries: Int
@@ -31,27 +34,35 @@ public struct HealthAI2030Networking {
             timeout: TimeInterval = 30.0,
             enableCertificatePinning: Bool = true,
             securityPolicy: CertificatePinningManager.SecurityPolicy = .production,
-            retryPolicy: RetryPolicy = RetryPolicy()
+            retryPolicy: RetryPolicy = RetryPolicy(),
+            rateLimitConfiguration: RateLimitingManager.RateLimitConfiguration = .production,
+            enableCompression: Bool = true,
+            enableOfflineSupport: Bool = true
         ) {
             self.baseURL = baseURL
             self.timeout = timeout
             self.enableCertificatePinning = enableCertificatePinning
             self.securityPolicy = securityPolicy
             self.retryPolicy = retryPolicy
+            self.rateLimitConfiguration = rateLimitConfiguration
+            self.enableCompression = enableCompression
+            self.enableOfflineSupport = enableOfflineSupport
         }
         
         /// Default production configuration
         public static let production = NetworkConfiguration(
             baseURL: URL(string: "https://api.healthai2030.com")!,
             enableCertificatePinning: true,
-            securityPolicy: .production
+            securityPolicy: .production,
+            rateLimitConfiguration: .production
         )
         
         /// Development configuration
         public static let development = NetworkConfiguration(
             baseURL: URL(string: "https://dev-api.healthai2030.com")!,
             enableCertificatePinning: false,
-            securityPolicy: .development
+            securityPolicy: .development,
+            rateLimitConfiguration: .development
         )
     }
     
@@ -59,18 +70,34 @@ public struct HealthAI2030Networking {
     
     private let configuration: NetworkConfiguration
     private let urlSession: URLSession
+    private let rateLimitingManager: RateLimitingManager
+    private let compressionManager: NetworkCompressionManager
+    private let offlineManager: OfflineFirstManager?
     private let logger = Logger(subsystem: "com.healthai.networking", category: "HealthAI2030Networking")
     
     // MARK: - Initialization
     
-    public init(configuration: NetworkConfiguration = .production) {
+    public init(configuration: NetworkConfiguration = .production) async throws {
         self.configuration = configuration
+        self.rateLimitingManager = RateLimitingManager(configuration: configuration.rateLimitConfiguration)
+        self.compressionManager = NetworkCompressionManager(config: .default)
+        
+        // Initialize offline manager if needed
+        if configuration.enableOfflineSupport {
+            self.offlineManager = try await OfflineFirstManager(
+                networking: self,
+                syncStrategy: .smart,
+                conflictResolution: .mostRecent
+            )
+        } else {
+            self.offlineManager = nil
+        }
         
         if configuration.enableCertificatePinning {
             self.urlSession = URLSession.healthAIPinnedSession(
                 configuration: configuration.securityPolicy.configuration
             )
-            logger.info("Networking initialized with certificate pinning enabled")
+            logger.info("Networking initialized with certificate pinning, compression, and rate limiting")
         } else {
             let sessionConfig = URLSessionConfiguration.default
             sessionConfig.timeoutIntervalForRequest = configuration.timeout
@@ -86,12 +113,15 @@ public struct HealthAI2030Networking {
         return "2.0.0"
     }
     
-    /// Secure HTTP GET request with certificate pinning
+    /// Secure HTTP GET request with certificate pinning and rate limiting
     public func get<T: Codable>(
         endpoint: String,
         responseType: T.Type,
         headers: [String: String] = [:]
     ) async throws -> T {
+        // Check rate limit before proceeding
+        try await rateLimitingManager.waitForAvailability(for: endpoint)
+        
         let url = configuration.baseURL.appendingPathComponent(endpoint)
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -106,26 +136,43 @@ public struct HealthAI2030Networking {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("HealthAI2030/\(version())", forHTTPHeaderField: "User-Agent")
         
-        logger.debug("Making GET request to: \(url)")
+        // Add compression headers if enabled
+        if configuration.enableCompression {
+            compressionManager.addCompressionHeaders(to: &request)
+        }
+        
+        logger.debug("Making rate-limited GET request to: \(url)")
         
         return try await NetworkErrorHandler.shared.exponentialBackoffRetry(
             operation: {
                 let (data, response) = try await urlSession.data(for: request)
                 try validateResponse(response, data: data)
-                return try JSONDecoder().decode(T.self, from: data)
+                
+                // Handle compressed response if needed
+                let decompressedData = if configuration.enableCompression,
+                                          let httpResponse = response as? HTTPURLResponse {
+                    try await compressionManager.processResponse(httpResponse, data: data)
+                } else {
+                    data
+                }
+                
+                return try JSONDecoder().decode(T.self, from: decompressedData)
             },
             maxRetries: configuration.retryPolicy.maxRetries,
             initialDelay: configuration.retryPolicy.initialDelay
         )
     }
     
-    /// Secure HTTP POST request with certificate pinning
+    /// Secure HTTP POST request with certificate pinning and rate limiting
     public func post<T: Codable, U: Codable>(
         endpoint: String,
         body: T,
         responseType: U.Type,
         headers: [String: String] = [:]
     ) async throws -> U {
+        // Check rate limit before proceeding
+        try await rateLimitingManager.waitForAvailability(for: endpoint)
+        
         let url = configuration.baseURL.appendingPathComponent(endpoint)
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -144,28 +191,55 @@ public struct HealthAI2030Networking {
         // Encode body
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        request.httpBody = try encoder.encode(body)
+        let bodyData = try encoder.encode(body)
         
-        logger.debug("Making POST request to: \(url)")
+        // Compress body if enabled and size threshold met
+        if configuration.enableCompression {
+            do {
+                let (compressedData, algorithm, stats) = try await compressionManager.compress(bodyData)
+                request.httpBody = compressedData
+                request.setValue(algorithm.contentEncoding, forHTTPHeaderField: "Content-Encoding")
+                logger.debug("Compressed request body: \(stats.percentageSaved)% saved")
+            } catch {
+                // Fall back to uncompressed if compression fails
+                request.httpBody = bodyData
+            }
+        } else {
+            request.httpBody = bodyData
+        }
+        
+        logger.debug("Making rate-limited POST request to: \(url)")
         
         return try await NetworkErrorHandler.shared.exponentialBackoffRetry(
             operation: {
                 let (data, response) = try await urlSession.data(for: request)
                 try validateResponse(response, data: data)
-                return try JSONDecoder().decode(U.self, from: data)
+                
+                // Handle compressed response if needed
+                let decompressedData = if configuration.enableCompression,
+                                          let httpResponse = response as? HTTPURLResponse {
+                    try await compressionManager.processResponse(httpResponse, data: data)
+                } else {
+                    data
+                }
+                
+                return try JSONDecoder().decode(U.self, from: decompressedData)
             },
             maxRetries: configuration.retryPolicy.maxRetries,
             initialDelay: configuration.retryPolicy.initialDelay
         )
     }
     
-    /// Upload file with certificate pinning
+    /// Upload file with certificate pinning and rate limiting
     public func uploadFile(
         endpoint: String,
         fileURL: URL,
         mimeType: String,
         headers: [String: String] = [:]
     ) async throws -> Data {
+        // Check rate limit before proceeding
+        try await rateLimitingManager.waitForAvailability(for: endpoint)
+        
         let url = configuration.baseURL.appendingPathComponent(endpoint)
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -179,7 +253,7 @@ public struct HealthAI2030Networking {
         request.setValue(mimeType, forHTTPHeaderField: "Content-Type")
         request.setValue("HealthAI2030/\(version())", forHTTPHeaderField: "User-Agent")
         
-        logger.debug("Uploading file to: \(url)")
+        logger.debug("Making rate-limited file upload to: \(url)")
         
         return try await NetworkErrorHandler.shared.exponentialBackoffRetry(
             operation: {
@@ -192,11 +266,14 @@ public struct HealthAI2030Networking {
         )
     }
     
-    /// Download file with certificate pinning
+    /// Download file with certificate pinning and rate limiting
     public func downloadFile(
         endpoint: String,
         headers: [String: String] = [:]
     ) async throws -> URL {
+        // Check rate limit before proceeding
+        try await rateLimitingManager.waitForAvailability(for: endpoint)
+        
         let url = configuration.baseURL.appendingPathComponent(endpoint)
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -209,7 +286,7 @@ public struct HealthAI2030Networking {
         
         request.setValue("HealthAI2030/\(version())", forHTTPHeaderField: "User-Agent")
         
-        logger.debug("Downloading file from: \(url)")
+        logger.debug("Making rate-limited file download from: \(url)")
         
         return try await NetworkErrorHandler.shared.exponentialBackoffRetry(
             operation: {
@@ -220,6 +297,22 @@ public struct HealthAI2030Networking {
             maxRetries: configuration.retryPolicy.maxRetries,
             initialDelay: configuration.retryPolicy.initialDelay
         )
+    }
+    
+    /// Get current rate limit status for an endpoint
+    public func getRateLimitStatus(for endpoint: String) async -> RateLimitStatus {
+        return await rateLimitingManager.getRateLimitStatus(for: endpoint)
+    }
+    
+    /// Reset rate limits (useful for testing or admin purposes)
+    public func resetRateLimits() async {
+        await rateLimitingManager.resetRateLimits()
+        logger.info("Rate limits reset")
+    }
+    
+    /// Check if a request would be allowed without making it
+    public func checkRateLimit(for endpoint: String) async -> RateLimitResult {
+        return await rateLimitingManager.allowRequest(for: endpoint)
     }
     
     // MARK: - Private Methods

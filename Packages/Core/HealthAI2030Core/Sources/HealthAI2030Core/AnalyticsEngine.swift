@@ -2,10 +2,11 @@ import Foundation
 import Combine
 
 /// A sophisticated engine for processing and analyzing health data.
-final class AnalyticsEngine: @unchecked Sendable {
+@MainActor
+final class AnalyticsEngine: ObservableObject {
 
     /// A shared singleton instance of the analytics engine.
-    static let shared = AnalyticsEngine()
+    nonisolated(unsafe) static let shared = AnalyticsEngine()
 
     private var cancellables = Set<AnyCancellable>()
 

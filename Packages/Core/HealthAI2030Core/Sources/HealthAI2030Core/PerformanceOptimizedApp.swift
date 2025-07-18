@@ -30,6 +30,7 @@ struct PerformanceOptimizedHealthAI2030App: App {
     
     // MARK: - Performance Monitoring
     @StateObject private var performanceMonitor = PerformanceMonitor.shared
+    @StateObject private var memoryOptimizer = MemoryOptimizationManager.shared
     
     // MARK: - Launch State
     @State private var isAppReady = false
@@ -68,6 +69,9 @@ struct PerformanceOptimizedHealthAI2030App: App {
     private func initializeApp() async {
         launchTime = Date()
         performanceMonitor.startLaunchTracking()
+        
+        // Configure memory optimization
+        memoryOptimizer.configureCacheSizes()
         
         // Phase 1: Essential services only
         await initializeEssentialServices()
@@ -146,6 +150,7 @@ struct PerformanceOptimizedHealthAI2030App: App {
         // Optimize memory usage
         Task {
             await coreManagers.optimizeMemoryUsage()
+            await memoryOptimizer.optimizeMemory()
         }
     }
     
@@ -357,6 +362,11 @@ class PerformanceMonitor: ObservableObject {
         memoryTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
             Task { @MainActor in
                 self.updateMemoryUsage()
+                
+                // Trigger optimization if needed
+                if self.memoryUsage.current > 100 {
+                    await MemoryOptimizationManager.shared.optimizeMemory()
+                }
             }
         }
     }

@@ -9,20 +9,6 @@ struct BoxBreathingView: View {
     @State private var particleOpacity: Double = 0.5
     @State private var backgroundAnimation: Double = 0.0
     
-    // Enhanced for 4K HDR support
-    private let screenSize = CGSize(width: 3840, height: 2160) // 4K resolution
-    private let isHDRSupported = detectHDRSupport() // Dynamic HDR detection
-    
-    // MARK: - HDR Detection
-    
-    private static func detectHDRSupport() -> Bool {
-        // Check if device supports HDR
-        if #available(tvOS 14.0, *) {
-            return UIScreen.main.traitCollection.displayGamut == .P3
-        }
-        return false
-    }
-    
     var body: some View {
         ZStack {
             // Background Layer
@@ -62,48 +48,18 @@ struct BoxBreathingView: View {
         }
     }
     
-    // MARK: - HDR Color Extensions
+    // MARK: - HIG-Compliant Color System
     
-    private func hdrColor(_ color: Color, intensity: Double = 1.0) -> Color {
-        guard isHDRSupported else { return color }
-        
-        // Enhanced HDR colors with higher brightness and saturation
-        switch color {
-        case .blue:
-            return Color(red: 0.0, green: 0.4, blue: 1.0, opacity: intensity)
-        case .cyan:
-            return Color(red: 0.0, green: 0.8, blue: 1.0, opacity: intensity)
-        case .indigo:
-            return Color(red: 0.3, green: 0.0, blue: 1.0, opacity: intensity)
-        case .orange:
-            return Color(red: 1.0, green: 0.6, blue: 0.0, opacity: intensity)
-        case .yellow:
-            return Color(red: 1.0, green: 1.0, blue: 0.0, opacity: intensity)
-        case .red:
-            return Color(red: 1.0, green: 0.0, blue: 0.0, opacity: intensity)
-        case .green:
-            return Color(red: 0.0, green: 1.0, blue: 0.0, opacity: intensity)
-        case .mint:
-            return Color(red: 0.0, green: 1.0, blue: 0.8, opacity: intensity)
-        case .teal:
-            return Color(red: 0.0, green: 0.8, blue: 0.8, opacity: intensity)
-        case .pink:
-            return Color(red: 1.0, green: 0.4, blue: 0.8, opacity: intensity)
-        case .purple:
-            return Color(red: 0.8, green: 0.0, blue: 1.0, opacity: intensity)
-        default:
-            return color
-        }
-    }
-    
-    private func hdrGradient(colors: [Color], startPoint: UnitPoint, endPoint: UnitPoint) -> LinearGradient {
-        let hdrColors = colors.map { hdrColor($0, intensity: 1.2) }
-        return LinearGradient(colors: hdrColors, startPoint: startPoint, endPoint: endPoint)
-    }
-    
-    private func hdrRadialGradient(colors: [Color], center: UnitPoint, startRadius: CGFloat, endRadius: CGFloat) -> RadialGradient {
-        let hdrColors = colors.map { hdrColor($0, intensity: 1.2) }
-        return RadialGradient(colors: hdrColors, center: center, startRadius: startRadius, endRadius: endRadius)
+    // Use system colors exclusively
+    private var breathingColors: [Color] {
+        [
+            Color(.systemBlue),
+            Color(.systemCyan),
+            Color(.systemIndigo),
+            Color(.systemGreen),
+            Color(.systemMint),
+            Color(.systemTeal)
+        ]
     }
     
     // MARK: - Background Layer
@@ -127,84 +83,39 @@ struct BoxBreathingView: View {
     }
     
     private var cosmicBackground: some View {
-        ZStack {
-            // Enhanced deep space gradient for HDR
-            hdrGradient(
-                colors: [.black, hdrColor(.purple, intensity: 0.4), hdrColor(.blue, intensity: 0.3)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+        Rectangle()
+            .fill(.regularMaterial)
+            .overlay(
+                LinearGradient(
+                    colors: [Color(.systemIndigo).opacity(0.3), Color(.systemPurple).opacity(0.2)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
             )
-            
-            // Enhanced animated stars for 4K
-            ForEach(0..<100, id: \.self) { i in // Increased star count for 4K
-                Circle()
-                    .fill(hdrColor(.white, intensity: 0.8 + 0.2 * sin(backgroundAnimation + Double(i) * 0.1)))
-                    .frame(width: Double.random(in: 1...4)) // Slightly larger for 4K
-                    .position(
-                        x: Double.random(in: 0...screenSize.width),
-                        y: Double.random(in: 0...screenSize.height)
-                    )
-                    .opacity(0.4 + 0.6 * sin(backgroundAnimation + Double(i) * 0.1))
-                    .blur(radius: 0.5) // Subtle blur for depth
-            }
-            
-            // Enhanced nebula clouds for HDR
-            ForEach(0..<8, id: \.self) { i in // More nebula clouds
-                Ellipse()
-                    .fill(
-                        hdrRadialGradient(
-                            colors: [breathingExercise.colorTheme.primaryColors[0].opacity(0.15), .clear],
-                            center: .center,
-                            startRadius: 80,
-                            endRadius: 300
-                        )
-                    )
-                    .frame(width: 600, height: 450) // Larger for 4K
-                    .position(
-                        x: Double.random(in: 300...(screenSize.width - 300)),
-                        y: Double.random(in: 300...(screenSize.height - 300))
-                    )
-                    .rotation3DEffect(
-                        .degrees(backgroundAnimation * 20 + Double(i) * 72),
-                        axis: (x: 0, y: 0, z: 1)
-                    )
-                    .blur(radius: 2) // Enhanced blur for HDR depth
-            }
-        }
     }
     
     private var oceanBackground: some View {
-        ZStack {
-            // Enhanced ocean gradient for HDR
-            hdrGradient(
-                colors: [hdrColor(.blue, intensity: 0.9), hdrColor(.cyan, intensity: 0.6), hdrColor(.teal, intensity: 0.4)],
-                startPoint: .top,
-                endPoint: .bottom
+        Rectangle()
+            .fill(.regularMaterial)
+            .overlay(
+                LinearGradient(
+                    colors: [Color(.systemBlue).opacity(0.3), Color(.systemCyan).opacity(0.2)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
             )
-            
-            // Enhanced animated waves for 4K
-            ForEach(0..<5, id: \.self) { i in // More wave layers
-                Wave(amplitude: 40 + Double(i) * 25, frequency: 0.008, phase: backgroundAnimation + Double(i) * 2)
-                    .stroke(
-                        hdrColor(.white, intensity: 0.15 + Double(i) * 0.06),
-                        lineWidth: 3 // Thicker lines for 4K
-                    )
-                    .offset(y: 150 + CGFloat(i) * 200)
-                    .blur(radius: 1) // Subtle blur
-            }
-        }
     }
     
     private var forestBackground: some View {
-        ZStack {
-            // Enhanced forest gradient for HDR
-            hdrGradient(
-                colors: [hdrColor(.green, intensity: 0.7), hdrColor(.mint, intensity: 0.5), hdrColor(.teal, intensity: 0.3)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+        Rectangle()
+            .fill(.regularMaterial)
+            .overlay(
+                LinearGradient(
+                    colors: [Color(.systemGreen).opacity(0.3), Color(.systemMint).opacity(0.2)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
             )
-            
-            // Enhanced animated leaves for 4K
             ForEach(0..<40, id: \.self) { i in // More leaves for 4K
                 Image(systemName: "leaf.fill")
                     .foregroundColor(hdrColor(.green, intensity: 0.3))

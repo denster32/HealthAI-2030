@@ -5,7 +5,10 @@ import Combine
 import os.log
 
 @available(tvOS 18.0, *)
-class PerformanceOptimizationManager: NSObject, ObservableObject {
+final class PerformanceOptimizationManager: NSObject, ObservableObject {
+    
+    // MARK: - Singleton
+    nonisolated(unsafe) static let shared = PerformanceOptimizationManager()
     
     // MARK: - Published Properties
     
