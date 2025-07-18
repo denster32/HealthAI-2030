@@ -52,7 +52,7 @@ class GroupSessionManager: NSObject, ObservableObject {
         cloudSyncManager = CloudKitSyncManager()
     }
     
-    private func handleSessionUpdates(_ sessions: Set<GroupSession<GroupHealthActivity>>) {
+    private func handleSessionUpdates(_ sessions: [GroupSession<GroupHealthActivity>]) {
         if let session = sessions.first {
             configureGroupSession(session)
         } else {

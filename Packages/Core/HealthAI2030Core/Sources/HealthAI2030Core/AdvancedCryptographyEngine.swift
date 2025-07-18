@@ -42,7 +42,7 @@ public final class AdvancedCryptographyEngine: ObservableObject {
     
     // MARK: - Singleton
     
-    nonisolated(unsafe) public static let shared = AdvancedCryptographyEngine()
+    public static let shared = AdvancedCryptographyEngine()
     
     // MARK: - Properties
     

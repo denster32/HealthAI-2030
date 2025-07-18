@@ -7,6 +7,7 @@ import os.log
 public class FederatedLearningManager {
     private let logger = Logger()
     private var localModel: MLModel?
+    private var localModelURL: URL?
     private let serverEndpoint: URL
     private let modelIdentifier: String
     
@@ -33,17 +34,26 @@ public class FederatedLearningManager {
         }
         
         // Perform local training
-        let progressHandler = { (contextProgress: MLUpdateContext) in
-            self.logger.log("Training progress: \(contextProgress.progress.fractionCompleted)")
+        let progressHandler = { (context: MLUpdateContext) in
+            if let metrics = context.metrics {
+                self.logger.log("Training progress - Epoch: \(context.event), Metrics: \(metrics)")
+            } else {
+                self.logger.log("Training event: \(context.event)")
+            }
+        }
+        
+        let completionHandler = { (context: MLUpdateContext) in
+            self.logger.log("Training completed")
         }
         
         let updateTask = try MLUpdateTask(
             forModelAt: try getModelURL(),
             trainingData: trainingData,
             configuration: configuration,
-            progressHandlers: .init(
+            progressHandlers: MLUpdateProgressHandlers(
                 forEvents: [.trainingBegin, .epochEnd],
-                progressHandler: progressHandler
+                progressHandler: progressHandler,
+                completionHandler: completionHandler
             )
         )
         
@@ -59,13 +69,19 @@ public class FederatedLearningManager {
         
         logger.log("Uploading model updates to server")
         
-        let modelData = try MLModelArchive.export(
-            model,
-            metadata: [
-                "deviceId": UIDevice.current.identifierForVendor?.uuidString ?? "unknown",
-                "timestamp": Date().timeIntervalSince1970
-            ]
-        )
+        // Get model URL and create upload data
+        let modelURL = try getModelURL()
+        let modelData = try Data(contentsOf: modelURL)
+        
+        // Create device identifier
+        let deviceId = ProcessInfo.processInfo.globallyUniqueString
+        
+        // Create metadata
+        let metadata = [
+            "deviceId": deviceId,
+            "timestamp": Date().timeIntervalSince1970,
+            "modelVersion": "1.0"
+        ]
         
         var request = URLRequest(url: serverEndpoint)
         request.httpMethod = "POST"
@@ -96,13 +112,14 @@ public class FederatedLearningManager {
         
         try data.write(to: tempURL)
         localModel = try MLModel(contentsOf: tempURL)
+        localModelURL = tempURL
     }
     
     private func getModelURL() throws -> URL {
-        guard let model = localModel else {
+        guard let modelURL = localModelURL else {
             throw FederatedLearningError.noLocalModel
         }
-        return model.modelURL
+        return modelURL
     }
 }
 
@@ -114,6 +131,6 @@ public enum FederatedLearningError: Error {
 
 extension Logger {
     func log(_ message: String) {
-        self.info("\(message)")
+        self.notice("\(message)")
     }
 }

@@ -36,11 +36,11 @@ public struct ExportRequest: Identifiable {
 final class SyncableHealthDataEntry: CKSyncable {
     @Attribute(.unique) var id: UUID
     var timestamp: Date
-    var dataType: CKSyncableDataType
+    var dataType: DataType
     var value: Double?
     var metadata: [String: String]?
     
-    init(id: UUID = UUID(), timestamp: Date = Date(), dataType: CKSyncableDataType = .general, value: Double? = nil, metadata: [String: String]? = nil) {
+    init(id: UUID = UUID(), timestamp: Date = Date(), dataType: DataType = .general, value: Double? = nil, metadata: [String: String]? = nil) {
         self.id = id
         self.timestamp = timestamp
         self.dataType = dataType
@@ -54,7 +54,7 @@ final class SyncableSleepSessionEntry: CKSyncable {
     @Attribute(.unique) var id: UUID
     var startTime: Date
     var endTime: Date
-    var dataType: CKSyncableDataType = .sleepData
+    var dataType: DataType = .sleepData
     var sleepQuality: Double?
     var stages: [String: Double]?
     
@@ -71,7 +71,7 @@ final class SyncableSleepSessionEntry: CKSyncable {
 final class AnalyticsInsight: CKSyncable {
     @Attribute(.unique) var id: UUID
     var timestamp: Date
-    var dataType: CKSyncableDataType = .general
+    var dataType: DataType = .general
     var insightType: String
     var content: String
     var significance: Double
@@ -89,7 +89,7 @@ final class AnalyticsInsight: CKSyncable {
 final class MLModelUpdate: CKSyncable {
     @Attribute(.unique) var id: UUID
     var trainingDate: Date
-    var dataType: CKSyncableDataType = .general
+    var dataType: DataType = .general
     var modelName: String
     var accuracy: Double
     var version: String
