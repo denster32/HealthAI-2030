@@ -4,11 +4,11 @@ import SwiftData
 /// Protocol for CloudKit syncable models
 protocol CKSyncable {
     var id: UUID { get }
-    var dataType: CKSyncableDataType { get }
+    var dataType: DataType { get }
 }
 
 /// Enumeration for different data types in the health app
-enum CKSyncableDataType: String, Codable {
+enum DataType: String, Codable {
     case healthMetrics = "health_metrics"
     case sleepData = "sleep_data"
     case exerciseData = "exercise_data"

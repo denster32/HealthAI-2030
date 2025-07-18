@@ -8,15 +8,17 @@ class AIHealthCoach: ObservableObject {
     static let shared = AIHealthCoach()
     @Published var conversation: [AIMessage] = []
     @Published var currentPlan: HealthPlan?
+    @Published var latestHealthData: HealthData?
     
     private let nlpEngine = HealthAINLPEngine()
-    private let healthDataManager = HealthDataManager.shared
+    private let explainableAI = ExplainableAIManager.shared
     // Note: ExplainableAI functionality integrated into coach logic
     private var cancellables = Set<AnyCancellable>()
     
     private init() {
         // Listen for health data changes and proactively suggest actions
-        healthDataManager.$latestHealthData
+        $latestHealthData
+            .compactMap { $0 }
             .sink { [weak self] data in
                 self?.proactiveNudge(for: data)
             }
@@ -45,11 +47,11 @@ class AIHealthCoach: ObservableObject {
         // Convert HealthData to a dictionary for ExplainableAI
         let healthDataDict: [String: Any] = [
             "stressLevel": data.stressLevel,
-            "averageSleep": data.sleepDuration, // Assuming sleepDuration is average sleep
-            "sleepDuration": data.sleepDuration,
+            "averageSleep": data.sleepHours, // Using sleepHours
+            "sleepDuration": data.sleepHours,
             "heartRateVariability": data.heartRateVariability,
-            "activityLevel": data.activityLevel,
-            "dailySteps": data.dailySteps
+            "activityLevel": data.activeEnergyBurned / 100.0, // Derive from active energy
+            "dailySteps": data.steps
         ]
         
         // Example: If stress is high, suggest a break
@@ -61,7 +63,7 @@ class AIHealthCoach: ObservableObject {
         }
         
         // Example: If sleep is low, suggest earlier bedtime
-        if data.sleepDuration < 7.0 {
+        if data.sleepHours < 7.0 {
             let recommendation = "earlier bedtime"
             let explanation = explainableAI.generateExplanation(for: recommendation, healthData: healthDataDict)
             let msg = "Your sleep duration has been low recently. We recommend an earlier bedtime."
